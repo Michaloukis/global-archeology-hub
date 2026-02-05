@@ -35,28 +35,19 @@ export default function SitesMap({ searchQuery, profile }) {
     if (!profile) return;
     setSubmitLoading(true);
     
-    // #region agent log
-    const payload = {
-      site_id: site.id,
-      field_arch_id: profile.id,
-      chief_arch_id: site.created_by,
-      message: requestMessage,
-      experience_years: parseInt(experience),
-      specialization: specialization,
-      availability: availability,
-      status: 'Pending'
-    };
-    fetch('http://127.0.0.1:7243/ingest/681b1f5c-17b9-4cf5-8463-2a620377b7c6',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({location:'SitesMap.jsx:handleSendRequest',message:'Request Payload',data:payload,timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})
-    }).catch(()=>{});
-    // #endregion
-    
     try {
       const { error } = await supabase
         .from('Registry')
-        .insert([payload]);
+        .insert([{
+          site_id: site.id,
+          field_arch_id: profile.id,
+          chief_arch_id: site.created_by,
+          message: requestMessage,
+          experience_years: parseInt(experience),
+          specialization: specialization,
+          availability: availability,
+          status: 'Pending'
+        }]);
 
       if (error) throw error;
 
