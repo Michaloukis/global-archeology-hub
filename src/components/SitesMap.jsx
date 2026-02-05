@@ -55,7 +55,7 @@ export default function SitesMap({ searchQuery, profile }) {
     
     try {
       const { error } = await supabase
-        .from('requests')
+        .from('Registry')
         .insert([payload]);
 
       if (error) throw error;

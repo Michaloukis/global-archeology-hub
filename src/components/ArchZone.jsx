@@ -48,7 +48,7 @@ const ArchZone = ({ profile }) => {
     // #endregion
     try {
       const { data, error } = await supabase
-        .from('requests')
+        .from('Registry')
         .select(`
           *,
           sites (name),
@@ -77,7 +77,7 @@ const ArchZone = ({ profile }) => {
   async function handleRequestAction(requestId, newStatus) {
     try {
       const { error } = await supabase
-        .from('requests')
+        .from('Registry')
         .update({ status: newStatus })
         .eq('id', requestId);
 
