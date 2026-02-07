@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
 import SitesMap from './components/SitesMap'
 import ArchZone from './components/ArchZone'
+import EducationZone from './components/EducationZone'
 
 // #region agent log
 const logData = (msg, data, hypothesisId) => {
@@ -13,21 +14,6 @@ const logData = (msg, data, hypothesisId) => {
   }).catch(()=>{});
 };
 // #endregion
-
-const EducationZone = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-    <div className="col-span-full border-b-4 border-black pb-4 mb-4">
-      <h2 className="text-4xl font-black uppercase tracking-tighter italic text-indigo-600">EDU LAB // ACADEMIC PORTAL</h2>
-    </div>
-    {['Internships', 'Records', 'Analyses', 'Q&A', 'Quiz', 'Reports'].map(item => (
-      <div key={item} className="border-2 border-black p-8 bg-white hover:bg-indigo-50 cursor-pointer group transition-all">
-        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">MODULE_{item.toUpperCase()}</span>
-        <h3 className="text-2xl font-black uppercase mt-2 group-hover:underline">{item}</h3>
-        <p className="text-xs font-bold text-gray-500 mt-4 uppercase">Access academic {item.toLowerCase()} and laboratory data.</p>
-      </div>
-    ))}
-  </div>
-)
 
 const HomePage = ({ searchQuery }) => {
   const articles = [
@@ -214,12 +200,18 @@ function App() {
               GLOBAL<br />ARCHEOLOGY HUB
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-6 text-[10px] font-black uppercase tracking-widest">
-              <span className="bg-black text-white px-2 py-1">NAME: {profile?.full_name?.toUpperCase() || 'IDENTIFYING...'}</span>
-              <span className="bg-black text-white px-2 py-1">USER: @{profile?.username?.toUpperCase() || 'N/A'}</span>
-              <span className="bg-black text-white px-2 py-1">ACCESS: {profile?.role?.toUpperCase() || 'PENDING...'}</span>
-            </div>
-          </div>
-          
+                  <span className="bg-black text-white px-2 py-1">NAME: {profile?.full_name?.toUpperCase() || 'IDENTIFYING...'}</span>
+                  <span className="bg-black text-white px-2 py-1">USER: @{profile?.username?.toUpperCase() || 'N/A'}</span>
+                  <span className="bg-black text-white px-2 py-1">ACCESS: {profile?.role?.toUpperCase() || 'PENDING...'}</span>
+                  {isStudent && (
+                    <span className="bg-indigo-600 text-white px-2 py-1 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-white animate-pulse rounded-full"></span>
+                      LEVEL: {profile?.education_xp || 0} XP
+                    </span>
+                  )}
+                </div>
+              </div>
+
           <div className="flex flex-col md:flex-row gap-6 items-end w-full lg:w-auto">
             {/* Navigation Search */}
             <div className="relative border-2 border-black flex items-center bg-white w-full md:w-64">
@@ -253,12 +245,12 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto p-8 md:p-12 min-h-[70vh] pt-24 md:pt-32">
-        {view === 'home' && <HomePage searchQuery={searchQuery} />}
-        {view === 'map' && <SitesMap searchQuery={searchQuery} profile={profile} />}
-        {view === 'education' && isStudent && <EducationZone />}
-        {view === 'arch' && isArcheologist && <ArchZone profile={profile} />}
-      </main>
+          <main className="max-w-[1400px] mx-auto p-8 md:p-12 min-h-[70vh] pt-24 md:pt-32 text-left">
+            {view === 'home' && <HomePage searchQuery={searchQuery} />}
+            {view === 'map' && <SitesMap searchQuery={searchQuery} profile={profile} />}
+            {view === 'education' && isStudent && <EducationZone profile={profile} />}
+            {view === 'arch' && isArcheologist && <ArchZone profile={profile} />}
+          </main>
 
       <footer className="bg-black text-white p-12 mt-20 border-t-8 border-gray-900">
         <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 text-[10px] font-black uppercase tracking-[0.3em]">

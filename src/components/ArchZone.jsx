@@ -3,9 +3,15 @@ import { supabase } from '../supabaseClient';
 
 const ArchZone = ({ profile }) => {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
+  const [isCompassOpen, setIsCompassOpen] = useState(false);
   const [isSiteFormOpen, setIsSiteFormOpen] = useState(false);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const [note, setNote] = useState(localStorage.getItem('arch_note') || '');
+  
+  // Compass State
+  const [heading, setHeading] = useState(0);
+  const [hasOrientation, setHasOrientation] = useState(false);
+  const [compassError, setCompassError] = useState('');
   
   // Requests State
   const [requests, setRequests] = useState([]);
@@ -171,6 +177,74 @@ const ArchZone = ({ profile }) => {
       console.error('Error updating request:', error);
     }
   }
+
+  const handleCompassToggle = async () => {
+    if (!isCompassOpen) {
+      setCompassError('');
+      // Request permission for iOS devices
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const permission = await DeviceOrientationEvent.requestPermission();
+          if (permission === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+          } else {
+            setCompassError('PERMISSION_DENIED: IOS_SENSOR_ACCESS');
+          }
+        } catch (error) {
+          setCompassError(`ERROR: ${error.message?.toUpperCase() || 'UNKNOWN_IOS_ERROR'}`);
+          console.error('Compass permission error:', error);
+        }
+      } else {
+        // Android / Desktop Chrome 
+        if (window.isSecureContext) {
+          if ('ondeviceorientationabsolute' in window) {
+            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+          } else {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+          }
+          // Set a timeout to check if we actually receive data
+          setTimeout(() => {
+            if (!hasOrientation) {
+              setCompassError('SENSOR_TIMEOUT: NO_DATA_RECEIVED');
+            }
+          }, 2000);
+        } else {
+          setCompassError('SECURITY_ERROR: HTTPS_REQUIRED');
+        }
+      }
+    } else {
+      window.removeEventListener('deviceorientation', handleOrientation);
+      window.removeEventListener('deviceorientationabsolute', handleOrientation);
+    }
+    setIsCompassOpen(!isCompassOpen);
+  };
+
+  const handleOrientation = (event) => {
+    let heading = 0;
+    
+    // iOS absolute heading
+    if (event.webkitCompassHeading) {
+      heading = event.webkitCompassHeading;
+    } 
+    // Android absolute heading
+    else if (event.absolute && event.alpha !== null) {
+      heading = 360 - event.alpha;
+    }
+    // Fallback/Relative (might not point to true North on all devices)
+    else if (event.alpha !== null) {
+      heading = 360 - event.alpha;
+    }
+
+    setHeading(heading);
+    setHasOrientation(true);
+  };
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation);
+      window.removeEventListener('deviceorientationabsolute', handleOrientation);
+    };
+  }, []);
 
   const handleNotepadToggle = () => {
     const newState = !isNotepadOpen;
@@ -448,8 +522,13 @@ const ArchZone = ({ profile }) => {
             {['Exclusive Map', 'Notepad', 'Compass', 'Data Upload', 'Report Syntax', '2D Illustration', 'Site Log', 'Field Sync'].map(item => (
               <div 
                 key={item} 
-                onClick={item === 'Notepad' ? handleNotepadToggle : undefined}
-                className={`border-2 border-black p-3 hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all ${item === 'Notepad' && isNotepadOpen ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`}
+                onClick={
+                  item === 'Notepad' ? handleNotepadToggle : 
+                  item === 'Compass' ? handleCompassToggle : 
+                  undefined
+                }
+                className={`border-2 border-black p-3 hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all 
+                  ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`}
               >
                 {item}
               </div>
@@ -654,6 +733,70 @@ const ArchZone = ({ profile }) => {
               )}
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Compass UI */}
+      {isCompassOpen && (
+        <div className="fixed top-24 left-8 w-[90%] md:w-80 bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] z-[100] p-8 flex flex-col items-center">
+          <div className="flex justify-between items-center w-full mb-8 border-b-2 border-black pb-2">
+            <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 bg-red-600 animate-pulse"></span>
+              Field Compass // v1.0
+            </h4>
+            <button 
+              onClick={handleCompassToggle} 
+              className="text-xs font-black hover:bg-black hover:text-white px-2 py-1 border border-black transition-colors"
+            >
+              CLOSE [X]
+            </button>
+          </div>
+
+          <div className="relative w-48 h-48 border-4 border-black rounded-full flex items-center justify-center bg-gray-50 shadow-inner">
+            {/* Compass Rose */}
+            <div 
+              className="absolute inset-0 transition-transform duration-100 ease-linear"
+              style={{ transform: `rotate(${-heading}deg)` }}
+            >
+              <span className="absolute top-2 left-1/2 -translate-x-1/2 font-black text-red-600">N</span>
+              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-black">S</span>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 font-black">W</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 font-black">E</span>
+              
+              {/* Dial Marks */}
+              {[...Array(12)].map((_, i) => (
+                <div 
+                  key={i} 
+                  className="absolute top-0 left-1/2 w-0.5 h-3 bg-black -translate-x-1/2 origin-[0_96px]"
+                  style={{ transform: `rotate(${i * 30}deg)` }}
+                />
+              ))}
+            </div>
+
+            {/* Fixed Needle */}
+            <div className="relative w-1 h-32 bg-red-600 z-10 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:border-l-[6px] before:border-l-transparent before:border-r-[6px] before:border-r-transparent before:border-b-[12px] before:border-b-red-600 shadow-lg"></div>
+            <div className="absolute w-4 h-4 bg-black rounded-full border-2 border-white z-20"></div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <div className="text-3xl font-black italic">{Math.round(heading)}°</div>
+            <div className="text-[10px] font-black text-gray-400 mt-1 uppercase tracking-[0.2em]">
+              {hasOrientation ? 'SATELLITE_SYNC_ACTIVE' : 'CALIBRATING_SENSORS...'}
+            </div>
+          </div>
+
+          <div className="mt-6 w-full p-3 bg-gray-50 border-2 border-black border-dashed text-[9px] font-bold text-center leading-tight uppercase">
+            {compassError ? (
+              <span className="text-red-600">{compassError}</span>
+            ) : hasOrientation 
+              ? 'Compass calibrated. Align device flat for maximum geospatial accuracy.' 
+              : 'Waiting for device orientation data. (Requires mobile device with magnetometer)'}
+          </div>
+          {!window.isSecureContext && !compassError && (
+            <div className="mt-2 text-[8px] font-black text-red-600 uppercase text-center">
+              ⚠️ Note: Sensors require HTTPS or Localhost
+            </div>
+          )}
         </div>
       )}
 

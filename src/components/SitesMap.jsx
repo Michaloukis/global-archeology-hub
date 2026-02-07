@@ -20,6 +20,7 @@ L.Marker.prototype.options.icon = DefaultIcon
 export default function SitesMap({ searchQuery, profile }) {
   const [sites, setSites] = useState([])
   const [loading, setLoading] = useState(true)
+  const [journals, setJournals] = useState({}) // { siteId: [entries] }
   const [requestMessage, setRequestMessage] = useState('')
   const [experience, setExperience] = useState('')
   const [specialization, setSpecialization] = useState('')
@@ -29,7 +30,29 @@ export default function SitesMap({ searchQuery, profile }) {
 
   useEffect(() => {
     fetchSites()
+    fetchAllJournals()
   }, [])
+
+  async function fetchAllJournals() {
+    try {
+      const { data, error } = await supabase
+        .from('site_journals')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group journals by siteId
+      const grouped = data.reduce((acc, entry) => {
+        if (!acc[entry.site_id]) acc[entry.site_id] = [];
+        acc[entry.site_id].push(entry);
+        return acc;
+      }, {});
+      setJournals(grouped);
+    } catch (error) {
+      console.error('Error fetching journals for map:', error);
+    }
+  }
 
   async function handleSendRequest(site) {
     if (!profile) return;
@@ -193,32 +216,60 @@ export default function SitesMap({ searchQuery, profile }) {
           />
           {filteredSites.map(site => (
             <Marker key={site.id} position={[site.lat, site.lng]}>
-              <Popup>
-                <div className="font-sans p-2 max-w-[200px]">
-                  <h3 className="font-black uppercase text-lg border-b-2 border-black mb-2 leading-tight">{site.name}</h3>
-                  <div className="flex flex-col gap-1 mb-3">
-                    <div className={`text-[10px] font-black uppercase px-2 py-1 inline-block border border-black w-fit ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {site.status}
+                  <Popup>
+                    <div className="font-sans p-2 min-w-[250px] max-w-[300px]">
+                      <h3 className="font-black uppercase text-lg border-b-2 border-black mb-2 leading-tight">{site.name}</h3>
+                      <div className="flex flex-col gap-1 mb-3">
+                        <div className={`text-[10px] font-black uppercase px-2 py-1 inline-block border border-black w-fit ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {site.status}
+                        </div>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">
+                          LOC: {site.lat.toFixed(4)}°N, {site.lng.toFixed(4)}°E (DD)
+                        </span>
+                      </div>
+
+                      {/* Live Intel Section */}
+                      {journals[site.id] && journals[site.id].length > 0 && (
+                        <div className="mb-4 space-y-2 border-t-2 border-black pt-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-red-600 animate-pulse"></span>
+                            <span className="text-[9px] font-black uppercase">Live Field Intel:</span>
+                          </div>
+                          
+                          {journals[site.id].slice(0, 1).map(intel => (
+                            <div key={intel.id} className="space-y-2">
+                              {intel.image_url && (
+                                <img src={intel.image_url} className="w-full h-24 object-cover border border-black grayscale hover:grayscale-0 transition-all" alt="Field evidence" />
+                              )}
+                              {intel.findings && (
+                                <div className="bg-gray-50 p-2 border border-black text-[10px] font-bold uppercase leading-tight">
+                                  <span className="text-red-600">LATEST FIND:</span> {intel.findings}
+                                </div>
+                              )}
+                              {(profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist') && intel.notes && (
+                                <p className="text-[9px] font-bold text-gray-500 uppercase leading-relaxed italic">
+                                  "{intel.notes.substring(0, 60)}..."
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-2 mt-2">
+                        <button 
+                          onClick={() => window.open(site.tourUrl, '_blank')}
+                          className="w-full bg-black text-white text-[10px] font-black uppercase py-2 hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <span>Launch 360 Tour</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">
-                      LOC: {site.lat.toFixed(4)}°N, {site.lng.toFixed(4)}°E (DD)
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-bold text-gray-600 leading-tight mb-4 uppercase">
-                    {site.description.substring(0, 100)}...
-                  </p>
-                  <button 
-                    onClick={() => window.open(site.tourUrl, '_blank')}
-                    className="w-full bg-black text-white text-[10px] font-black uppercase py-2 hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span>Launch 360 Tour</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </button>
-                </div>
-              </Popup>
+                  </Popup>
             </Marker>
           ))}
         </MapContainer>
@@ -240,23 +291,41 @@ export default function SitesMap({ searchQuery, profile }) {
                   </span>
                 </div>
                 <h4 className="font-black text-xl uppercase tracking-tighter mb-4 group-hover:underline">{site.name}</h4>
-                <p className="text-[11px] font-bold text-gray-500 leading-relaxed uppercase mb-6">
-                  {site.description}
-                </p>
+                
+                {/* Integrated Intel in Card */}
+                {journals[site.id] && journals[site.id].length > 0 ? (
+                  <div className="mb-6 p-4 bg-gray-50 border-2 border-black border-dashed">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse"></div>
+                      <span className="text-[8px] font-black uppercase">Latest Dispatch:</span>
+                    </div>
+                    {journals[site.id][0].image_url && (
+                      <img src={journals[site.id][0].image_url} className="w-full h-24 object-cover border border-black mb-3 grayscale hover:grayscale-0 transition-all" alt="Latest finding" />
+                    )}
+                    <p className="text-[10px] font-black uppercase leading-tight text-black">
+                      {journals[site.id][0].findings || 'SITE OBSERVATION RECORDED'}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] font-bold text-gray-500 leading-relaxed uppercase mb-6">
+                    {site.description}
+                  </p>
+                )}
               </div>
               
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(site.tourUrl, '_blank');
-                }}
-                className="flex-1 border-2 border-black bg-white text-black text-[10px] font-black uppercase py-3 hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
-              >
-                <span>Explore in 360°</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </button>
+              <div className="flex gap-2 mt-auto">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(site.tourUrl, '_blank');
+                  }}
+                  className="flex-1 border-2 border-black bg-white text-black text-[10px] font-black uppercase py-3 hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Explore in 360°</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </button>
 
               {isFieldArch && (
                 <button 
@@ -270,7 +339,8 @@ export default function SitesMap({ searchQuery, profile }) {
                 </button>
               )}
             </div>
-          )))}
+          </div>
+        )))}
       </div>
 
       {/* Request Modal */}
