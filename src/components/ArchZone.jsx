@@ -30,6 +30,14 @@ const ArchZone = ({ profile }) => {
   const [newJournalImageUrl, setNewJournalImageUrl] = useState('');
   const [isJournalLoading, setIsJournalLoading] = useState(false);
   
+  // Edit State
+  const [editingEntryId, setEditingEntryId] = useState(null);
+  const [editNotes, setEditNotes] = useState('');
+  const [editFindings, setEditFindings] = useState('');
+  const [editMapping, setEditMapping] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  
   // Site Form State
   const [siteName, setSiteName] = useState('');
   const [siteLat, setSiteLat] = useState('');
@@ -136,6 +144,48 @@ const ArchZone = ({ profile }) => {
     } catch (error) {
       console.error('Error adding journal entry:', error);
       alert('Error saving journal entry.');
+    }
+  }
+
+  const startEditing = (entry) => {
+    setEditingEntryId(entry.id);
+    setEditNotes(entry.notes || '');
+    setEditFindings(entry.findings || '');
+    setEditMapping(entry.mapping_data || '');
+    setEditImageUrl(entry.image_url || '');
+  };
+
+  const cancelEditing = () => {
+    setEditingEntryId(null);
+    setEditNotes('');
+    setEditFindings('');
+    setEditMapping('');
+    setEditImageUrl('');
+  };
+
+  async function handleUpdateJournalEntry(e) {
+    e.preventDefault();
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('site_journals')
+        .update({
+          notes: editNotes,
+          findings: editFindings,
+          mapping_data: editMapping,
+          image_url: editImageUrl
+        })
+        .eq('id', editingEntryId);
+
+      if (error) throw error;
+      
+      setEditingEntryId(null);
+      fetchJournals(selectedExpedition.site_id);
+    } catch (error) {
+      console.error('Error updating journal entry:', error);
+      alert('Error updating entry.');
+    } finally {
+      setIsUpdating(false);
     }
   }
 
@@ -455,52 +505,122 @@ const ArchZone = ({ profile }) => {
                 ) : (
                   journals.map(entry => (
                     <div key={entry.id} className="bg-white border-2 border-black p-5 space-y-4">
-                      <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                        <span className="text-[8px] font-black text-gray-400 uppercase">
-                          {new Date(entry.created_at).toLocaleString()}
-                        </span>
-                        <span className="bg-black text-white text-[7px] px-1.5 py-0.5 uppercase">ID_{entry.id}</span>
-                      </div>
-
-                      {entry.image_url && (
-                        <div className="border-2 border-black overflow-hidden bg-gray-200">
-                          <img 
-                            src={entry.image_url} 
-                            alt="Site Evidence" 
-                            className="w-full h-40 object-cover grayscale hover:grayscale-0 transition-all cursor-pointer"
-                            onClick={() => window.open(entry.image_url, '_blank')}
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-3">
-                        {entry.notes && (
-                          <div>
-                            <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Observation:</span>
-                            <p className="text-[11px] font-bold uppercase leading-relaxed text-gray-800">{entry.notes}</p>
+                      {editingEntryId === entry.id ? (
+                        /* Edit Mode */
+                        <form onSubmit={handleUpdateJournalEntry} className="space-y-4">
+                          <div className="flex justify-between items-center border-b border-black pb-2 mb-4">
+                            <span className="text-[10px] font-black uppercase text-red-600">Edit Mode // ID_{entry.id}</span>
+                            <button type="button" onClick={cancelEditing} className="text-[8px] font-black uppercase hover:underline">Cancel [X]</button>
                           </div>
-                        )}
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          {entry.findings && (
-                            <div>
-                              <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Recovered:</span>
-                              <p className="text-[10px] font-black uppercase">{entry.findings}</p>
+                          
+                          <div className="space-y-2">
+                            <label className="text-[7px] font-black uppercase text-gray-400">Field Notes</label>
+                            <textarea
+                              value={editNotes}
+                              onChange={(e) => setEditNotes(e.target.value)}
+                              className="w-full h-24 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-gray-50 resize-none"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[7px] font-black uppercase text-gray-400">Artifacts</label>
+                              <input
+                                type="text"
+                                value={editFindings}
+                                onChange={(e) => setEditFindings(e.target.value)}
+                                className="w-full border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-gray-50"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[7px] font-black uppercase text-gray-400">Mapping URL</label>
+                              <input
+                                type="text"
+                                value={editMapping}
+                                onChange={(e) => setEditMapping(e.target.value)}
+                                className="w-full border-2 border-black p-2 text-[10px] font-bold outline-none focus:bg-gray-50"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[7px] font-black uppercase text-gray-400">Image URL</label>
+                            <input
+                              type="text"
+                              value={editImageUrl}
+                              onChange={(e) => setEditImageUrl(e.target.value)}
+                              className="w-full border-2 border-black p-2 text-[10px] font-bold outline-none focus:bg-gray-50"
+                            />
+                          </div>
+
+                          <button 
+                            disabled={isUpdating}
+                            className="w-full bg-black text-white py-2 text-[9px] font-black uppercase hover:bg-red-600 transition-all"
+                          >
+                            {isUpdating ? 'UPDATING...' : 'Confirm Modifications'}
+                          </button>
+                        </form>
+                      ) : (
+                        /* Display Mode */
+                        <>
+                          <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[8px] font-black text-gray-400 uppercase">
+                                {new Date(entry.created_at).toLocaleString()}
+                              </span>
+                              {isFieldArch && entry.user_id === profile.id && (
+                                <button 
+                                  onClick={() => startEditing(entry)}
+                                  className="text-[8px] font-black text-red-600 hover:underline uppercase"
+                                >
+                                  [Modify Entry]
+                                </button>
+                              )}
+                            </div>
+                            <span className="bg-black text-white text-[7px] px-1.5 py-0.5 uppercase">ID_{entry.id}</span>
+                          </div>
+
+                          {entry.image_url && (
+                            <div className="border-2 border-black overflow-hidden bg-gray-200">
+                              <img 
+                                src={entry.image_url} 
+                                alt="Site Evidence" 
+                                className="w-full h-40 object-cover grayscale hover:grayscale-0 transition-all cursor-pointer"
+                                onClick={() => window.open(entry.image_url, '_blank')}
+                              />
                             </div>
                           )}
-                          {entry.mapping_data && (
-                            <div>
-                              <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Mapping:</span>
-                              <button 
-                                onClick={() => window.open(entry.mapping_data, '_blank')}
-                                className="text-[10px] font-black uppercase underline hover:text-red-600"
-                              >
-                                View 3D Data ↗
-                              </button>
+
+                          <div className="space-y-3">
+                            {entry.notes && (
+                              <div>
+                                <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Observation:</span>
+                                <p className="text-[11px] font-bold uppercase leading-relaxed text-gray-800">{entry.notes}</p>
+                              </div>
+                            )}
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              {entry.findings && (
+                                <div>
+                                  <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Recovered:</span>
+                                  <p className="text-[10px] font-black uppercase">{entry.findings}</p>
+                                </div>
+                              )}
+                              {entry.mapping_data && (
+                                <div>
+                                  <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Mapping:</span>
+                                  <button 
+                                    onClick={() => window.open(entry.mapping_data, '_blank')}
+                                    className="text-[10px] font-black uppercase underline hover:text-red-600"
+                                  >
+                                    View 3D Data ↗
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))
                 )}

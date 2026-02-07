@@ -21,6 +21,7 @@ export default function SitesMap({ searchQuery, profile }) {
   const [sites, setSites] = useState([])
   const [loading, setLoading] = useState(true)
   const [journals, setJournals] = useState({}) // { siteId: [entries] }
+  const [userRequests, setUserRequests] = useState([]) // Array of site IDs user applied for
   const [requestMessage, setRequestMessage] = useState('')
   const [experience, setExperience] = useState('')
   const [specialization, setSpecialization] = useState('')
@@ -31,7 +32,22 @@ export default function SitesMap({ searchQuery, profile }) {
   useEffect(() => {
     fetchSites()
     fetchAllJournals()
-  }, [])
+    if (profile) fetchUserRequests()
+  }, [profile])
+
+  async function fetchUserRequests() {
+    try {
+      const { data, error } = await supabase
+        .from('Registry')
+        .select('site_id')
+        .eq('field_arch_id', profile.id);
+
+      if (error) throw error;
+      setUserRequests(data.map(r => r.site_id));
+    } catch (error) {
+      console.error('Error fetching user requests:', error);
+    }
+  }
 
   async function fetchAllJournals() {
     try {
@@ -75,6 +91,7 @@ export default function SitesMap({ searchQuery, profile }) {
       if (error) throw error;
 
       alert('EXPEDITION DOSSIER DISPATCHED. AWAITING CHIEF REVIEW.');
+      fetchUserRequests(); // Refresh the list of sites user has applied for
       setActiveSiteForRequest(null);
       setRequestMessage('');
       setExperience('');
@@ -267,6 +284,15 @@ export default function SitesMap({ searchQuery, profile }) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         </button>
+
+                        {isFieldArch && site.status !== 'Finished' && !userRequests.includes(site.id) && (
+                          <button 
+                            onClick={() => setActiveSiteForRequest(site)}
+                            className="w-full bg-red-600 text-white text-[10px] font-black uppercase py-2 hover:bg-black transition-colors flex items-center justify-center gap-2"
+                          >
+                            Request to Join
+                          </button>
+                        )}
                       </div>
                     </div>
                   </Popup>
@@ -327,19 +353,19 @@ export default function SitesMap({ searchQuery, profile }) {
                   </svg>
                 </button>
 
-              {isFieldArch && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveSiteForRequest(site);
-                  }}
-                  className="flex-1 border-2 border-red-600 bg-red-600 text-white text-[10px] font-black uppercase py-3 hover:bg-black hover:border-black transition-all flex items-center justify-center gap-2"
-                >
-                  Request to Join
-                </button>
-              )}
+                {isFieldArch && site.status !== 'Finished' && !userRequests.includes(site.id) && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveSiteForRequest(site);
+                    }}
+                    className="flex-1 border-2 border-red-600 bg-red-600 text-white text-[10px] font-black uppercase py-3 hover:bg-black hover:border-black transition-all flex items-center justify-center gap-2"
+                  >
+                    Request to Join
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
         )))}
       </div>
 
