@@ -41,7 +41,6 @@ const ArchZone = ({ profile }) => {
   // #endregion
 
   useEffect(() => {
-    logData('ArchZone mounted', { role: profile?.role }, 'A');
     if (profile?.role === 'Chief Archeologist') {
       fetchRequests();
     } else if (profile?.role === 'Field Archeologist') {

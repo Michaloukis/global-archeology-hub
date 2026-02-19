@@ -45,14 +45,6 @@ const HomePage = ({ searchQuery }) => {
   ];
 
   const handleArticleClick = (url) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/681b1f5c-17b9-4cf5-8463-2a620377b7c6',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({location:'App.jsx',message:'Article Clicked',data:{url},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'L'})
-    }).catch(()=>{});
-    // #endregion
-    
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -178,14 +170,11 @@ function App() {
   }, [])
 
   async function fetchProfile(userId) {
-    logData('fetchProfile start', { userId }, 'D');
     const response = await supabase.from('profiles').select('*').eq('id', userId)
     
-    logData('fetchProfile result', { data: response.data?.[0], error: response.error }, 'D');
     console.log('DEBUG: Profile structure:', response.data?.[0]);
 
     if (response.error) {
-      logData('fetchProfile error', { error: response.error }, 'D');
       console.error('Profile fetch error', response.error)
     } else if (response.data && response.data.length > 0) {
       setProfile(response.data[0])

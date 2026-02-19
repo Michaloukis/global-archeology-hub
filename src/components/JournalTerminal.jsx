@@ -25,7 +25,7 @@ const JournalTerminal = ({ siteId, profile }) => {
       fetchSite();
       fetchJournals();
     }
-  }, [siteId]);
+  }, [siteId, profile?.id]);
 
   async function fetchSite() {
     const { data, error } = await supabase.from('sites').select('*').eq('id', siteId).single();
@@ -33,12 +33,14 @@ const JournalTerminal = ({ siteId, profile }) => {
   }
 
   async function fetchJournals() {
+    if (!profile?.id) return; // 🛡️ GUARD: Don't fetch if profile isn't ready
     setIsJournalLoading(true);
     try {
       const { data, error } = await supabase
         .from('site_journals')
         .select('*')
         .eq('site_id', siteId)
+        .eq('user_id', profile.id) // 🔒 PRIVACY LOCK
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -52,6 +54,7 @@ const JournalTerminal = ({ siteId, profile }) => {
 
   async function handleAddJournalEntry(e) {
     e.preventDefault();
+    if (!profile?.id) return; // 🛡️ GUARD
     try {
       const { error } = await supabase
         .from('site_journals')
@@ -110,14 +113,21 @@ const JournalTerminal = ({ siteId, profile }) => {
     setEditIsPublic(entry.is_public !== false);
   };
 
-  if (!site) return <div className="p-20 text-center font-black uppercase tracking-widest animate-pulse">Establishing Geospatial Connection...</div>;
+  if (!site || !profile) return (
+    <div className="p-20 text-center space-y-6">
+      <div className="font-black uppercase tracking-[0.5em] animate-pulse text-2xl">Establishing Geospatial Connection...</div>
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+        {!site ? 'Linking with Satellite Registry...' : 'Verifying Personnel Credentials...'}
+      </p>
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-12">
       <div className="border-b-4 border-black pb-6 flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-black uppercase tracking-tighter italic text-red-600">FIELD TERMINAL // {site.name}</h2>
-          <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-widest">Global Site ID: {site.id} // Personnel: {profile?.full_name}</p>
+          <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-widest">Global Site ID: {site.id} // Personnel: {profile?.full_name || 'AUTHENTICATING...'}</p>
         </div>
         <button onClick={() => window.close()} className="bg-black text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-[4px_4px_0px_rgba(220,38,38,1)]">
           DISCONNECT [X]
@@ -217,7 +227,7 @@ const JournalTerminal = ({ siteId, profile }) => {
                       <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                         <div className="flex items-center gap-3">
                           <span className="text-[8px] font-black text-gray-400 uppercase">{new Date(entry.created_at).toLocaleString()}</span>
-                          {entry.user_id === profile.id && (
+                          {entry.user_id === profile?.id && (
                             <button onClick={() => startEditing(entry)} className="text-[8px] font-black text-red-600 hover:underline uppercase">[Modify]</button>
                           )}
                           {!entry.is_public && (
