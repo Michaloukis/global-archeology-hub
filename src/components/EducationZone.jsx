@@ -191,3 +191,4 @@ const EducationZone = ({ profile }) => {
 
 export default EducationZone;
 
+

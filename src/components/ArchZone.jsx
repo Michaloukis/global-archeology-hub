@@ -17,6 +17,10 @@ const ArchZone = ({ profile }) => {
   const [requests, setRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   
+  // Managed Sites (for Chiefs)
+  const [managedSites, setManagedSites] = useState([]);
+  const [managedSitesLoading, setManagedSitesLoading] = useState(false);
+  
   // Active Expeditions (for Field Archeologists)
   const [activeExpeditions, setActiveExpeditions] = useState([]);
   const [activeExpeditionsLoading, setActiveExpeditionsLoading] = useState(false);
@@ -28,6 +32,7 @@ const ArchZone = ({ profile }) => {
   const [newJournalFindings, setNewJournalFindings] = useState('');
   const [newJournalMapping, setNewJournalMapping] = useState('');
   const [newJournalImageUrl, setNewJournalImageUrl] = useState('');
+  const [isJournalPublic, setIsJournalPublic] = useState(true);
   const [isJournalLoading, setIsJournalLoading] = useState(false);
   
   // Edit State
@@ -36,6 +41,7 @@ const ArchZone = ({ profile }) => {
   const [editFindings, setEditFindings] = useState('');
   const [editMapping, setEditMapping] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
+  const [editIsPublic, setEditIsPublic] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Site Form State
@@ -61,10 +67,29 @@ const ArchZone = ({ profile }) => {
     logData('ArchZone mounted', { role: profile?.role }, 'A');
     if (profile?.role === 'Chief Archeologist') {
       fetchRequests();
+      fetchManagedSites();
     } else if (profile?.role === 'Field Archeologist') {
       fetchActiveExpeditions();
     }
   }, [profile]);
+
+  async function fetchManagedSites() {
+    setManagedSitesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('sites')
+        .select('*')
+        .eq('created_by', profile.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setManagedSites(data || []);
+    } catch (error) {
+      console.error('Error fetching managed sites:', error);
+    } finally {
+      setManagedSitesLoading(false);
+    }
+  }
 
   async function fetchActiveExpeditions() {
     setActiveExpeditionsLoading(true);
@@ -123,12 +148,13 @@ const ArchZone = ({ profile }) => {
         .from('site_journals')
         .insert([
           {
-            site_id: selectedExpedition.site_id,
+            site_id: selectedExpedition.site_id || selectedExpedition.id, // Handle both structures
             user_id: profile.id,
             notes: newJournalNotes,
             findings: newJournalFindings,
             mapping_data: newJournalMapping,
-            image_url: newJournalImageUrl
+            image_url: newJournalImageUrl,
+            is_public: isJournalPublic
           }
         ]);
 
@@ -139,8 +165,9 @@ const ArchZone = ({ profile }) => {
       setNewJournalFindings('');
       setNewJournalMapping('');
       setNewJournalImageUrl('');
+      setIsJournalPublic(true);
       
-      fetchJournals(selectedExpedition.site_id);
+      fetchJournals(selectedExpedition.site_id || selectedExpedition.id);
     } catch (error) {
       console.error('Error adding journal entry:', error);
       alert('Error saving journal entry.');
@@ -153,6 +180,7 @@ const ArchZone = ({ profile }) => {
     setEditFindings(entry.findings || '');
     setEditMapping(entry.mapping_data || '');
     setEditImageUrl(entry.image_url || '');
+    setEditIsPublic(entry.is_public !== false); // Default true
   };
 
   const cancelEditing = () => {
@@ -161,6 +189,7 @@ const ArchZone = ({ profile }) => {
     setEditFindings('');
     setEditMapping('');
     setEditImageUrl('');
+    setEditIsPublic(true);
   };
 
   async function handleUpdateJournalEntry(e) {
@@ -173,14 +202,15 @@ const ArchZone = ({ profile }) => {
           notes: editNotes,
           findings: editFindings,
           mapping_data: editMapping,
-          image_url: editImageUrl
+          image_url: editImageUrl,
+          is_public: editIsPublic
         })
         .eq('id', editingEntryId);
 
       if (error) throw error;
       
       setEditingEntryId(null);
-      fetchJournals(selectedExpedition.site_id);
+      fetchJournals(selectedExpedition.site_id || selectedExpedition.id);
     } catch (error) {
       console.error('Error updating journal entry:', error);
       alert('Error updating entry.');
@@ -396,10 +426,35 @@ const ArchZone = ({ profile }) => {
         {/* Social / Active Expeditions */}
         <div className="space-y-6">
           <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">
-            {isFieldArch ? 'My Active Expeditions' : 'Social Hub'}
+            {isChief ? 'Managed Expeditions' : isFieldArch ? 'My Active Expeditions' : 'Social Hub'}
           </h3>
           
-          {isFieldArch ? (
+          {isChief ? (
+            <div className="space-y-4">
+              {managedSitesLoading ? (
+                <div className="text-[10px] font-black uppercase tracking-widest animate-pulse">Syncing Site Registry...</div>
+              ) : managedSites.length === 0 ? (
+                <div className="p-4 border-2 border-black border-dashed text-[10px] font-black uppercase text-gray-400">No managed sites found. Register one above.</div>
+              ) : (
+                managedSites.map(site => (
+                  <div 
+                    key={site.id} 
+                    onClick={() => {
+                      setSelectedExpedition(site);
+                      fetchJournals(site.id);
+                    }}
+                    className={`border-2 border-black p-4 cursor-pointer hover:bg-black hover:text-white transition-all ${selectedExpedition?.id === site.id ? 'bg-black text-white' : 'bg-white'}`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="text-[8px] font-black uppercase">Role: Site Owner</div>
+                      <span className={`text-[7px] font-black px-1 border border-current ${site.status === 'Finished' ? 'text-green-600' : 'text-blue-600'}`}>{site.status}</span>
+                    </div>
+                    <h4 className="font-black uppercase text-sm">{site.name}</h4>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : isFieldArch ? (
             <div className="space-y-4">
               {activeExpeditionsLoading ? (
                 <div className="text-[10px] font-black uppercase tracking-widest animate-pulse">Scanning Registry...</div>
@@ -440,12 +495,12 @@ const ArchZone = ({ profile }) => {
             <div className="space-y-6 bg-gray-50 p-6 border-2 border-black">
               <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-4">
                 <span className="text-[10px] font-black uppercase">
-                  {selectedExpedition.sites?.name} Log {isChief ? '(Personnel Archive)' : ''}
+                  {(selectedExpedition.sites?.name || selectedExpedition.name)} Log
                 </span>
                 <button onClick={() => setSelectedExpedition(null)} className="text-[10px] font-black hover:underline">Close Journal</button>
               </div>
 
-              {isFieldArch && (
+              {(isFieldArch || isChief) && (
                 <form onSubmit={handleAddJournalEntry} className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-[8px] font-black uppercase text-gray-400">Field Notes / Observations</label>
@@ -480,15 +535,28 @@ const ArchZone = ({ profile }) => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[8px] font-black uppercase text-gray-400">Site Image URL</label>
-                    <input
-                      type="text"
-                      value={newJournalImageUrl}
-                      onChange={(e) => setNewJournalImageUrl(e.target.value)}
-                      placeholder="HTTPS://IMAGE-HOST.COM/PHOTO.JPG"
-                      className="w-full border-2 border-black p-2 text-xs font-bold outline-none focus:bg-white"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[8px] font-black uppercase text-gray-400">Site Image URL</label>
+                      <input
+                        type="text"
+                        value={newJournalImageUrl}
+                        onChange={(e) => setNewJournalImageUrl(e.target.value)}
+                        placeholder="HTTPS://IMAGE-HOST.COM/PHOTO.JPG"
+                        className="w-full border-2 border-black p-2 text-xs font-bold outline-none focus:bg-white"
+                      />
+                    </div>
+                    <div className="flex items-end pb-1">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={isJournalPublic}
+                          onChange={(e) => setIsJournalPublic(e.target.checked)}
+                          className="w-4 h-4 border-2 border-black rounded-none appearance-none checked:bg-red-600 transition-all cursor-pointer"
+                        />
+                        <span className="text-[10px] font-black uppercase group-hover:text-red-600">Broadcast to Global Hub</span>
+                      </label>
+                    </div>
                   </div>
 
                   <button className="w-full bg-red-600 text-white py-2 text-[10px] font-black uppercase hover:bg-black transition-all">
@@ -553,6 +621,18 @@ const ArchZone = ({ profile }) => {
                             />
                           </div>
 
+                          <div className="flex items-center gap-3 py-2">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={editIsPublic}
+                                onChange={(e) => setEditIsPublic(e.target.checked)}
+                                className="w-4 h-4 border-2 border-black rounded-none appearance-none checked:bg-red-600 transition-all cursor-pointer"
+                              />
+                              <span className="text-[9px] font-black uppercase">Visible as Last Dispatch</span>
+                            </label>
+                          </div>
+
                           <button 
                             disabled={isUpdating}
                             className="w-full bg-black text-white py-2 text-[9px] font-black uppercase hover:bg-red-600 transition-all"
@@ -568,12 +648,23 @@ const ArchZone = ({ profile }) => {
                               <span className="text-[8px] font-black text-gray-400 uppercase">
                                 {new Date(entry.created_at).toLocaleString()}
                               </span>
+                              <span className={`text-[7px] font-black uppercase px-1 border border-black ${entry.is_public !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                                {entry.is_public !== false ? 'GLOBAL_DISPATCH' : 'INTERNAL_ONLY'}
+                              </span>
                               {isFieldArch && entry.user_id === profile.id && (
                                 <button 
                                   onClick={() => startEditing(entry)}
                                   className="text-[8px] font-black text-red-600 hover:underline uppercase"
                                 >
                                   [Modify Entry]
+                                </button>
+                              )}
+                              {isChief && (
+                                <button 
+                                  onClick={() => startEditing(entry)}
+                                  className="text-[8px] font-black text-red-600 hover:underline uppercase"
+                                >
+                                  [Edit Visibility/Notes]
                                 </button>
                               )}
                             </div>
