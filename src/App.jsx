@@ -4,6 +4,7 @@ import Auth from './components/Auth'
 import SitesMap from './components/SitesMap'
 import ArchZone from './components/ArchZone'
 import EducationZone from './components/EducationZone'
+import JournalTerminal from './components/JournalTerminal'
 
 // #region agent log
 const logData = (msg, data, hypothesisId) => {
@@ -114,6 +115,19 @@ function App() {
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [lastScrollTime, setLastScrollTime] = useState(Date.now())
+  const [activeSiteId, setActiveSiteId] = useState(null)
+
+  useEffect(() => {
+    // Basic Routing Logic for New Tab / Sharing
+    const params = new URLSearchParams(window.location.search)
+    const viewParam = params.get('view')
+    const siteParam = params.get('siteId')
+
+    if (viewParam === 'journal' && siteParam) {
+      setView('journal')
+      setActiveSiteId(siteParam)
+    }
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -250,6 +264,7 @@ function App() {
             {view === 'map' && <SitesMap searchQuery={searchQuery} profile={profile} />}
             {view === 'education' && isStudent && <EducationZone profile={profile} />}
             {view === 'arch' && isArcheologist && <ArchZone profile={profile} />}
+            {view === 'journal' && activeSiteId && <JournalTerminal siteId={activeSiteId} profile={profile} />}
           </main>
 
       <footer className="bg-black text-white p-12 mt-20 border-t-8 border-gray-900">

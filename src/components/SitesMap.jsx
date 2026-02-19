@@ -54,7 +54,7 @@ export default function SitesMap({ searchQuery, profile }) {
       const { data, error } = await supabase
         .from('site_journals')
         .select('*')
-        .eq('is_public', true) // ONLY FETCH PUBLIC DISPATCHES FOR THE MAP
+        .eq('is_public', true) // ONLY SHOW PUBLIC DISPATCHES
         .order('created_at', { ascending: false });
 
       if (error) throw error;

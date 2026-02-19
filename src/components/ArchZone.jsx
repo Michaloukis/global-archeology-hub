@@ -17,32 +17,9 @@ const ArchZone = ({ profile }) => {
   const [requests, setRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   
-  // Managed Sites (for Chiefs)
-  const [managedSites, setManagedSites] = useState([]);
-  const [managedSitesLoading, setManagedSitesLoading] = useState(false);
-  
   // Active Expeditions (for Field Archeologists)
   const [activeExpeditions, setActiveExpeditions] = useState([]);
   const [activeExpeditionsLoading, setActiveExpeditionsLoading] = useState(false);
-  const [selectedExpedition, setSelectedExpedition] = useState(null);
-  
-  // Journal State
-  const [journals, setJournals] = useState([]);
-  const [newJournalNotes, setNewJournalNotes] = useState('');
-  const [newJournalFindings, setNewJournalFindings] = useState('');
-  const [newJournalMapping, setNewJournalMapping] = useState('');
-  const [newJournalImageUrl, setNewJournalImageUrl] = useState('');
-  const [isJournalPublic, setIsJournalPublic] = useState(true);
-  const [isJournalLoading, setIsJournalLoading] = useState(false);
-  
-  // Edit State
-  const [editingEntryId, setEditingEntryId] = useState(null);
-  const [editNotes, setEditNotes] = useState('');
-  const [editFindings, setEditFindings] = useState('');
-  const [editMapping, setEditMapping] = useState('');
-  const [editImageUrl, setEditImageUrl] = useState('');
-  const [editIsPublic, setEditIsPublic] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
   
   // Site Form State
   const [siteName, setSiteName] = useState('');
@@ -67,29 +44,10 @@ const ArchZone = ({ profile }) => {
     logData('ArchZone mounted', { role: profile?.role }, 'A');
     if (profile?.role === 'Chief Archeologist') {
       fetchRequests();
-      fetchManagedSites();
     } else if (profile?.role === 'Field Archeologist') {
       fetchActiveExpeditions();
     }
   }, [profile]);
-
-  async function fetchManagedSites() {
-    setManagedSitesLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('sites')
-        .select('*')
-        .eq('created_by', profile.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setManagedSites(data || []);
-    } catch (error) {
-      console.error('Error fetching managed sites:', error);
-    } finally {
-      setManagedSitesLoading(false);
-    }
-  }
 
   async function fetchActiveExpeditions() {
     setActiveExpeditionsLoading(true);
@@ -109,113 +67,6 @@ const ArchZone = ({ profile }) => {
       console.error('Error fetching active expeditions:', error);
     } finally {
       setActiveExpeditionsLoading(false);
-    }
-  }
-
-  async function fetchJournals(siteId, targetUserId = null) {
-    setIsJournalLoading(true);
-    try {
-      let query = supabase
-        .from('site_journals')
-        .select('*')
-        .eq('site_id', siteId)
-        .order('created_at', { ascending: false });
-
-      // If Field Arch, only show their own. If Chief, show for that site.
-      if (profile?.role === 'Field Archeologist') {
-        query = query.eq('user_id', profile.id);
-      } else if (targetUserId) {
-        query = query.eq('user_id', targetUserId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setJournals(data || []);
-    } catch (error) {
-      console.error('Error fetching journals:', error);
-    } finally {
-      setIsJournalLoading(false);
-    }
-  }
-
-  async function handleAddJournalEntry(e) {
-    e.preventDefault();
-    if (!newJournalNotes.trim() && !newJournalFindings.trim() && !newJournalMapping.trim()) return;
-
-    try {
-      const { error } = await supabase
-        .from('site_journals')
-        .insert([
-          {
-            site_id: selectedExpedition.site_id || selectedExpedition.id, // Handle both structures
-            user_id: profile.id,
-            notes: newJournalNotes,
-            findings: newJournalFindings,
-            mapping_data: newJournalMapping,
-            image_url: newJournalImageUrl,
-            is_public: isJournalPublic
-          }
-        ]);
-
-      if (error) throw error;
-      
-      // Reset form
-      setNewJournalNotes('');
-      setNewJournalFindings('');
-      setNewJournalMapping('');
-      setNewJournalImageUrl('');
-      setIsJournalPublic(true);
-      
-      fetchJournals(selectedExpedition.site_id || selectedExpedition.id);
-    } catch (error) {
-      console.error('Error adding journal entry:', error);
-      alert('Error saving journal entry.');
-    }
-  }
-
-  const startEditing = (entry) => {
-    setEditingEntryId(entry.id);
-    setEditNotes(entry.notes || '');
-    setEditFindings(entry.findings || '');
-    setEditMapping(entry.mapping_data || '');
-    setEditImageUrl(entry.image_url || '');
-    setEditIsPublic(entry.is_public !== false); // Default true
-  };
-
-  const cancelEditing = () => {
-    setEditingEntryId(null);
-    setEditNotes('');
-    setEditFindings('');
-    setEditMapping('');
-    setEditImageUrl('');
-    setEditIsPublic(true);
-  };
-
-  async function handleUpdateJournalEntry(e) {
-    e.preventDefault();
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase
-        .from('site_journals')
-        .update({
-          notes: editNotes,
-          findings: editFindings,
-          mapping_data: editMapping,
-          image_url: editImageUrl,
-          is_public: editIsPublic
-        })
-        .eq('id', editingEntryId);
-
-      if (error) throw error;
-      
-      setEditingEntryId(null);
-      fetchJournals(selectedExpedition.site_id || selectedExpedition.id);
-    } catch (error) {
-      console.error('Error updating journal entry:', error);
-      alert('Error updating entry.');
-    } finally {
-      setIsUpdating(false);
     }
   }
 
@@ -426,35 +277,10 @@ const ArchZone = ({ profile }) => {
         {/* Social / Active Expeditions */}
         <div className="space-y-6">
           <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">
-            {isChief ? 'Managed Expeditions' : isFieldArch ? 'My Active Expeditions' : 'Social Hub'}
+            {isFieldArch ? 'My Active Expeditions' : 'Social Hub'}
           </h3>
           
-          {isChief ? (
-            <div className="space-y-4">
-              {managedSitesLoading ? (
-                <div className="text-[10px] font-black uppercase tracking-widest animate-pulse">Syncing Site Registry...</div>
-              ) : managedSites.length === 0 ? (
-                <div className="p-4 border-2 border-black border-dashed text-[10px] font-black uppercase text-gray-400">No managed sites found. Register one above.</div>
-              ) : (
-                managedSites.map(site => (
-                  <div 
-                    key={site.id} 
-                    onClick={() => {
-                      setSelectedExpedition(site);
-                      fetchJournals(site.id);
-                    }}
-                    className={`border-2 border-black p-4 cursor-pointer hover:bg-black hover:text-white transition-all ${selectedExpedition?.id === site.id ? 'bg-black text-white' : 'bg-white'}`}
-                  >
-                    <div className="flex justify-between items-start mb-1">
-                      <div className="text-[8px] font-black uppercase">Role: Site Owner</div>
-                      <span className={`text-[7px] font-black px-1 border border-current ${site.status === 'Finished' ? 'text-green-600' : 'text-blue-600'}`}>{site.status}</span>
-                    </div>
-                    <h4 className="font-black uppercase text-sm">{site.name}</h4>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : isFieldArch ? (
+          {isFieldArch ? (
             <div className="space-y-4">
               {activeExpeditionsLoading ? (
                 <div className="text-[10px] font-black uppercase tracking-widest animate-pulse">Scanning Registry...</div>
@@ -465,12 +291,14 @@ const ArchZone = ({ profile }) => {
                   <div 
                     key={exp.site_id} 
                     onClick={() => {
-                      setSelectedExpedition(exp);
-                      fetchJournals(exp.site_id);
+                      window.open(`/?view=journal&siteId=${exp.site_id}`, '_blank');
                     }}
-                    className={`border-2 border-black p-4 cursor-pointer hover:bg-black hover:text-white transition-all ${selectedExpedition?.site_id === exp.site_id ? 'bg-black text-white' : 'bg-white'}`}
+                    className="border-2 border-black p-4 cursor-pointer hover:bg-black hover:text-white transition-all bg-white group"
                   >
-                    <div className="text-[8px] font-black uppercase mb-1">Status: Active</div>
+                    <div className="flex justify-between items-start">
+                      <div className="text-[8px] font-black uppercase mb-1">Status: Active</div>
+                      <span className="text-[8px] font-black uppercase underline opacity-30 group-hover:opacity-100 transition-opacity">Terminal [↗]</span>
+                    </div>
                     <h4 className="font-black uppercase text-sm">{exp.sites?.name}</h4>
                   </div>
                 ))
@@ -485,245 +313,24 @@ const ArchZone = ({ profile }) => {
           )}
         </div>
         
-        {/* Archives / Journal */}
+        {/* Archives / Center Column */}
         <div className="space-y-6">
-          <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">
-            {selectedExpedition ? 'Field Journal' : 'Archives'}
-          </h3>
-          
-          {selectedExpedition ? (
-            <div className="space-y-6 bg-gray-50 p-6 border-2 border-black">
-              <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-4">
-                <span className="text-[10px] font-black uppercase">
-                  {(selectedExpedition.sites?.name || selectedExpedition.name)} Log
-                </span>
-                <button onClick={() => setSelectedExpedition(null)} className="text-[10px] font-black hover:underline">Close Journal</button>
-              </div>
-
-              {(isFieldArch || isChief) && (
-                <form onSubmit={handleAddJournalEntry} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[8px] font-black uppercase text-gray-400">Field Notes / Observations</label>
-                    <textarea
-                      value={newJournalNotes}
-                      onChange={(e) => setNewJournalNotes(e.target.value)}
-                      placeholder="ENTER STRATIGRAPHY OR EXCAVATION DETAILS..."
-                      className="w-full h-24 border-2 border-black p-3 text-xs font-bold uppercase outline-none focus:bg-white resize-none"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[8px] font-black uppercase text-gray-400">Artifacts / Finds</label>
-                      <input
-                        type="text"
-                        value={newJournalFindings}
-                        onChange={(e) => setNewJournalFindings(e.target.value)}
-                        placeholder="POTTERY, TOOLS, ETC."
-                        className="w-full border-2 border-black p-2 text-xs font-bold uppercase outline-none focus:bg-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[8px] font-black uppercase text-gray-400">3D Model / Map URL</label>
-                      <input
-                        type="text"
-                        value={newJournalMapping}
-                        onChange={(e) => setNewJournalMapping(e.target.value)}
-                        placeholder="SKETCHFAB OR GIS LINK"
-                        className="w-full border-2 border-black p-2 text-xs font-bold outline-none focus:bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[8px] font-black uppercase text-gray-400">Site Image URL</label>
-                      <input
-                        type="text"
-                        value={newJournalImageUrl}
-                        onChange={(e) => setNewJournalImageUrl(e.target.value)}
-                        placeholder="HTTPS://IMAGE-HOST.COM/PHOTO.JPG"
-                        className="w-full border-2 border-black p-2 text-xs font-bold outline-none focus:bg-white"
-                      />
-                    </div>
-                    <div className="flex items-end pb-1">
-                      <label className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={isJournalPublic}
-                          onChange={(e) => setIsJournalPublic(e.target.checked)}
-                          className="w-4 h-4 border-2 border-black rounded-none appearance-none checked:bg-red-600 transition-all cursor-pointer"
-                        />
-                        <span className="text-[10px] font-black uppercase group-hover:text-red-600">Broadcast to Global Hub</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <button className="w-full bg-red-600 text-white py-2 text-[10px] font-black uppercase hover:bg-black transition-all">
-                    Register Field Entry
-                  </button>
-                </form>
-              )}
-
-              <div className="space-y-6 mt-8 max-h-[400px] overflow-y-auto pr-2">
-                {isJournalLoading ? (
-                  <div className="text-center py-4 font-black text-[10px] uppercase">Retrieving Archive...</div>
-                ) : journals.length === 0 ? (
-                  <div className="text-center py-4 font-black text-[10px] uppercase text-gray-400">No entries yet.</div>
-                ) : (
-                  journals.map(entry => (
-                    <div key={entry.id} className="bg-white border-2 border-black p-5 space-y-4">
-                      {editingEntryId === entry.id ? (
-                        /* Edit Mode */
-                        <form onSubmit={handleUpdateJournalEntry} className="space-y-4">
-                          <div className="flex justify-between items-center border-b border-black pb-2 mb-4">
-                            <span className="text-[10px] font-black uppercase text-red-600">Edit Mode // ID_{entry.id}</span>
-                            <button type="button" onClick={cancelEditing} className="text-[8px] font-black uppercase hover:underline">Cancel [X]</button>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <label className="text-[7px] font-black uppercase text-gray-400">Field Notes</label>
-                            <textarea
-                              value={editNotes}
-                              onChange={(e) => setEditNotes(e.target.value)}
-                              className="w-full h-24 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-gray-50 resize-none"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[7px] font-black uppercase text-gray-400">Artifacts</label>
-                              <input
-                                type="text"
-                                value={editFindings}
-                                onChange={(e) => setEditFindings(e.target.value)}
-                                className="w-full border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-gray-50"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[7px] font-black uppercase text-gray-400">Mapping URL</label>
-                              <input
-                                type="text"
-                                value={editMapping}
-                                onChange={(e) => setEditMapping(e.target.value)}
-                                className="w-full border-2 border-black p-2 text-[10px] font-bold outline-none focus:bg-gray-50"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[7px] font-black uppercase text-gray-400">Image URL</label>
-                            <input
-                              type="text"
-                              value={editImageUrl}
-                              onChange={(e) => setEditImageUrl(e.target.value)}
-                              className="w-full border-2 border-black p-2 text-[10px] font-bold outline-none focus:bg-gray-50"
-                            />
-                          </div>
-
-                          <div className="flex items-center gap-3 py-2">
-                            <label className="flex items-center gap-3 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={editIsPublic}
-                                onChange={(e) => setEditIsPublic(e.target.checked)}
-                                className="w-4 h-4 border-2 border-black rounded-none appearance-none checked:bg-red-600 transition-all cursor-pointer"
-                              />
-                              <span className="text-[9px] font-black uppercase">Visible as Last Dispatch</span>
-                            </label>
-                          </div>
-
-                          <button 
-                            disabled={isUpdating}
-                            className="w-full bg-black text-white py-2 text-[9px] font-black uppercase hover:bg-red-600 transition-all"
-                          >
-                            {isUpdating ? 'UPDATING...' : 'Confirm Modifications'}
-                          </button>
-                        </form>
-                      ) : (
-                        /* Display Mode */
-                        <>
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                            <div className="flex items-center gap-3">
-                              <span className="text-[8px] font-black text-gray-400 uppercase">
-                                {new Date(entry.created_at).toLocaleString()}
-                              </span>
-                              <span className={`text-[7px] font-black uppercase px-1 border border-black ${entry.is_public !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                                {entry.is_public !== false ? 'GLOBAL_DISPATCH' : 'INTERNAL_ONLY'}
-                              </span>
-                              {isFieldArch && entry.user_id === profile.id && (
-                                <button 
-                                  onClick={() => startEditing(entry)}
-                                  className="text-[8px] font-black text-red-600 hover:underline uppercase"
-                                >
-                                  [Modify Entry]
-                                </button>
-                              )}
-                              {isChief && (
-                                <button 
-                                  onClick={() => startEditing(entry)}
-                                  className="text-[8px] font-black text-red-600 hover:underline uppercase"
-                                >
-                                  [Edit Visibility/Notes]
-                                </button>
-                              )}
-                            </div>
-                            <span className="bg-black text-white text-[7px] px-1.5 py-0.5 uppercase">ID_{entry.id}</span>
-                          </div>
-
-                          {entry.image_url && (
-                            <div className="border-2 border-black overflow-hidden bg-gray-200">
-                              <img 
-                                src={entry.image_url} 
-                                alt="Site Evidence" 
-                                className="w-full h-40 object-cover grayscale hover:grayscale-0 transition-all cursor-pointer"
-                                onClick={() => window.open(entry.image_url, '_blank')}
-                              />
-                            </div>
-                          )}
-
-                          <div className="space-y-3">
-                            {entry.notes && (
-                              <div>
-                                <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Observation:</span>
-                                <p className="text-[11px] font-bold uppercase leading-relaxed text-gray-800">{entry.notes}</p>
-                              </div>
-                            )}
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              {entry.findings && (
-                                <div>
-                                  <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Recovered:</span>
-                                  <p className="text-[10px] font-black uppercase">{entry.findings}</p>
-                                </div>
-                              )}
-                              {entry.mapping_data && (
-                                <div>
-                                  <span className="text-[7px] font-black text-red-600 uppercase block mb-1">Mapping:</span>
-                                  <button 
-                                    onClick={() => window.open(entry.mapping_data, '_blank')}
-                                    className="text-[10px] font-black uppercase underline hover:text-red-600"
-                                  >
-                                    View 3D Data ↗
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+          <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Archives</h3>
+          <div className="bg-gray-50 border-2 border-black p-10 flex flex-col items-center justify-center text-center space-y-6 min-h-[400px]">
+            <div className="w-16 h-16 border-4 border-black rounded-full flex items-center justify-center animate-pulse">
+              <span className="text-2xl font-black">!</span>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {['3D Scans / Photograms', 'Prior Records', 'Field Logs'].map(item => (
-                <div key={item} className="border-2 border-black p-4 hover:bg-gray-100 cursor-pointer font-bold uppercase text-xs">{item}</div>
-              ))}
+            <div>
+              <h4 className="font-black uppercase text-sm">Remote Terminal Mode Active</h4>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2 leading-relaxed">
+                Field Journals have been moved to dedicated Secure Terminal pages for professional data integrity.
+              </p>
             </div>
-          )}
+            <div className="w-full h-px bg-gray-200"></div>
+            <p className="text-[9px] font-black uppercase text-gray-500 italic">
+              Select an Expedition from the left to establish a link.
+            </p>
+          </div>
         </div>
 
         {/* Tools */}
@@ -815,13 +422,11 @@ const ArchZone = ({ profile }) => {
                           {req.status === 'Approved' && (
                             <button 
                               onClick={() => {
-                                setSelectedExpedition({ site_id: req.site_id, sites: req.sites, user_id: req.field_arch_id });
-                                fetchJournals(req.site_id, req.field_arch_id);
-                                setIsInboxOpen(false);
+                                window.open(`/?view=journal&siteId=${req.site_id}`, '_blank');
                               }}
                               className="mt-4 text-[10px] font-black uppercase underline hover:text-red-600"
                             >
-                              View Field Journal →
+                              Open Field Terminal → [↗]
                             </button>
                           )}
                         </div>
