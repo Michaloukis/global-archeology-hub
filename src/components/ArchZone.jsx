@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
-const ArchZone = ({ profile }) => {
+const ArchZone = ({ profile, onNavigateToMap }) => {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isCompassOpen, setIsCompassOpen] = useState(false);
   const [isSiteFormOpen, setIsSiteFormOpen] = useState(false);
@@ -31,6 +31,7 @@ const ArchZone = ({ profile }) => {
   const [siteLng, setSiteLng] = useState('');
   const [siteDesc, setSiteDesc] = useState('');
   const [siteTour, setSiteTour] = useState('');
+  const [siteVisibility, setSiteVisibility] = useState('public'); // 'private' | 'team' | 'public'
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -270,7 +271,9 @@ const ArchZone = ({ profile }) => {
             description: siteDesc,
             tourUrl: siteTour,
             status: 'In Progress',
-            created_by: profile.id
+            created_by: profile.id,
+            is_public: siteVisibility === 'public',
+            visibility: siteVisibility
           }
         ]);
 
@@ -283,6 +286,7 @@ const ArchZone = ({ profile }) => {
       setSiteLng('');
       setSiteDesc('');
       setSiteTour('');
+      setSiteVisibility('public');
       setTimeout(() => setIsSiteFormOpen(false), 2000);
     } catch (error) {
       logData('Site creation error', { error: error.message }, 'B');
@@ -451,6 +455,7 @@ const ArchZone = ({ profile }) => {
               <div 
                 key={item} 
                 onClick={
+                  item === 'Exclusive Map' ? () => onNavigateToMap?.() :
                   item === 'Notepad' ? handleNotepadToggle : 
                   item === 'Compass' ? handleCompassToggle : 
                   undefined
@@ -643,6 +648,19 @@ const ArchZone = ({ profile }) => {
                   className="w-full border-2 border-black p-3 text-xs font-bold uppercase outline-none focus:bg-gray-50 h-32 resize-none"
                   placeholder="Official site description and historical significance..."
                 />
+              </div>
+
+              <div className="space-y-2 border-2 border-black p-3 bg-gray-50">
+                <label className="text-[10px] font-black uppercase tracking-widest block">Visibility</label>
+                <select
+                  value={siteVisibility}
+                  onChange={(e) => setSiteVisibility(e.target.value)}
+                  className="w-full border-2 border-black p-2 text-xs font-bold uppercase bg-white"
+                >
+                  <option value="private">Private (Exclusive Map only — your eyes)</option>
+                  <option value="team">Team (Students & approved personnel)</option>
+                  <option value="public">Public (everyone)</option>
+                </select>
               </div>
 
               <button

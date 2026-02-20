@@ -17,23 +17,51 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon
 
+const ArtifactIcon = L.divIcon({
+  className: 'artifact-marker',
+  html: '<div style="width:16px;height:16px;border-radius:50%;background:#b91c1c;border:2px solid #000;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
+})
+
+const VISIBILITY = { private: 'private', team: 'team', public: 'public' }
+
+function siteVisibility(site) {
+  return site?.visibility || (site?.is_public === false ? 'private' : 'public')
+}
+
+function journalVisibility(entry) {
+  return entry?.visibility || (entry?.is_public === false ? 'private' : 'public')
+}
+
 export default function SitesMap({ searchQuery, profile }) {
   const [sites, setSites] = useState([])
+  const [artifacts, setArtifacts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [journals, setJournals] = useState({}) // { siteId: [entries] }
-  const [userRequests, setUserRequests] = useState([]) // Array of site IDs user applied for
+  const [journals, setJournals] = useState({})
+  const [userRequests, setUserRequests] = useState([])
   const [requestMessage, setRequestMessage] = useState('')
   const [experience, setExperience] = useState('')
   const [specialization, setSpecialization] = useState('')
   const [availability, setAvailability] = useState('')
   const [activeSiteForRequest, setActiveSiteForRequest] = useState(null)
   const [submitLoading, setSubmitLoading] = useState(false)
+  const [mapMode, setMapMode] = useState('public') // 'public' | 'exclusive'
+  const [filterSource, setFilterSource] = useState('all') // all | public | team | chief | my_expeditions
+  const [filterType, setFilterType] = useState('both') // sites | artifacts | both
+  const [filterStatus, setFilterStatus] = useState('all') // all | In Progress | Finished
+
+  const [approvedSiteIds, setApprovedSiteIds] = useState([])
+  const isChief = profile?.role === 'Chief Archeologist'
+  const isFieldArch = profile?.role === 'Field Archeologist'
+  const isArcheologist = isChief || isFieldArch
 
   useEffect(() => {
     fetchSites()
     fetchAllJournals()
     if (profile) fetchUserRequests()
-  }, [profile])
+  }, [profile, mapMode])
+
 
   async function fetchUserRequests() {
     try {
@@ -106,13 +134,75 @@ export default function SitesMap({ searchQuery, profile }) {
     }
   }
 
-  const isFieldArch = profile?.role === 'Field Archeologist';
+  function getSiteSourceLabel(site) {
+    const vis = siteVisibility(site)
+    if (vis === 'public') return 'Public'
+    if (vis === 'team') return 'Team'
+    if (isChief && site.created_by === profile?.id) return 'Chief only'
+    if (isFieldArch && approvedSiteIds.includes(site.id)) return 'Your expedition'
+    return 'Team'
+  }
+
+  function getArtifactSourceLabel(art) {
+    const vis = journalVisibility(art)
+    if (vis === 'public') return 'Public'
+    if (vis === 'team') return 'Team'
+    if (art.user_id === profile?.id) return 'Field (yours)'
+    return 'Private'
+  }
+
+  async function fetchArtifacts(siteIds) {
+    if (!profile?.id) return
+    try {
+      let query = supabase
+        .from('site_journals')
+        .select('id, site_id, user_id, findings, notes, lat, lng, visibility, is_public, created_at, sites(name)')
+        .not('lat', 'is', null)
+        .not('lng', 'is', null)
+      if (isChief && siteIds?.length > 0) query = query.in('site_id', siteIds)
+      else if (isFieldArch) query = query.eq('user_id', profile.id)
+      else { setArtifacts([]); return }
+      const { data, error } = await query.order('created_at', { ascending: false })
+      if (error) throw error
+      setArtifacts(data || [])
+    } catch (err) {
+      console.error('Error fetching artifacts:', err)
+      setArtifacts([])
+    }
+  }
 
   async function fetchSites() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('sites')
-      .select('*')
+    if (!isArcheologist || mapMode === 'public') setArtifacts([])
+    let data = []
+    let error = null
+    const publicOnly = mapMode === 'public' || !isArcheologist
+    if (publicOnly) {
+      const res = await supabase.from('sites').select('*')
+      data = (res.data || []).filter(s => siteVisibility(s) === 'public')
+      error = res.error
+    } else if (isChief && profile?.id) {
+      const res = await supabase.from('sites').select('*').or('is_public.eq.true,created_by.eq.' + profile.id)
+      data = (res.data || []).filter(s => siteVisibility(s) === 'public' || siteVisibility(s) === 'team' || s.created_by === profile.id)
+      error = res.error
+    } else if (isFieldArch && profile?.id) {
+      const { data: reg } = await supabase.from('Registry').select('site_id').eq('field_arch_id', profile.id).eq('status', 'Approved')
+      const siteIds = [...new Set((reg || []).map(r => r.site_id).filter(Boolean))]
+      setApprovedSiteIds(siteIds)
+      const [allRes, privateRes] = await Promise.all([
+        supabase.from('sites').select('*'),
+        siteIds.length > 0 ? supabase.from('sites').select('*').in('id', siteIds) : { data: [] }
+      ])
+      const byId = new Map()
+      ;(allRes.data || []).filter(s => ['public','team'].includes(siteVisibility(s))).forEach(s => { byId.set(s.id, s) })
+      ;(privateRes.data || []).forEach(s => { byId.set(s.id, s) })
+      data = [...byId.values()]
+      error = allRes.error || privateRes.error
+    } else {
+      const res = await supabase.from('sites').select('*')
+      data = (res.data || []).filter(s => siteVisibility(s) === 'public')
+      error = res.error
+    }
 
     if (error) {
       console.error('Error fetching sites:', error)
@@ -193,30 +283,116 @@ export default function SitesMap({ searchQuery, profile }) {
       ])
     } else {
       setSites(data || [])
+      if (isArcheologist && mapMode === 'exclusive' && profile?.id) fetchArtifacts(isChief ? (data || []).map(s => s.id) : null)
     }
     setLoading(false)
   }
 
-  const filteredSites = sites.filter(site => 
+  const sitesWithCoords = sites.filter(site => typeof site?.lat === 'number' && typeof site?.lng === 'number')
+  const searchMatch = (site) =>
     site.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    site.description.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    (site.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const sourceMatch = (site) => {
+    if (filterSource === 'all') return true
+    const vis = siteVisibility(site)
+    if (filterSource === 'public') return vis === 'public'
+    if (filterSource === 'team') return vis === 'team'
+    if (filterSource === 'chief') return isChief && site.created_by === profile?.id && vis === 'private'
+    if (filterSource === 'my_expeditions') return isFieldArch && approvedSiteIds.includes(site.id)
+    return true
+  }
+  const statusMatch = (site) => filterStatus === 'all' || site.status === filterStatus
+  const filteredSites = sitesWithCoords.filter(site => searchMatch(site) && sourceMatch(site) && statusMatch(site))
+  const filteredArtifacts = artifacts.filter(art => {
+    if (filterType === 'sites') return false
+    if (filterSource === 'public' && journalVisibility(art) !== 'public') return false
+    if (filterSource === 'team' && journalVisibility(art) !== 'team') return false
+    if (filterSource === 'chief') return false
+    if (filterSource === 'my_expeditions' && art.user_id !== profile?.id) return false
+    return true
+  })
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="h-4 w-4 bg-black"></div>
-            <h2 className="text-3xl font-black uppercase tracking-tighter">Global Site Registry</h2>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="h-4 w-4 bg-black"></div>
+              <h2 className="text-3xl font-black uppercase tracking-tighter">Global Site Registry</h2>
+            </div>
+            <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div> In Progress
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div> Finished
+              </div>
+              {isArcheologist && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full border-2 border-black" style={{ background: '#b91c1c' }}></div> Artifact / Find
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div> In Progress
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div> Finished
-            </div>
+        </div>
+
+        {/* Map mode + Filters */}
+        <div className="border-2 border-black p-4 bg-gray-50 flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="text-[10px] font-black uppercase text-gray-500">View:</span>
+            {isArcheologist ? (
+              <div className="flex border-2 border-black overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setMapMode('public')}
+                  className={`px-4 py-2 text-[10px] font-black uppercase ${mapMode === 'public' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                >
+                  Public Map
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapMode('exclusive')}
+                  className={`px-4 py-2 text-[10px] font-black uppercase border-l-2 border-black ${mapMode === 'exclusive' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                >
+                  Exclusive Map
+                </button>
+              </div>
+            ) : (
+              <span className="text-[10px] font-black uppercase bg-black text-white px-3 py-1">Public Map</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="text-[10px] font-black uppercase text-gray-500">Filters:</span>
+            <select
+              value={filterSource}
+              onChange={(e) => setFilterSource(e.target.value)}
+              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+            >
+              <option value="all">All sources</option>
+              <option value="public">Public only</option>
+              <option value="team">Team only</option>
+              {isChief && <option value="chief">Chief only</option>}
+              {isFieldArch && <option value="my_expeditions">My expeditions</option>}
+            </select>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+            >
+              <option value="both">Sites & Artifacts</option>
+              <option value="sites">Sites only</option>
+              <option value="artifacts">Artifacts only</option>
+            </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+            >
+              <option value="all">All statuses</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Finished">Finished</option>
+            </select>
           </div>
         </div>
       </div>
@@ -232,19 +408,37 @@ export default function SitesMap({ searchQuery, profile }) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {filteredSites.map(site => (
+          {filterType !== 'sites' && filteredArtifacts.map(art => (
+            <Marker key={`art-${art.id}`} position={[art.lat, art.lng]} icon={ArtifactIcon}>
+              <Popup>
+                <div className="font-sans p-2 min-w-[200px]">
+                  <span className="text-[8px] font-black uppercase text-red-600 block">Artifact / Find</span>
+                  <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black w-fit block mb-1 ${getArtifactSourceLabel(art) === 'Public' ? 'bg-green-100' : getArtifactSourceLabel(art) === 'Team' ? 'bg-amber-100' : 'bg-gray-200'}`}>
+                    {getArtifactSourceLabel(art)}
+                  </span>
+                  <span className="text-[9px] font-black uppercase block">{art.findings || art.notes?.slice(0, 50) || 'Recorded'}</span>
+                  <span className="text-[7px] text-gray-500 block mt-1">{art.sites?.name} · {new Date(art.created_at).toLocaleDateString()}</span>
+                  <span className="text-[7px] font-bold text-gray-400 block">LOC: {Number(art.lat).toFixed(4)}°, {Number(art.lng).toFixed(4)}°</span>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+          {filterType !== 'artifacts' && filteredSites.map(site => (
             <Marker key={site.id} position={[site.lat, site.lng]}>
                   <Popup>
                     <div className="font-sans p-2 min-w-[250px] max-w-[300px]">
                       <h3 className="font-black uppercase text-lg border-b-2 border-black mb-2 leading-tight">{site.name}</h3>
-                      <div className="flex flex-col gap-1 mb-3">
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black ${getSiteSourceLabel(site) === 'Public' ? 'bg-green-100' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-100' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-red-100' : 'bg-indigo-100'}`}>
+                          {getSiteSourceLabel(site)}
+                        </span>
                         <div className={`text-[10px] font-black uppercase px-2 py-1 inline-block border border-black w-fit ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                           {site.status}
                         </div>
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">
-                          LOC: {site.lat.toFixed(4)}°N, {site.lng.toFixed(4)}°E (DD)
-                        </span>
                       </div>
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter block mb-3">
+                        LOC: {site.lat.toFixed(4)}°N, {site.lng.toFixed(4)}°E (DD)
+                      </span>
 
                       {/* Live Intel Section */}
                       {journals[site.id] && journals[site.id].length > 0 && (
@@ -311,11 +505,16 @@ export default function SitesMap({ searchQuery, profile }) {
           filteredSites.map(site => (
             <div key={site.id} className="border-2 border-black p-6 bg-white hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all cursor-pointer group flex flex-col justify-between">
               <div>
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex flex-wrap justify-between items-start gap-2 mb-4">
                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Site_{site.id.toString().padStart(3, '0')}</span>
-                  <span className={`text-[9px] font-black uppercase px-2 py-1 border border-black ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                    {site.status}
-                  </span>
+                  <div className="flex gap-2">
+                    <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black ${getSiteSourceLabel(site) === 'Public' ? 'bg-green-100' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-100' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-red-100' : 'bg-indigo-100'}`}>
+                      {getSiteSourceLabel(site)}
+                    </span>
+                    <span className={`text-[9px] font-black uppercase px-2 py-1 border border-black ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {site.status}
+                    </span>
+                  </div>
                 </div>
                 <h4 className="font-black text-xl uppercase tracking-tighter mb-4 group-hover:underline">{site.name}</h4>
                 

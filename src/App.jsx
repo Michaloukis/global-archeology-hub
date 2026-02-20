@@ -252,7 +252,7 @@ function App() {
             {view === 'home' && <HomePage searchQuery={searchQuery} />}
             {view === 'map' && <SitesMap searchQuery={searchQuery} profile={profile} />}
             {view === 'education' && isStudent && <EducationZone profile={profile} />}
-            {view === 'arch' && isArcheologist && <ArchZone profile={profile} />}
+            {view === 'arch' && isArcheologist && <ArchZone profile={profile} onNavigateToMap={() => setView('map')} />}
             {view === 'journal' && activeSiteId && <JournalTerminal siteId={activeSiteId} profile={profile} />}
           </main>
 
