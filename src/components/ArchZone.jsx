@@ -519,7 +519,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         <div className="space-y-6">
           <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Professional Tools</h3>
           <div className="grid grid-cols-2 gap-2">
-            {['Exclusive Map', 'Notepad', 'Compass', 'Data Upload', 'Report Syntax', '2D Illustration', 'Site Log', 'Field Sync'].map(item => (
+            {['Exclusive Map', 'Notepad', 'Compass', 'Data Upload', 'Report Syntax', '2D Illustration', '3D Illustration', '3D Viewer', 'Site Log', 'Field Sync'].map(item => (
               <div 
                 key={item} 
                 onClick={
