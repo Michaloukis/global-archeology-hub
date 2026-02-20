@@ -6,7 +6,10 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   const [isCompassOpen, setIsCompassOpen] = useState(false);
   const [isSiteFormOpen, setIsSiteFormOpen] = useState(false);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
-  const [note, setNote] = useState(localStorage.getItem('arch_note') || '');
+  const [savedNotes, setSavedNotes] = useState([]); // { id, title, content, updatedAt }
+  const [activeNoteId, setActiveNoteId] = useState(null);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [note, setNote] = useState('');
   
   // Compass State
   const [heading, setHeading] = useState(0);
@@ -52,6 +55,27 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
       fetchActiveExpeditions();
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    try {
+      const key = `arch_notes_${profile.id}`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setSavedNotes(parsed);
+          return;
+        }
+      }
+      const legacy = localStorage.getItem(`arch_note_${profile.id}`);
+      if (legacy != null && legacy.trim() !== '') {
+        const migrated = [{ id: 'n' + Date.now(), title: 'Migrated note', content: legacy, updatedAt: new Date().toISOString() }];
+        setSavedNotes(migrated);
+        localStorage.setItem(key, JSON.stringify(migrated));
+      }
+    } catch (_) {}
+  }, [profile?.id]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -240,12 +264,56 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
     logData('Notepad toggle', { isOpen: newState }, 'A');
   };
 
-  const handleNoteChange = (e) => {
-    const value = e.target.value;
-    setNote(value);
-    localStorage.setItem('arch_note', value);
-    logData('Note changed', { length: value.length }, 'B');
+  const persistNotes = (notes) => {
+    if (!profile?.id) return;
+    try {
+      localStorage.setItem(`arch_notes_${profile.id}`, JSON.stringify(notes));
+    } catch (_) {}
   };
+
+  const handleNewNote = () => {
+    setActiveNoteId(null);
+    setNoteTitle('');
+    setNote('');
+  };
+
+  const handleSelectNote = (n) => {
+    setActiveNoteId(n.id);
+    setNoteTitle(n.title || '');
+    setNote(n.content || '');
+  };
+
+  const handleSaveNote = () => {
+    const title = noteTitle.trim() || 'Untitled';
+    const updatedAt = new Date().toISOString();
+    if (activeNoteId) {
+      const next = savedNotes.map((n) =>
+        n.id === activeNoteId ? { ...n, title, content: note, updatedAt } : n
+      );
+      setSavedNotes(next);
+      persistNotes(next);
+    } else {
+      const newNote = { id: 'n' + Date.now(), title, content: note, updatedAt };
+      const next = [newNote, ...savedNotes];
+      setSavedNotes(next);
+      persistNotes(next);
+      setActiveNoteId(newNote.id);
+      setNoteTitle(title);
+    }
+  };
+
+  const handleDeleteNote = () => {
+    if (!activeNoteId) return;
+    const next = savedNotes.filter((n) => n.id !== activeNoteId);
+    setSavedNotes(next);
+    persistNotes(next);
+    setActiveNoteId(next[0]?.id ?? null);
+    if (next[0]) handleSelectNote(next[0]);
+    else handleNewNote();
+  };
+
+  const handleNoteChange = (e) => setNote(e.target.value);
+  const handleNoteTitleChange = (e) => setNoteTitle(e.target.value);
 
   const handleCreateSite = async (e) => {
     e.preventDefault();
@@ -744,31 +812,88 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         </div>
       )}
 
-      {/* Notepad UI - Moved to Fixed Position for Visibility */}
+      {/* Notepad UI - Saved notes + editor */}
       {isNotepadOpen && (
-        <div className="fixed top-24 right-8 w-[90%] md:w-96 bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] z-[100] p-6">
-          <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
+        <div className="fixed top-24 right-8 w-[95%] max-w-2xl bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] z-[100] flex flex-col max-h-[85vh]">
+          <div className="flex justify-between items-center p-4 border-b-2 border-black">
             <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
               <span className="w-2 h-2 bg-red-600 animate-pulse"></span>
-              Field Notepad // v1.0
+              Field Notepad // Saved notes
             </h4>
-            <button 
-              onClick={handleNotepadToggle} 
+            <button
+              onClick={handleNotepadToggle}
               className="text-xs font-black hover:bg-black hover:text-white px-2 py-1 border border-black transition-colors"
             >
               CLOSE [X]
             </button>
           </div>
-          <textarea
-            autoFocus
-            value={note}
-            onChange={handleNoteChange}
-            placeholder="ENTER FIELD OBSERVATIONS..."
-            className="w-full h-80 bg-gray-50 border-2 border-black p-4 text-xs font-bold uppercase tracking-wider outline-none focus:bg-white transition-colors resize-none"
-          />
-          <div className="mt-4 flex justify-between items-center text-[10px] font-black">
-            <span className="text-gray-400">STATUS: AUTO_SAVING...</span>
-            <span className="bg-black text-white px-2 py-0.5">CHARS: {note.length}</span>
+          <div className="flex flex-1 min-h-0">
+            <div className="w-44 shrink-0 border-r-2 border-black flex flex-col bg-gray-50">
+              <button
+                type="button"
+                onClick={handleNewNote}
+                className="p-2 border-b-2 border-black text-[10px] font-black uppercase bg-black text-white hover:bg-red-600 transition-colors"
+              >
+                + New note
+              </button>
+              <div className="flex-1 overflow-y-auto p-2">
+                {savedNotes.length === 0 ? (
+                  <p className="text-[9px] font-bold text-gray-400 uppercase p-2">No saved notes</p>
+                ) : (
+                  savedNotes.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => handleSelectNote(n)}
+                      className={`w-full text-left p-2 mb-1 border-2 text-[9px] font-black uppercase transition-colors ${
+                        activeNoteId === n.id ? 'border-black bg-red-600 text-white' : 'border-black bg-white hover:bg-red-50'
+                      }`}
+                    >
+                      <span className="block truncate">{n.title || 'Untitled'}</span>
+                      <span className="block text-[7px] opacity-70 mt-0.5">
+                        {new Date(n.updatedAt).toLocaleDateString()}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col p-4 min-w-0">
+              <input
+                type="text"
+                value={noteTitle}
+                onChange={handleNoteTitleChange}
+                placeholder="Note title..."
+                className="w-full border-2 border-black p-2 mb-2 text-xs font-black uppercase outline-none focus:bg-gray-50"
+              />
+              <textarea
+                value={note}
+                onChange={handleNoteChange}
+                placeholder="ENTER FIELD OBSERVATIONS..."
+                className="flex-1 min-h-[200px] w-full bg-gray-50 border-2 border-black p-4 text-xs font-bold uppercase tracking-wider outline-none focus:bg-white transition-colors resize-none"
+              />
+              <div className="flex justify-between items-center gap-2 mt-3 flex-wrap">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveNote}
+                    className="bg-black text-white px-3 py-2 text-[10px] font-black uppercase hover:bg-red-600 transition-colors"
+                  >
+                    Save note
+                  </button>
+                  {activeNoteId && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteNote}
+                      className="border-2 border-red-600 text-red-600 px-3 py-2 text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-colors"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <span className="text-[10px] font-black text-gray-400">CHARS: {note.length}</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
