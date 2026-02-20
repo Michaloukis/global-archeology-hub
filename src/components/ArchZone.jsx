@@ -21,6 +21,10 @@ const ArchZone = ({ profile }) => {
   const [activeExpeditions, setActiveExpeditions] = useState([]);
   const [activeExpeditionsLoading, setActiveExpeditionsLoading] = useState(false);
   
+  // Archives = recent journal entries (what was recorded), not the same as expedition list
+  const [archiveEntries, setArchiveEntries] = useState([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  
   // Site Form State
   const [siteName, setSiteName] = useState('');
   const [siteLat, setSiteLat] = useState('');
@@ -47,6 +51,59 @@ const ArchZone = ({ profile }) => {
       fetchActiveExpeditions();
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    if (profile?.role === 'Field Archeologist') {
+      fetchArchiveEntriesField();
+    } else if (profile?.role === 'Chief Archeologist') {
+      fetchArchiveEntriesChief();
+    }
+  }, [profile?.id, profile?.role, requests]);
+
+  async function fetchArchiveEntriesField() {
+    setArchiveLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('site_journals')
+        .select('id, site_id, notes, findings, created_at, sites(name)')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      setArchiveEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching archive entries:', error);
+      setArchiveEntries([]);
+    } finally {
+      setArchiveLoading(false);
+    }
+  }
+
+  async function fetchArchiveEntriesChief() {
+    setArchiveLoading(true);
+    try {
+      const siteIds = [...new Set(requests.map(r => r.site_id).filter(Boolean))];
+      if (siteIds.length === 0) {
+        setArchiveEntries([]);
+        setArchiveLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('site_journals')
+        .select('id, site_id, notes, findings, created_at, sites(name), profiles:user_id(full_name)')
+        .in('site_id', siteIds)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      setArchiveEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching archive entries:', error);
+      setArchiveEntries([]);
+    } finally {
+      setArchiveLoading(false);
+    }
+  }
 
   async function fetchActiveExpeditions() {
     setActiveExpeditionsLoading(true);
@@ -312,23 +369,77 @@ const ArchZone = ({ profile }) => {
           )}
         </div>
         
-        {/* Archives / Center Column */}
+        {/* Archives / Center Column — recent journal entries (what was recorded), not the site list */}
         <div className="space-y-6">
           <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Archives</h3>
-          <div className="bg-gray-50 border-2 border-black p-10 flex flex-col items-center justify-center text-center space-y-6 min-h-[400px]">
-            <div className="w-16 h-16 border-4 border-black rounded-full flex items-center justify-center animate-pulse">
-              <span className="text-2xl font-black">!</span>
-            </div>
-            <div>
-              <h4 className="font-black uppercase text-sm">Remote Terminal Mode Active</h4>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2 leading-relaxed">
-                Field Journals have been moved to dedicated Secure Terminal pages for professional data integrity.
-              </p>
-            </div>
-            <div className="w-full h-px bg-gray-200"></div>
-            <p className="text-[9px] font-black uppercase text-gray-500 italic">
-              Select an Expedition from the left to establish a link.
-            </p>
+          <div className="bg-gray-50 border-2 border-black p-6 min-h-[400px] flex flex-col">
+            {isFieldArch ? (
+              <>
+                <p className="text-[9px] font-black uppercase text-gray-500 mb-3">Your recent field records</p>
+                {archiveLoading ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Loading records...</span>
+                  </div>
+                ) : archiveEntries.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 p-6">
+                    <p className="text-[10px] font-black uppercase text-gray-400">No records yet.</p>
+                    <p className="text-[9px] font-bold text-gray-500 uppercase">Use &quot;My Active Expeditions&quot; to open a site terminal and add entries.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {archiveEntries.map(entry => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        onClick={() => window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank')}
+                        className="w-full text-left border-2 border-black p-3 bg-white hover:bg-black hover:text-white transition-all"
+                      >
+                        <span className="text-[8px] font-black uppercase text-gray-500 block">{entry.sites?.name}</span>
+                        <span className="text-[9px] font-black uppercase block mt-0.5 truncate">{entry.findings || entry.notes?.slice(0, 40) || 'Entry'}…</span>
+                        <span className="text-[7px] font-bold opacity-70 block mt-1">{new Date(entry.created_at).toLocaleString()}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : isChief ? (
+              <>
+                <p className="text-[9px] font-black uppercase text-gray-500 mb-3">Recent activity on your sites</p>
+                {archiveLoading || requestsLoading ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Loading records...</span>
+                  </div>
+                ) : archiveEntries.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 p-6">
+                    <p className="text-[10px] font-black uppercase text-gray-400">No records yet.</p>
+                    <p className="text-[9px] font-bold text-gray-500 uppercase">Activity from field personnel will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {archiveEntries.map(entry => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        onClick={() => window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank')}
+                        className="w-full text-left border-2 border-black p-3 bg-white hover:bg-black hover:text-white transition-all"
+                      >
+                        <span className="text-[8px] font-black uppercase text-gray-500 block">{entry.sites?.name}</span>
+                        <span className="text-[9px] font-black uppercase block mt-0.5 truncate">{entry.findings || entry.notes?.slice(0, 40) || 'Entry'}…</span>
+                        <span className="text-[7px] font-bold opacity-70 block mt-1">
+                          {entry.profiles?.full_name && <>{entry.profiles.full_name} · </>}
+                          {new Date(entry.created_at).toLocaleString()}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 p-6">
+                <p className="text-[10px] font-black uppercase text-gray-400">Archives</p>
+                <p className="text-[9px] font-bold text-gray-500 uppercase">Field journals are available in the Field Terminal.</p>
+              </div>
+            )}
           </div>
         </div>
 
