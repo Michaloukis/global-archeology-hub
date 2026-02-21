@@ -1,8 +1,103 @@
 import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { supabase } from '../supabaseClient'
+
+// Single-world bounds: no zoom out past this, no pan outside
+const WORLD_BOUNDS = L.latLngBounds([-85, -180], [85, 180])
+const MAX_ZOOM = 18
+
+const FALLBACK_MIN_ZOOM = 1
+
+/** Bounds with the same aspect ratio as the container so the map fills the frame (no grey). */
+function getBoundsMatchingContainerAspect(map) {
+  const size = map.getSize()
+  if (!size || size.x <= 0 || size.y <= 0) return WORLD_BOUNDS
+  const aspect = size.x / size.y
+  const worldAspect = 360 / 170
+  let south, north, west, east
+  if (aspect >= worldAspect) {
+    const latSpan = 360 / aspect
+    south = -latSpan / 2
+    north = latSpan / 2
+    west = -180
+    east = 180
+  } else {
+    const lngSpan = 170 * aspect
+    south = -85
+    north = 85
+    west = -lngSpan / 2
+    east = lngSpan / 2
+  }
+  return L.latLngBounds([south, west], [north, east])
+}
+
+/** Zoom at which aspect-matched bounds fit the container (map fills frame, no grey). */
+function getWorldFitZoom(map) {
+  const size = map.getSize()
+  if (!size || size.x <= 0 || size.y <= 0) return FALLBACK_MIN_ZOOM
+  try {
+    const bounds = getBoundsMatchingContainerAspect(map)
+    const z = map.getBoundsZoom(bounds, false, [0, 0])
+    if (typeof z !== 'number' || !Number.isFinite(z)) return FALLBACK_MIN_ZOOM
+    return Math.max(FALLBACK_MIN_ZOOM, Math.min(MAX_ZOOM, z))
+  } catch {
+    return FALLBACK_MIN_ZOOM
+  }
+}
+
+function MapBoundsEnforcer() {
+  const map = useMap()
+  useEffect(() => {
+    map.setMaxBounds(WORLD_BOUNDS)
+    map.setMinZoom(FALLBACK_MIN_ZOOM)
+    map.setMaxZoom(MAX_ZOOM)
+    map.options.maxBoundsViscosity = 1
+    map.options.worldCopyJump = false
+
+    const getFitBounds = () => getBoundsMatchingContainerAspect(map)
+
+    const applyWorldFit = () => {
+      const fitZoom = getWorldFitZoom(map)
+      map.setMinZoom(fitZoom)
+      if (map.getZoom() < fitZoom) {
+        map.fitBounds(getFitBounds(), { padding: [0, 0], animate: false })
+      }
+    }
+
+    const keepViewInsideWorld = () => {
+      const fitZoom = getWorldFitZoom(map)
+      map.setMinZoom(fitZoom)
+      if (map.getZoom() < fitZoom) {
+        map.fitBounds(getFitBounds(), { padding: [0, 0], animate: false })
+        return
+      }
+      const viewBounds = map.getBounds()
+      if (!WORLD_BOUNDS.contains(viewBounds)) {
+        map.fitBounds(getFitBounds(), { maxZoom: map.getZoom(), padding: [0, 0], animate: false })
+      }
+    }
+
+    map.whenReady(() => {
+      if (map.getSize().x > 0 && map.getSize().y > 0) {
+        map.fitBounds(getFitBounds(), { padding: [0, 0], animate: false })
+      }
+      applyWorldFit()
+    })
+
+    map.on('resize', applyWorldFit)
+    map.on('zoomend', keepViewInsideWorld)
+    map.on('moveend', keepViewInsideWorld)
+
+    return () => {
+      map.off('resize', applyWorldFit)
+      map.off('zoomend', keepViewInsideWorld)
+      map.off('moveend', keepViewInsideWorld)
+    }
+  }, [map])
+  return null
+}
 
 // Fix for default marker icons in Leaflet + React
 import icon from 'leaflet/dist/images/marker-icon.png'
@@ -65,21 +160,19 @@ export default function SitesMap({ searchQuery, profile }) {
     else if (isStudent) setArtifacts([])
   }, [profile, mapMode])
 
-  async function fetchStudentArtifacts() {
+  /** Public + student visibility artifact finds (for Public Map and Student Map). */
+  async function fetchPublicArtifacts() {
     try {
-      const { data, error } = await supabase
-        .from('site_journals')
-        .select('id, site_id, user_id, findings, notes, lat, lng, visibility, is_public, created_at, sites(name)')
-        .or('visibility.eq.public,visibility.eq.student')
-        .not('lat', 'is', null)
-        .not('lng', 'is', null)
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setArtifacts(data || [])
+      const data = await getPublicArtifactsData()
+      setArtifacts(data)
     } catch (err) {
-      console.error('Error fetching student artifacts:', err)
+      console.error('Error fetching public/student artifacts:', err)
       setArtifacts([])
     }
+  }
+
+  async function fetchStudentArtifacts() {
+    return fetchPublicArtifacts()
   }
 
 
@@ -173,6 +266,19 @@ export default function SitesMap({ searchQuery, profile }) {
     return 'Private'
   }
 
+  /** Returns public/student artifact rows (no state). */
+  async function getPublicArtifactsData() {
+    const { data, error } = await supabase
+      .from('site_journals')
+      .select('id, site_id, user_id, findings, notes, lat, lng, visibility, is_public, created_at, sites(name)')
+      .or('visibility.eq.public,visibility.eq.student')
+      .not('lat', 'is', null)
+      .not('lng', 'is', null)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data || []
+  }
+
   async function fetchArtifacts(siteIds) {
     if (!profile?.id) return
     try {
@@ -193,6 +299,36 @@ export default function SitesMap({ searchQuery, profile }) {
     }
   }
 
+  /** Load public + exclusive artifacts for Exclusive Map (no overwrite). */
+  async function fetchExclusiveArtifactsWithPublic(siteIds) {
+    if (!profile?.id) return
+    try {
+      const [publicData, exclusiveRes] = await Promise.all([
+        getPublicArtifactsData().catch(() => []),
+        (async () => {
+          let query = supabase
+            .from('site_journals')
+            .select('id, site_id, user_id, findings, notes, lat, lng, visibility, is_public, created_at, sites(name)')
+            .not('lat', 'is', null)
+            .not('lng', 'is', null)
+          if (isChief && siteIds?.length > 0) query = query.in('site_id', siteIds)
+          else if (isFieldArch) query = query.eq('user_id', profile.id)
+          else return []
+          const { data, error } = await query.order('created_at', { ascending: false })
+          if (error) throw error
+          return data || []
+        })()
+      ])
+      const byId = new Map()
+      publicData.forEach(a => byId.set(a.id, a))
+      exclusiveRes.forEach(a => byId.set(a.id, a))
+      setArtifacts([...byId.values()])
+    } catch (err) {
+      console.error('Error fetching exclusive+public artifacts:', err)
+      setArtifacts([])
+    }
+  }
+
   async function fetchSites() {
     setLoading(true)
     if (!(isStudent && mapMode === 'student') && !(isArcheologist && mapMode === 'exclusive')) setArtifacts([])
@@ -209,19 +345,35 @@ export default function SitesMap({ searchQuery, profile }) {
       })
       error = res.error
     } else if (isChief && profile?.id) {
-      const res = await supabase.from('sites').select('*').or('is_public.eq.true,created_by.eq.' + profile.id)
-      data = (res.data || []).filter(s => siteVisibility(s) === 'public' || siteVisibility(s) === 'team' || s.created_by === profile.id)
-      error = res.error
+      // Exclusive = everything on Public (public + student) + team + chief's own
+      const [publicRes, exclusiveRes] = await Promise.all([
+        supabase.from('sites').select('*'),
+        supabase.from('sites').select('*').or('is_public.eq.true,created_by.eq.' + profile.id)
+      ])
+      const publicData = (publicRes.data || []).filter(s => {
+        const v = siteVisibility(s)
+        return v === 'public' || (v === 'student' && isArcheologist)
+      })
+      const exclusiveData = (exclusiveRes.data || []).filter(s => siteVisibility(s) === 'team' || s.created_by === profile.id)
+      const byId = new Map()
+      publicData.forEach(s => byId.set(s.id, s))
+      exclusiveData.forEach(s => byId.set(s.id, s))
+      data = [...byId.values()]
+      error = publicRes.error || exclusiveRes.error
     } else if (isFieldArch && profile?.id) {
       const { data: reg } = await supabase.from('Registry').select('site_id').eq('field_arch_id', profile.id).eq('status', 'Approved')
       const siteIds = [...new Set((reg || []).map(r => r.site_id).filter(Boolean))]
       setApprovedSiteIds(siteIds)
+      // Exclusive = everything on Public (public + student) + team + approved expeditions
       const [allRes, privateRes] = await Promise.all([
         supabase.from('sites').select('*'),
         siteIds.length > 0 ? supabase.from('sites').select('*').in('id', siteIds) : { data: [] }
       ])
       const byId = new Map()
-      ;(allRes.data || []).filter(s => ['public','team'].includes(siteVisibility(s))).forEach(s => { byId.set(s.id, s) })
+      ;(allRes.data || []).filter(s => {
+        const v = siteVisibility(s)
+        return v === 'public' || (v === 'student' && isArcheologist) || v === 'team'
+      }).forEach(s => { byId.set(s.id, s) })
       ;(privateRes.data || []).forEach(s => { byId.set(s.id, s) })
       data = [...byId.values()]
       error = allRes.error || privateRes.error
@@ -240,6 +392,7 @@ export default function SitesMap({ searchQuery, profile }) {
 
     if (error) {
       console.error('Error fetching sites:', error)
+      if (mapMode === 'public') fetchPublicArtifacts()
       // Fallback mock data only if there's an error (like table missing)
       setSites([
         { 
@@ -318,7 +471,8 @@ export default function SitesMap({ searchQuery, profile }) {
     } else {
       const list = data && data.length > 0 ? data : (publicOnly ? getFallbackSites() : [])
       setSites(withCoords(list))
-      if (isArcheologist && mapMode === 'exclusive' && profile?.id) fetchArtifacts(isChief ? (data || []).map(s => s.id) : null)
+      if (isArcheologist && mapMode === 'exclusive' && profile?.id) fetchExclusiveArtifactsWithPublic(isChief ? (data || []).map(s => s.id) : null)
+      else if (mapMode === 'public') fetchPublicArtifacts()
     }
     setLoading(false)
   }
@@ -464,16 +618,33 @@ export default function SitesMap({ searchQuery, profile }) {
         </div>
       </div>
 
-      <div className="border-4 border-black h-[600px] w-full relative z-0 shadow-[12px_12px_0px_rgba(0,0,0,0.1)]">
+      <div
+        className="border-4 border-black h-[600px] w-full relative z-0 overflow-hidden shadow-[12px_12px_0px_rgba(0,0,0,0.1)] [&_.leaflet-container]:!rounded-none [&_.leaflet-container]:!h-full [&_.leaflet-container]:!w-full [&_.leaflet-container]:!m-0 [&_.leaflet-container]:!p-0 [&_.leaflet-container_.leaflet-map-pane]:!inset-0 [&_.leaflet-container_.leaflet-tile-pane]:!inset-0"
+        style={{ boxSizing: 'border-box' }}
+      >
         {loading && (
           <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center font-black uppercase tracking-[0.5em]">
             Loading Geospatial Data...
           </div>
         )}
-        <MapContainer center={[20, 0]} zoom={2} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+        <div className="absolute inset-0">
+          <MapContainer
+            center={[20, 0]}
+            zoom={2}
+            minZoom={1}
+            maxZoom={MAX_ZOOM}
+            maxBounds={WORLD_BOUNDS}
+            maxBoundsViscosity={1}
+            worldCopyJump={false}
+            scrollWheelZoom={true}
+            className="h-full w-full"
+            style={{ height: '100%', width: '100%' }}
+          >
+          <MapBoundsEnforcer />
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            noWrap={true}
           />
           {filterType !== 'sites' && filteredArtifacts.filter(art => typeof art?.lat === 'number' && typeof art?.lng === 'number').map(art => (
             <Marker key={`art-${art.id}`} position={[art.lat, art.lng]} icon={ArtifactIcon}>
@@ -537,7 +708,7 @@ export default function SitesMap({ searchQuery, profile }) {
 
                       <div className="flex flex-col gap-2 mt-2">
                         <button 
-                          onClick={() => window.open(site.tourUrl, '_blank')}
+                          onClick={() => site.tourUrl && window.open(site.tourUrl, '_blank')}
                           className="w-full bg-black text-white text-[10px] font-black uppercase py-2 hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
                         >
                           <span>Launch 360 Tour</span>
@@ -560,7 +731,8 @@ export default function SitesMap({ searchQuery, profile }) {
                   </Popup>
             </Marker>
           ))}
-        </MapContainer>
+          </MapContainer>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -610,7 +782,7 @@ export default function SitesMap({ searchQuery, profile }) {
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.open(site.tourUrl, '_blank');
+                    if (site.tourUrl) window.open(site.tourUrl, '_blank');
                   }}
                   className="flex-1 border-2 border-black bg-white text-black text-[10px] font-black uppercase py-3 hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
                 >

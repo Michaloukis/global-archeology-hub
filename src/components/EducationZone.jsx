@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
-const EducationZone = ({ profile }) => {
+const EducationZone = ({ profile, onNavigateToMap }) => {
   const [activeModule, setActiveModule] = useState(null); // 'quiz' or 'records'
   const [xp, setXp] = useState(profile?.education_xp || 0);
   
@@ -149,6 +149,18 @@ const EducationZone = ({ profile }) => {
             <h3 className="text-2xl font-black uppercase mt-2 group-hover:underline">Field Records</h3>
             <p className="text-xs font-bold text-gray-500 mt-4 uppercase">Read declassified field journals from active digs.</p>
           </div>
+
+          {onNavigateToMap && (
+            <div 
+              onClick={onNavigateToMap}
+              className="border-2 border-black p-8 bg-white hover:bg-indigo-50 cursor-pointer group transition-all relative overflow-hidden text-left"
+            >
+              <div className="absolute top-0 right-0 bg-indigo-600 text-white px-2 py-1 text-[8px] font-black uppercase">STUDENT_MAP</div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">GEO_REGISTRY</span>
+              <h3 className="text-2xl font-black uppercase mt-2 group-hover:underline">Student Map</h3>
+              <p className="text-xs font-bold text-gray-500 mt-4 uppercase">Public & student sites and artifact finds on the map. Switch to Student Map view there.</p>
+            </div>
+          )}
         </div>
       ) : activeModule === 'quiz' ? (
         /* Quiz Interface */
@@ -265,7 +277,7 @@ const EducationZone = ({ profile }) => {
               {!selectedRecord ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30 p-20">
                   <div className="w-16 h-16 border-4 border-black rounded-full flex items-center justify-center font-black text-2xl">?</div>
-                  <p className="font-black uppercase text-[10px] tracking-widest">Select a dispatch from the index to begin analysis.</p>
+                  <p className="font-black uppercase text-[10px] tracking-widest">Click a field record in the list to view it.</p>
                 </div>
               ) : (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
