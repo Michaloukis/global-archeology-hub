@@ -290,6 +290,7 @@ const JournalTerminal = ({ siteId, profile }) => {
               >
                 <option value="private">Private (Exclusive Map only)</option>
                 <option value="team">Team (Students & personnel)</option>
+                <option value="student">Student (students & archeologists)</option>
                 <option value="public">Public (everyone)</option>
               </select>
             </div>
@@ -361,6 +362,7 @@ const JournalTerminal = ({ siteId, profile }) => {
                         >
                           <option value="private">Private (Exclusive Map only)</option>
                           <option value="team">Team (Students & personnel)</option>
+                          <option value="student">Student (students & archeologists)</option>
                           <option value="public">Public (everyone)</option>
                         </select>
                       </div>

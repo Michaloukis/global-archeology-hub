@@ -24,7 +24,7 @@ const ArtifactIcon = L.divIcon({
   iconAnchor: [8, 8]
 })
 
-const VISIBILITY = { private: 'private', team: 'team', public: 'public' }
+const VISIBILITY = { private: 'private', team: 'team', student: 'student', public: 'public' }
 
 function siteVisibility(site) {
   return site?.visibility || (site?.is_public === false ? 'private' : 'public')
@@ -46,7 +46,7 @@ export default function SitesMap({ searchQuery, profile }) {
   const [availability, setAvailability] = useState('')
   const [activeSiteForRequest, setActiveSiteForRequest] = useState(null)
   const [submitLoading, setSubmitLoading] = useState(false)
-  const [mapMode, setMapMode] = useState('public') // 'public' | 'exclusive'
+  const [mapMode, setMapMode] = useState('public') // 'public' | 'exclusive' | 'student'
   const [filterSource, setFilterSource] = useState('all') // all | public | team | chief | my_expeditions
   const [filterType, setFilterType] = useState('both') // sites | artifacts | both
   const [filterStatus, setFilterStatus] = useState('all') // all | In Progress | Finished
@@ -55,12 +55,32 @@ export default function SitesMap({ searchQuery, profile }) {
   const isChief = profile?.role === 'Chief Archeologist'
   const isFieldArch = profile?.role === 'Field Archeologist'
   const isArcheologist = isChief || isFieldArch
+  const isStudent = profile?.role === 'Student'
 
   useEffect(() => {
     fetchSites()
     fetchAllJournals()
     if (profile) fetchUserRequests()
+    if (isStudent && mapMode === 'student') fetchStudentArtifacts()
+    else if (isStudent) setArtifacts([])
   }, [profile, mapMode])
+
+  async function fetchStudentArtifacts() {
+    try {
+      const { data, error } = await supabase
+        .from('site_journals')
+        .select('id, site_id, user_id, findings, notes, lat, lng, visibility, is_public, created_at, sites(name)')
+        .or('visibility.eq.public,visibility.eq.student')
+        .not('lat', 'is', null)
+        .not('lng', 'is', null)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setArtifacts(data || [])
+    } catch (err) {
+      console.error('Error fetching student artifacts:', err)
+      setArtifacts([])
+    }
+  }
 
 
   async function fetchUserRequests() {
@@ -82,7 +102,7 @@ export default function SitesMap({ searchQuery, profile }) {
       const { data, error } = await supabase
         .from('site_journals')
         .select('*')
-        .eq('is_public', true) // ONLY SHOW PUBLIC DISPATCHES
+        .or('visibility.eq.public,visibility.eq.student,is_public.eq.true')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -137,6 +157,7 @@ export default function SitesMap({ searchQuery, profile }) {
   function getSiteSourceLabel(site) {
     const vis = siteVisibility(site)
     if (vis === 'public') return 'Public'
+    if (vis === 'student') return 'Student'
     if (vis === 'team') return 'Team'
     if (isChief && site.created_by === profile?.id) return 'Chief only'
     if (isFieldArch && approvedSiteIds.includes(site.id)) return 'Your expedition'
@@ -146,6 +167,7 @@ export default function SitesMap({ searchQuery, profile }) {
   function getArtifactSourceLabel(art) {
     const vis = journalVisibility(art)
     if (vis === 'public') return 'Public'
+    if (vis === 'student') return 'Student'
     if (vis === 'team') return 'Team'
     if (art.user_id === profile?.id) return 'Field (yours)'
     return 'Private'
@@ -173,13 +195,18 @@ export default function SitesMap({ searchQuery, profile }) {
 
   async function fetchSites() {
     setLoading(true)
-    if (!isArcheologist || mapMode === 'public') setArtifacts([])
+    if (!(isStudent && mapMode === 'student') && !(isArcheologist && mapMode === 'exclusive')) setArtifacts([])
     let data = []
     let error = null
-    const publicOnly = mapMode === 'public' || !isArcheologist
+    const publicOnly = mapMode === 'public' || mapMode === 'student' || !isArcheologist
     if (publicOnly) {
       const res = await supabase.from('sites').select('*')
-      data = (res.data || []).filter(s => siteVisibility(s) === 'public')
+      data = (res.data || []).filter(s => {
+        const v = siteVisibility(s)
+        if (v === 'public') return true
+        if (v === 'student') return isStudent || isArcheologist
+        return false
+      })
       error = res.error
     } else if (isChief && profile?.id) {
       const res = await supabase.from('sites').select('*').or('is_public.eq.true,created_by.eq.' + profile.id)
@@ -203,6 +230,13 @@ export default function SitesMap({ searchQuery, profile }) {
       data = (res.data || []).filter(s => siteVisibility(s) === 'public')
       error = res.error
     }
+
+    // Ensure every site has coordinates so they show on the map (fallback if DB has null lat/lng)
+    const withCoords = (list) => (list || []).map(s => {
+      if (typeof s?.lat === 'number' && typeof s?.lng === 'number') return s
+      const id = Number(s?.id) || 0
+      return { ...s, lat: 15 + (id % 35) - 5, lng: (id * 37) % 360 - 180 }
+    })
 
     if (error) {
       console.error('Error fetching sites:', error)
@@ -282,10 +316,19 @@ export default function SitesMap({ searchQuery, profile }) {
         }
       ])
     } else {
-      setSites(data || [])
+      const list = data && data.length > 0 ? data : (publicOnly ? getFallbackSites() : [])
+      setSites(withCoords(list))
       if (isArcheologist && mapMode === 'exclusive' && profile?.id) fetchArtifacts(isChief ? (data || []).map(s => s.id) : null)
     }
     setLoading(false)
+  }
+
+  function getFallbackSites() {
+    return [
+      { id: 1, name: 'Giza Plateau', lat: 29.9792, lng: 31.1342, status: 'Finished', description: 'Home to the Great Pyramid of Giza and the Great Sphinx.', tourUrl: 'https://artsandculture.google.com/project/giza-pyramids', visibility: 'public' },
+      { id: 2, name: 'Acropolis of Athens', lat: 37.9715, lng: 23.7257, status: 'Finished', description: 'Ancient citadel with the Parthenon.', tourUrl: 'https://www.acropolis-virtualtour.gr/', visibility: 'public' },
+      { id: 3, name: 'Stonehenge', lat: 51.1789, lng: -1.8262, status: 'Finished', description: 'Prehistoric monument in Wiltshire, England.', tourUrl: 'https://www.english-heritage.org.uk/visit/places/stonehenge/', visibility: 'public' }
+    ]
   }
 
   const sitesWithCoords = sites.filter(site => typeof site?.lat === 'number' && typeof site?.lng === 'number')
@@ -296,6 +339,8 @@ export default function SitesMap({ searchQuery, profile }) {
     if (filterSource === 'all') return true
     const vis = siteVisibility(site)
     if (filterSource === 'public') return vis === 'public'
+    if (filterSource === 'students') return vis === 'public' || vis === 'student'
+    if (filterSource === 'student_only') return vis === 'student'
     if (filterSource === 'team') return vis === 'team'
     if (filterSource === 'chief') return isChief && site.created_by === profile?.id && vis === 'private'
     if (filterSource === 'my_expeditions') return isFieldArch && approvedSiteIds.includes(site.id)
@@ -305,8 +350,11 @@ export default function SitesMap({ searchQuery, profile }) {
   const filteredSites = sitesWithCoords.filter(site => searchMatch(site) && sourceMatch(site) && statusMatch(site))
   const filteredArtifacts = artifacts.filter(art => {
     if (filterType === 'sites') return false
-    if (filterSource === 'public' && journalVisibility(art) !== 'public') return false
-    if (filterSource === 'team' && journalVisibility(art) !== 'team') return false
+    const vis = journalVisibility(art)
+    if (filterSource === 'public' && vis !== 'public') return false
+    if (filterSource === 'students' && vis !== 'public' && vis !== 'student') return false
+    if (filterSource === 'student_only' && vis !== 'student') return false
+    if (filterSource === 'team' && vis !== 'team') return false
     if (filterSource === 'chief') return false
     if (filterSource === 'my_expeditions' && art.user_id !== profile?.id) return false
     return true
@@ -328,7 +376,7 @@ export default function SitesMap({ searchQuery, profile }) {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div> Finished
               </div>
-              {isArcheologist && (
+              {(isArcheologist || (isStudent && mapMode === 'student')) && (
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full border-2 border-black" style={{ background: '#b91c1c' }}></div> Artifact / Find
                 </div>
@@ -358,6 +406,23 @@ export default function SitesMap({ searchQuery, profile }) {
                   Exclusive Map
                 </button>
               </div>
+            ) : isStudent ? (
+              <div className="flex border-2 border-black overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setMapMode('public')}
+                  className={`px-4 py-2 text-[10px] font-black uppercase ${mapMode === 'public' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                >
+                  Public Map
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapMode('student')}
+                  className={`px-4 py-2 text-[10px] font-black uppercase border-l-2 border-black ${mapMode === 'student' ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-gray-100'}`}
+                >
+                  Student Map
+                </button>
+              </div>
             ) : (
               <span className="text-[10px] font-black uppercase bg-black text-white px-3 py-1">Public Map</span>
             )}
@@ -371,6 +436,8 @@ export default function SitesMap({ searchQuery, profile }) {
             >
               <option value="all">All sources</option>
               <option value="public">Public only</option>
+              <option value="students">Students (public + student)</option>
+              <option value="student_only">Student only</option>
               <option value="team">Team only</option>
               {isChief && <option value="chief">Chief only</option>}
               {isFieldArch && <option value="my_expeditions">My expeditions</option>}
@@ -408,12 +475,12 @@ export default function SitesMap({ searchQuery, profile }) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {filterType !== 'sites' && filteredArtifacts.map(art => (
+          {filterType !== 'sites' && filteredArtifacts.filter(art => typeof art?.lat === 'number' && typeof art?.lng === 'number').map(art => (
             <Marker key={`art-${art.id}`} position={[art.lat, art.lng]} icon={ArtifactIcon}>
               <Popup>
                 <div className="font-sans p-2 min-w-[200px]">
                   <span className="text-[8px] font-black uppercase text-red-600 block">Artifact / Find</span>
-                  <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black w-fit block mb-1 ${getArtifactSourceLabel(art) === 'Public' ? 'bg-green-100' : getArtifactSourceLabel(art) === 'Team' ? 'bg-amber-100' : 'bg-gray-200'}`}>
+                  <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black w-fit block mb-1 ${getArtifactSourceLabel(art) === 'Public' ? 'bg-green-100' : getArtifactSourceLabel(art) === 'Student' ? 'bg-indigo-100' : getArtifactSourceLabel(art) === 'Team' ? 'bg-amber-100' : 'bg-gray-200'}`}>
                     {getArtifactSourceLabel(art)}
                   </span>
                   <span className="text-[9px] font-black uppercase block">{art.findings || art.notes?.slice(0, 50) || 'Recorded'}</span>
@@ -429,7 +496,7 @@ export default function SitesMap({ searchQuery, profile }) {
                     <div className="font-sans p-2 min-w-[250px] max-w-[300px]">
                       <h3 className="font-black uppercase text-lg border-b-2 border-black mb-2 leading-tight">{site.name}</h3>
                       <div className="flex flex-wrap gap-1 mb-2">
-                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black ${getSiteSourceLabel(site) === 'Public' ? 'bg-green-100' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-100' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-red-100' : 'bg-indigo-100'}`}>
+                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black ${getSiteSourceLabel(site) === 'Public' ? 'bg-green-100' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-100' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-100' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-red-100' : 'bg-indigo-100'}`}>
                           {getSiteSourceLabel(site)}
                         </span>
                         <div className={`text-[10px] font-black uppercase px-2 py-1 inline-block border border-black w-fit ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -508,7 +575,7 @@ export default function SitesMap({ searchQuery, profile }) {
                 <div className="flex flex-wrap justify-between items-start gap-2 mb-4">
                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Site_{site.id.toString().padStart(3, '0')}</span>
                   <div className="flex gap-2">
-                    <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black ${getSiteSourceLabel(site) === 'Public' ? 'bg-green-100' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-100' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-red-100' : 'bg-indigo-100'}`}>
+                    <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black ${getSiteSourceLabel(site) === 'Public' ? 'bg-green-100' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-100' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-100' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-red-100' : 'bg-indigo-100'}`}>
                       {getSiteSourceLabel(site)}
                     </span>
                     <span className={`text-[9px] font-black uppercase px-2 py-1 border border-black ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>

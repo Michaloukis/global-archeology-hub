@@ -82,20 +82,23 @@ For archeologists’ field records (Journal Terminal), the app uploads **images*
    ALTER TABLE site_journals ADD COLUMN IF NOT EXISTS lng double precision;
    ```
 
-4. **Random coordinates on existing sites (for testing)**  
-   If your `sites` rows have `NULL` lat/lng, you can fill them for testing:
+4. **Sites on the map (location for dig sites)**  
+   Ensure `sites` has `lat`/`lng` and fill existing dig sites so they show on the map:
    ```sql
+   ALTER TABLE sites ADD COLUMN IF NOT EXISTS lat double precision;
+   ALTER TABLE sites ADD COLUMN IF NOT EXISTS lng double precision;
    UPDATE sites SET lat = 20 + (random() * 40 - 10), lng = (random() * 360 - 180) WHERE lat IS NULL OR lng IS NULL;
    ```
+   Or run the full `supabase-migrations/add-coordinates.sql` file (adds columns + fills sites + journal lat/lng).
 
-5. **Public vs Exclusive Map sites**  
+5. **Public vs Student vs Exclusive Map**  
    So some sites are visible to everyone and others only to the Chief on the Exclusive Map:
    ```sql
    ALTER TABLE sites ADD COLUMN IF NOT EXISTS is_public boolean DEFAULT true;
    UPDATE sites SET is_public = true WHERE is_public IS NULL;
    ```
    - **Public** (`is_public = true`): visible to everyone (Students, Enthusiasts, and on the map for all).
-   - **Private** (`is_public = false`): visible only when that Chief is logged in (Exclusive Map). When creating a site as Chief, uncheck “Public site” to make it Exclusive Map only.
+   - **Private** (`is_public = false`): visible only when that Chief is logged in (Exclusive Map). When creating a site as Chief, uncheck “Public site” to choose "Private (Exclusive Map only)". Use filter "Students (public + student)" for student-visible sites. Run `supabase-migrations/seed-public-student-exclusive.sql` for example sites and artifacts.
 
 Supported **image** types: JPEG, PNG, GIF, WebP.  
 Supported **3D model** types: GLB, GLTF, OBJ, FBX, STL, DAE, 3DS, PLY.

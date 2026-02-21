@@ -251,7 +251,7 @@ function App() {
           <main className="max-w-[1400px] mx-auto p-8 md:p-12 min-h-[70vh] pt-24 md:pt-32 text-left">
             {view === 'home' && <HomePage searchQuery={searchQuery} />}
             {view === 'map' && <SitesMap searchQuery={searchQuery} profile={profile} />}
-            {view === 'education' && isStudent && <EducationZone profile={profile} />}
+            {view === 'education' && isStudent && <EducationZone profile={profile} onNavigateToMap={() => setView('map')} />}
             {view === 'arch' && isArcheologist && <ArchZone profile={profile} onNavigateToMap={() => setView('map')} />}
             {view === 'journal' && activeSiteId && <JournalTerminal siteId={activeSiteId} profile={profile} />}
           </main>

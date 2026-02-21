@@ -2,8 +2,11 @@
 ALTER TABLE site_journals ADD COLUMN IF NOT EXISTS lat double precision;
 ALTER TABLE site_journals ADD COLUMN IF NOT EXISTS lng double precision;
 
--- Add random coordinates to existing sites that have NULL lat/lng (for testing)
--- Run this only if your sites table has rows with missing coordinates.
+-- Ensure sites table has lat/lng so dig sites show on the map
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS lat double precision;
+ALTER TABLE sites ADD COLUMN IF NOT EXISTS lng double precision;
+
+-- Fill location for existing dig sites that don't have coordinates (so they appear on the map)
 UPDATE sites
 SET
   lat = 20 + (random() * 40 - 10),

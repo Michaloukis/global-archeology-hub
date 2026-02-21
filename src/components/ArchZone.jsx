@@ -34,7 +34,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   const [siteLng, setSiteLng] = useState('');
   const [siteDesc, setSiteDesc] = useState('');
   const [siteTour, setSiteTour] = useState('');
-  const [siteVisibility, setSiteVisibility] = useState('public'); // 'private' | 'team' | 'public'
+  const [siteVisibility, setSiteVisibility] = useState('public'); // 'private' | 'team' | 'student' | 'public'
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -341,7 +341,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
             status: 'In Progress',
             created_by: profile.id,
             is_public: siteVisibility === 'public',
-            visibility: siteVisibility
+            visibility: siteVisibility // 'public' | 'student' | 'team' | 'private'
           }
         ]);
 
@@ -727,6 +727,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                 >
                   <option value="private">Private (Exclusive Map only — your eyes)</option>
                   <option value="team">Team (Students & approved personnel)</option>
+                  <option value="student">Student (students & archeologists)</option>
                   <option value="public">Public (everyone)</option>
                 </select>
               </div>
