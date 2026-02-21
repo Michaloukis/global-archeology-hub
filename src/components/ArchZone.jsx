@@ -38,6 +38,9 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Social Hub panels: 'chat' | 'forum' | 'events' | null
+  const [socialHubPanel, setSocialHubPanel] = useState(null);
+
   // #region agent log
   const logData = (msg, data, hypothesisId) => {
     fetch('http://127.0.0.1:7243/ingest/681b1f5c-17b9-4cf5-8463-2a620377b7c6',{
@@ -434,8 +437,19 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
             </div>
           ) : (
             <div className="space-y-4">
-              {['Collaboration Chat', 'Public Forum', 'Events & Announcements'].map(item => (
-                <div key={item} className="border-2 border-black p-4 hover:bg-gray-100 cursor-pointer font-bold uppercase text-xs">{item}</div>
+              {[
+                { id: 'chat', label: 'Collaboration Chat' },
+                { id: 'forum', label: 'Public Forum' },
+                { id: 'events', label: 'Events & Announcements' }
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setSocialHubPanel(id)}
+                  className="w-full text-left border-2 border-black p-4 hover:bg-black hover:text-white transition-all font-bold uppercase text-xs"
+                >
+                  {label}
+                </button>
               ))}
             </div>
           )}
@@ -634,6 +648,112 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Social Hub modals */}
+      {socialHubPanel && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-start justify-center p-6 overflow-y-auto">
+          <div className="bg-white border-4 border-black w-full max-w-2xl shadow-[16px_16px_0px_rgba(0,0,0,1)] p-10 relative my-10">
+            <button
+              onClick={() => setSocialHubPanel(null)}
+              className="absolute top-6 right-6 font-black text-xs hover:text-red-600"
+            >
+              CLOSE [X]
+            </button>
+
+            {socialHubPanel === 'chat' && (
+              <>
+                <div className="mb-4">
+                  <h3 className="text-2xl font-black uppercase tracking-tighter">Collaboration Chat</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Channel: #expedition-general (demo)</p>
+                </div>
+                <div className="border-2 border-black bg-gray-50 min-h-[280px] max-h-[360px] overflow-y-auto p-4 space-y-4 mb-4">
+                  {[
+                    { who: 'Chief_Martinez', msg: 'Field team: confirm lidar data upload by EOD. We need it for the seminar prep.', time: '09:12' },
+                    { who: 'Field_Arch_01', msg: 'Copy that. Section B is done, uploading now.', time: '09:34' },
+                    { who: 'Chief_Martinez', msg: 'Good. Students — reminder: Public Forum is open for the stratigraphy Q&A.', time: '10:01' },
+                    { who: 'Field_Arch_02', msg: 'Roman Forum (Student Lab) — found a possible new context layer. Logging in Journal.', time: '11:22' },
+                    { who: 'Chief_Martinez', msg: 'Noted. Tag it as student-visible when you post.', time: '11:45' }
+                  ].map((m, i) => (
+                    <div key={i} className="flex flex-col gap-0.5">
+                      <span className="text-[8px] font-black uppercase text-gray-500">
+                        {m.who} <span className="text-gray-400 font-normal">{m.time}</span>
+                      </span>
+                      <p className="text-xs font-bold uppercase leading-snug pl-2 border-l-2 border-black">{m.msg}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Type a message... (demo — not sent)"
+                    disabled
+                    className="flex-1 border-2 border-black p-2 text-xs font-bold uppercase bg-white opacity-60"
+                  />
+                  <button type="button" disabled className="bg-gray-300 text-gray-500 px-4 py-2 text-[10px] font-black uppercase cursor-not-allowed">Send</button>
+                </div>
+                <p className="text-[9px] font-black text-gray-400 uppercase mt-2">Live messaging will be wired in a future release.</p>
+              </>
+            )}
+
+            {socialHubPanel === 'forum' && (
+              <>
+                <div className="mb-4">
+                  <h3 className="text-2xl font-black uppercase tracking-tighter">Public Forum</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Community threads (demo)</p>
+                </div>
+                <div className="space-y-3 max-h-[420px] overflow-y-auto">
+                  {[
+                    { title: 'Stratigraphy Q&A — Student Session', author: 'Chief_Martinez', preview: 'Bring your section drawings and we’ll review layer interpretation. Open to all students.', date: '5 Feb', replies: 12 },
+                    { title: 'Best practices for field photography', author: 'Field_Arch_01', preview: 'Lighting, scale bars, and metadata. Share your setup.', date: '4 Feb', replies: 8 },
+                    { title: 'Lidar vs traditional survey — when to use which?', author: 'Field_Arch_02', preview: 'Discussion for upcoming seminar. Post your questions here.', date: '3 Feb', replies: 5 },
+                    { title: 'New declassified records in Data Archive', author: 'System', preview: 'This week’s field records from Giza and Roman Forum (Student Lab) are now visible in Edu Lab.', date: '2 Feb', replies: 3 }
+                  ].map((thread, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className="w-full text-left border-2 border-black p-4 bg-white hover:bg-black hover:text-white transition-all"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <h4 className="font-black uppercase text-xs leading-tight">{thread.title}</h4>
+                        <span className="text-[8px] font-black uppercase shrink-0 opacity-70">{thread.replies} replies</span>
+                      </div>
+                      <p className="text-[10px] font-bold uppercase text-gray-500 mt-1 line-clamp-2 hover:text-gray-200">{thread.preview}</p>
+                      <p className="text-[8px] font-black uppercase mt-2 opacity-60">{thread.author} · {thread.date}</p>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] font-black text-gray-400 uppercase mt-4">Thread replies and posting will be wired in a future release.</p>
+              </>
+            )}
+
+            {socialHubPanel === 'events' && (
+              <>
+                <div className="mb-4">
+                  <h3 className="text-2xl font-black uppercase tracking-tighter">Events & Announcements</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Seminars, digs, and updates</p>
+                </div>
+                <div className="space-y-4 max-h-[420px] overflow-y-auto">
+                  {[
+                    { type: 'Seminar', title: 'International Seminar on Lidar Tech', date: '12 FEB', loc: 'Virtual Hub', desc: 'Remote sensing and 3D documentation. Registration open.' },
+                    { type: 'Field day', title: 'Roman Forum (Student Lab) — guided session', date: '18 FEB', loc: 'On-site / stream', desc: 'Students: sign up via Edu Lab. Limited slots.' },
+                    { type: 'Announcement', title: 'New Student Map and filters live', date: '7 FEB', loc: 'Global Registry', desc: 'Students can now use the Student Map and Student-only filter on the map.' },
+                    { type: 'Seminar', title: 'Ceramic typology workshop', date: '25 FEB', loc: 'Virtual Hub', desc: 'Classification and dating. Prerequisite: Stratigraphy module.' }
+                  ].map((ev, i) => (
+                    <div key={i} className="border-2 border-black p-4 bg-white hover:bg-gray-50 transition-all">
+                      <div className="flex justify-between items-start gap-2 mb-1">
+                        <span className="text-[8px] font-black uppercase px-2 py-0.5 border border-black bg-black text-white">{ev.type}</span>
+                        <span className="text-[8px] font-black uppercase text-gray-500">{ev.date} · {ev.loc}</span>
+                      </div>
+                      <h4 className="font-black uppercase text-sm mt-1">{ev.title}</h4>
+                      <p className="text-[10px] font-bold text-gray-600 mt-1 uppercase">{ev.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
