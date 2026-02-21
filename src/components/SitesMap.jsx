@@ -6,7 +6,16 @@ import { supabase } from '../supabaseClient'
 
 // Single-world bounds: no zoom out past this, no pan outside
 const WORLD_BOUNDS = L.latLngBounds([-85, -180], [85, 180])
-const MAX_ZOOM = 18
+const MAX_ZOOM = 20
+
+// Region bounds for "tap country" zoom + filter (same as filter dropdown)
+const REGION_BOUNDS_MAP = {
+  europe: L.latLngBounds([35, -11], [72, 48]),
+  americas: L.latLngBounds([-56, -170], [72, -30]),
+  asia_pacific: L.latLngBounds([-52, 60], [72, 180]),
+  africa: L.latLngBounds([-35, -18], [38, 52]),
+  middle_east: L.latLngBounds([12, 26], [43, 75])
+}
 
 const FALLBACK_MIN_ZOOM = 1
 
@@ -47,55 +56,95 @@ function getWorldFitZoom(map) {
   }
 }
 
-function MapBoundsEnforcer() {
+function MapBoundsEnforcer({ filterRegion }) {
   const map = useMap()
+  const isRegionLock = filterRegion && filterRegion !== 'all' && REGION_BOUNDS_MAP[filterRegion]
+
   useEffect(() => {
-    map.setMaxBounds(WORLD_BOUNDS)
-    map.setMinZoom(FALLBACK_MIN_ZOOM)
+    const effectiveBounds = isRegionLock ? REGION_BOUNDS_MAP[filterRegion] : WORLD_BOUNDS
+    map.setMaxBounds(effectiveBounds)
     map.setMaxZoom(MAX_ZOOM)
     map.options.maxBoundsViscosity = 1
     map.options.worldCopyJump = false
 
-    const getFitBounds = () => getBoundsMatchingContainerAspect(map)
-
-    const applyWorldFit = () => {
-      const fitZoom = getWorldFitZoom(map)
-      map.setMinZoom(fitZoom)
-      if (map.getZoom() < fitZoom) {
-        map.fitBounds(getFitBounds(), { padding: [0, 0], animate: false })
+    const getMinZoom = () => {
+      try {
+        const size = map.getSize()
+        if (!size || size.x <= 0 || size.y <= 0) return FALLBACK_MIN_ZOOM
+        const z = map.getBoundsZoom(effectiveBounds, false, [0, 0])
+        if (typeof z !== 'number' || !Number.isFinite(z)) return FALLBACK_MIN_ZOOM
+        const capped = Math.max(FALLBACK_MIN_ZOOM, Math.min(MAX_ZOOM, z))
+        if (isRegionLock) return Math.min(capped, 12)
+        return capped
+      } catch {
+        return FALLBACK_MIN_ZOOM
       }
     }
 
-    const keepViewInsideWorld = () => {
-      const fitZoom = getWorldFitZoom(map)
+    const applyFit = () => {
+      const fitZoom = getMinZoom()
       map.setMinZoom(fitZoom)
-      if (map.getZoom() < fitZoom) {
-        map.fitBounds(getFitBounds(), { padding: [0, 0], animate: false })
-        return
-      }
-      const viewBounds = map.getBounds()
-      if (!WORLD_BOUNDS.contains(viewBounds)) {
-        map.fitBounds(getFitBounds(), { maxZoom: map.getZoom(), padding: [0, 0], animate: false })
-      }
+      const z = map.getZoom()
+      if (z < fitZoom) map.setZoom(fitZoom)
+      if (z > MAX_ZOOM) map.setZoom(MAX_ZOOM)
+    }
+
+    const keepViewInsideBounds = () => {
+      const fitZoom = getMinZoom()
+      map.setMinZoom(fitZoom)
+      const z = map.getZoom()
+      if (z < fitZoom) map.setZoom(fitZoom)
+      if (z > MAX_ZOOM) map.setZoom(MAX_ZOOM)
     }
 
     map.whenReady(() => {
-      if (map.getSize().x > 0 && map.getSize().y > 0) {
-        map.fitBounds(getFitBounds(), { padding: [0, 0], animate: false })
+      if (map.getSize().x > 0 && map.getSize().y > 0 && !isRegionLock) {
+        map.fitBounds(getBoundsMatchingContainerAspect(map), { padding: [0, 0], animate: false })
       }
-      applyWorldFit()
+      applyFit()
     })
 
-    map.on('resize', applyWorldFit)
-    map.on('zoomend', keepViewInsideWorld)
-    map.on('moveend', keepViewInsideWorld)
+    map.on('resize', applyFit)
+    map.on('zoomend', keepViewInsideBounds)
+    map.on('moveend', keepViewInsideBounds)
 
     return () => {
-      map.off('resize', applyWorldFit)
-      map.off('zoomend', keepViewInsideWorld)
-      map.off('moveend', keepViewInsideWorld)
+      map.off('resize', applyFit)
+      map.off('zoomend', keepViewInsideBounds)
+      map.off('moveend', keepViewInsideBounds)
     }
-  }, [map])
+  }, [map, filterRegion, isRegionLock])
+  return null
+}
+
+/** When filterRegion changes, fly the map to that region or back to world. */
+function MapRegionView({ filterRegion }) {
+  const map = useMap()
+  useEffect(() => {
+    const run = () => {
+      try {
+        const size = map.getSize && map.getSize()
+        if (!size || (size.x <= 0 && size.y <= 0)) return
+        if (filterRegion === 'all') {
+          const bounds = getBoundsMatchingContainerAspect(map)
+          map.fitBounds(bounds, { padding: [0, 0], animate: true })
+        } else if (REGION_BOUNDS_MAP[filterRegion]) {
+          if (typeof map.flyToBounds === 'function') {
+            map.flyToBounds(REGION_BOUNDS_MAP[filterRegion], { padding: [24, 24], maxZoom: 14, duration: 0.6 })
+          } else {
+            map.fitBounds(REGION_BOUNDS_MAP[filterRegion], { padding: [24, 24], maxZoom: 14, animate: true })
+          }
+        }
+      } catch (_) {
+        // Map not ready or getSize failed
+      }
+    }
+    if (map.whenReady) {
+      map.whenReady(run)
+    } else {
+      run()
+    }
+  }, [map, filterRegion])
   return null
 }
 
@@ -145,6 +194,8 @@ export default function SitesMap({ searchQuery, profile }) {
   const [filterSource, setFilterSource] = useState('all') // all | public | team | chief | my_expeditions
   const [filterType, setFilterType] = useState('both') // sites | artifacts | both
   const [filterStatus, setFilterStatus] = useState('all') // all | In Progress | Finished
+  const [filterTour, setFilterTour] = useState('all') // all | with_tour | no_tour (sites)
+  const [filterRegion, setFilterRegion] = useState('all') // all | europe | americas | asia_pacific | africa | middle_east
 
   const [approvedSiteIds, setApprovedSiteIds] = useState([])
   const isChief = profile?.role === 'Chief Archeologist'
@@ -485,6 +536,28 @@ export default function SitesMap({ searchQuery, profile }) {
     ]
   }
 
+  const REGION_BOUNDS = {
+    europe: { south: 35, north: 72, west: -11, east: 48 },
+    americas: { south: -56, north: 72, west: -170, east: -30 },
+    asia_pacific: { south: -52, north: 72, west: 60, east: 180 },
+    africa: { south: -35, north: 38, west: -18, east: 52 },
+    middle_east: { south: 12, north: 43, west: 26, east: 75 }
+  }
+  const inRegion = (lat, lng, regionKey) => {
+    if (!regionKey || regionKey === 'all') return true
+    const r = REGION_BOUNDS[regionKey]
+    if (!r) return true
+    return lat >= r.south && lat <= r.north && lng >= r.west && lng <= r.east
+  }
+
+  const regionLabel = {
+    europe: 'Europe',
+    americas: 'Americas',
+    asia_pacific: 'Asia & Pacific',
+    africa: 'Africa',
+    middle_east: 'Middle East'
+  }
+
   const sitesWithCoords = sites.filter(site => typeof site?.lat === 'number' && typeof site?.lng === 'number')
   const searchMatch = (site) =>
     site.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -501,7 +574,17 @@ export default function SitesMap({ searchQuery, profile }) {
     return true
   }
   const statusMatch = (site) => filterStatus === 'all' || site.status === filterStatus
-  const filteredSites = sitesWithCoords.filter(site => searchMatch(site) && sourceMatch(site) && statusMatch(site))
+  const tourMatch = (site) => {
+    if (filterTour === 'all') return true
+    const hasTour = !!(site?.tourUrl && String(site.tourUrl).trim())
+    if (filterTour === 'with_tour') return hasTour
+    if (filterTour === 'no_tour') return !hasTour
+    return true
+  }
+  const regionMatch = (lat, lng) => inRegion(lat, lng, filterRegion)
+  const filteredSites = sitesWithCoords.filter(site =>
+    searchMatch(site) && sourceMatch(site) && statusMatch(site) && tourMatch(site) && regionMatch(site.lat, site.lng)
+  )
   const filteredArtifacts = artifacts.filter(art => {
     if (filterType === 'sites') return false
     const vis = journalVisibility(art)
@@ -511,6 +594,7 @@ export default function SitesMap({ searchQuery, profile }) {
     if (filterSource === 'team' && vis !== 'team') return false
     if (filterSource === 'chief') return false
     if (filterSource === 'my_expeditions' && art.user_id !== profile?.id) return false
+    if (typeof art?.lat === 'number' && typeof art?.lng === 'number' && !regionMatch(art.lat, art.lng)) return false
     return true
   })
 
@@ -614,6 +698,27 @@ export default function SitesMap({ searchQuery, profile }) {
               <option value="In Progress">In Progress</option>
               <option value="Finished">Finished</option>
             </select>
+            <select
+              value={filterTour}
+              onChange={(e) => setFilterTour(e.target.value)}
+              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+            >
+              <option value="all">All sites</option>
+              <option value="with_tour">With 360° tour</option>
+              <option value="no_tour">Without 360° tour</option>
+            </select>
+            <select
+              value={filterRegion}
+              onChange={(e) => setFilterRegion(e.target.value)}
+              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+            >
+              <option value="all">All regions</option>
+              <option value="europe">Europe</option>
+              <option value="americas">Americas</option>
+              <option value="asia_pacific">Asia & Pacific</option>
+              <option value="africa">Africa</option>
+              <option value="middle_east">Middle East</option>
+            </select>
           </div>
         </div>
       </div>
@@ -626,6 +731,18 @@ export default function SitesMap({ searchQuery, profile }) {
           <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center font-black uppercase tracking-[0.5em]">
             Loading Geospatial Data...
           </div>
+        )}
+        {filterRegion !== 'all' && (
+          <button
+            type="button"
+            onClick={() => setFilterRegion('all')}
+            className="absolute top-3 right-3 z-[11] bg-black text-white border-2 border-white px-3 py-2 text-[10px] font-black uppercase shadow-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0h.5a2.5 2.5 0 002.5-2.5V8m0-4.414l-2-2M12 8V4a2 2 0 00-2-2H6a2 2 0 00-2 2v4" />
+            </svg>
+            Show full map
+          </button>
         )}
         <div className="absolute inset-0">
           <MapContainer
@@ -640,7 +757,8 @@ export default function SitesMap({ searchQuery, profile }) {
             className="h-full w-full"
             style={{ height: '100%', width: '100%' }}
           >
-          <MapBoundsEnforcer />
+          <MapBoundsEnforcer filterRegion={filterRegion} />
+          <MapRegionView filterRegion={filterRegion} />
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
