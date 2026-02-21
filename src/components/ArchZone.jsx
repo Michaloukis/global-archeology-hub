@@ -35,8 +35,19 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   const [siteDesc, setSiteDesc] = useState('');
   const [siteTour, setSiteTour] = useState('');
   const [siteVisibility, setSiteVisibility] = useState('public'); // 'private' | 'team' | 'student' | 'public'
+  const [siteCeramicCount, setSiteCeramicCount] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Ceramic counter (field tool: count sherds in search area)
+  const [ceramicCount, setCeramicCount] = useState(0);
+  const [isCeramicCounterOpen, setIsCeramicCounterOpen] = useState(false);
+  const [ceramicSessionLabel, setCeramicSessionLabel] = useState('');
+  const [ceramicDimensionLength, setCeramicDimensionLength] = useState('');
+  const [ceramicDimensionWidth, setCeramicDimensionWidth] = useState('');
+  const [currentSessionPieces, setCurrentSessionPieces] = useState([]); // { lat, lng, createdAt } per click
+  const [ceramicGeoError, setCeramicGeoError] = useState('');
+  const [ceramicSessions, setCeramicSessions] = useState([]); // { id, label, count, createdAt, lengthM?, widthM?, pieces? }
 
   // Social Hub panels: 'chat' | 'forum' | 'events' | null
   const [socialHubPanel, setSocialHubPanel] = useState(null);
@@ -76,6 +87,17 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         const migrated = [{ id: 'n' + Date.now(), title: 'Migrated note', content: legacy, updatedAt: new Date().toISOString() }];
         setSavedNotes(migrated);
         localStorage.setItem(key, JSON.stringify(migrated));
+      }
+    } catch (_) {}
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    try {
+      const raw = localStorage.getItem(`ceramic_sessions_${profile.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setCeramicSessions(parsed);
       }
     } catch (_) {}
   }, [profile?.id]);
@@ -267,6 +289,74 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
     logData('Notepad toggle', { isOpen: newState }, 'A');
   };
 
+  const handleCeramicCounterToggle = () => {
+    setIsCeramicCounterOpen(prev => !prev);
+  };
+
+  const persistCeramicSessions = (sessions) => {
+    if (!profile?.id) return;
+    try {
+      localStorage.setItem(`ceramic_sessions_${profile.id}`, JSON.stringify(sessions));
+    } catch (_) {}
+  };
+
+  const handleCeramicAddOne = () => {
+    setCeramicGeoError('');
+    const createdAt = new Date().toISOString();
+    if (!navigator.geolocation) {
+      setCurrentSessionPieces(p => [...p, { lat: null, lng: null, createdAt }]);
+      setCeramicCount(c => c + 1);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCurrentSessionPieces(p => [...p, { lat: pos.coords.latitude, lng: pos.coords.longitude, createdAt }]);
+        setCeramicCount(c => c + 1);
+      },
+      () => {
+        setCeramicGeoError('Location denied or unavailable');
+        setCurrentSessionPieces(p => [...p, { lat: null, lng: null, createdAt }]);
+        setCeramicCount(c => c + 1);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  };
+
+  const handleSaveCeramicSession = () => {
+    if (ceramicCount < 0) return;
+    const label = ceramicSessionLabel.trim() || `Session ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const session = {
+      id: 's' + Date.now(),
+      label,
+      count: ceramicCount,
+      createdAt: new Date().toISOString(),
+      lengthM: ceramicDimensionLength !== '' ? parseFloat(ceramicDimensionLength) : null,
+      widthM: ceramicDimensionWidth !== '' ? parseFloat(ceramicDimensionWidth) : null,
+      pieces: currentSessionPieces.length ? currentSessionPieces : undefined
+    };
+    const next = [session, ...ceramicSessions];
+    setCeramicSessions(next);
+    persistCeramicSessions(next);
+    setCeramicCount(0);
+    setCeramicSessionLabel('');
+    setCeramicDimensionLength('');
+    setCeramicDimensionWidth('');
+    setCurrentSessionPieces([]);
+    setCeramicGeoError('');
+  };
+
+  const handleUseCeramicSessionCount = (count) => {
+    setSiteCeramicCount(String(count));
+    setIsCeramicCounterOpen(false);
+    setIsSiteFormOpen(true);
+  };
+
+  const handleDeleteCeramicSession = (id) => {
+    const next = ceramicSessions.filter(s => s.id !== id);
+    setCeramicSessions(next);
+    persistCeramicSessions(next);
+  };
+
   const persistNotes = (notes) => {
     if (!profile?.id) return;
     try {
@@ -344,7 +434,8 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
             status: 'In Progress',
             created_by: profile.id,
             is_public: siteVisibility === 'public',
-            visibility: siteVisibility // 'public' | 'student' | 'team' | 'private'
+            visibility: siteVisibility, // 'public' | 'student' | 'team' | 'private'
+            ceramic_count: siteCeramicCount !== '' ? parseInt(siteCeramicCount, 10) : null
           }
         ]);
 
@@ -358,6 +449,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
       setSiteDesc('');
       setSiteTour('');
       setSiteVisibility('public');
+      setSiteCeramicCount('');
       setTimeout(() => setIsSiteFormOpen(false), 2000);
     } catch (error) {
       logData('Site creation error', { error: error.message }, 'B');
@@ -533,17 +625,18 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         <div className="space-y-6">
           <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Professional Tools</h3>
           <div className="grid grid-cols-2 gap-2">
-            {['Exclusive Map', 'Notepad', 'Compass', 'Data Upload', 'Report Syntax', '2D Illustration', '3D Illustration', '3D Viewer', 'Site Log', 'Field Sync'].map(item => (
+            {['Exclusive Map', 'Notepad', 'Compass', 'Ceramic Counter', 'Data Upload', 'Report Syntax', '2D Illustration', '3D Illustration', '3D Viewer', 'Site Log', 'Field Sync'].map(item => (
               <div 
                 key={item} 
                 onClick={
                   item === 'Exclusive Map' ? () => onNavigateToMap?.() :
                   item === 'Notepad' ? handleNotepadToggle : 
-                  item === 'Compass' ? handleCompassToggle : 
+                  item === 'Compass' ? handleCompassToggle :
+                  item === 'Ceramic Counter' ? handleCeramicCounterToggle :
                   undefined
                 }
                 className={`border-2 border-black p-3 hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all 
-                  ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`}
+                  ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`}
               >
                 {item}
               </div>
@@ -852,6 +945,31 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                 </select>
               </div>
 
+              <div className="space-y-2 border-2 border-black p-3 bg-amber-50">
+                <label className="text-[10px] font-black uppercase tracking-widest block">Ceramic pieces (count)</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={siteCeramicCount}
+                    onChange={(e) => setSiteCeramicCount(e.target.value)}
+                    className="w-32 border-2 border-black p-2 text-xs font-bold uppercase outline-none focus:bg-white"
+                    placeholder="0"
+                  />
+                  {ceramicCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSiteCeramicCount(String(ceramicCount))}
+                      className="text-[10px] font-black uppercase border-2 border-black px-3 py-2 hover:bg-black hover:text-white transition-all"
+                    >
+                      Use counter ({ceramicCount})
+                    </button>
+                  )}
+                </div>
+                <p className="text-[9px] font-black text-gray-500 uppercase">Optional. Use Ceramic Counter tool in the field, then paste here when registering the site.</p>
+              </div>
+
               <button
                 disabled={loading}
                 className="w-full bg-black text-white py-4 text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all disabled:bg-gray-200"
@@ -866,6 +984,132 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
               )}
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Ceramic Counter UI */}
+      {isCeramicCounterOpen && (
+        <div className="fixed top-24 right-8 w-[90%] md:w-80 max-h-[90vh] flex flex-col bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] z-[100] p-6">
+          <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
+            <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+              Ceramic Counter
+            </h4>
+            <button
+              onClick={handleCeramicCounterToggle}
+              className="text-xs font-black hover:bg-black hover:text-white px-2 py-1 border border-black transition-colors"
+            >
+              CLOSE [X]
+            </button>
+          </div>
+          <p className="text-[9px] font-black uppercase text-gray-500 mb-3">+1 records this piece and your current GPS location (allow location when prompted).</p>
+          <div className="flex flex-col items-center gap-3 mb-4">
+            <div className="w-24 h-24 border-4 border-black flex items-center justify-center bg-amber-50">
+              <span className="text-4xl font-black tabular-nums">{ceramicCount}</span>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleCeramicAddOne}
+                className="bg-black text-white px-6 py-3 text-sm font-black uppercase hover:bg-amber-600 transition-colors border-2 border-black"
+              >
+                +1
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCeramicCount(0); setCurrentSessionPieces([]); setCeramicGeoError(''); }}
+                className="border-2 border-black px-4 py-3 text-[10px] font-black uppercase hover:bg-gray-100 transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+            {currentSessionPieces.length > 0 && (
+              <p className="text-[9px] font-black uppercase text-amber-700">
+                {currentSessionPieces.filter(p => p.lat != null).length}/{currentSessionPieces.length} with location
+              </p>
+            )}
+            {ceramicGeoError && <p className="text-[9px] font-black uppercase text-red-600">{ceramicGeoError}</p>}
+          </div>
+          <div className="space-y-2 mb-3">
+            <label className="text-[9px] font-black uppercase text-gray-500 block">Site dimensions (optional)</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={ceramicDimensionLength}
+                onChange={(e) => setCeramicDimensionLength(e.target.value)}
+                placeholder="Length (m)"
+                className="flex-1 min-w-0 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-amber-50"
+              />
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={ceramicDimensionWidth}
+                onChange={(e) => setCeramicDimensionWidth(e.target.value)}
+                placeholder="Width (m)"
+                className="flex-1 min-w-0 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-amber-50"
+              />
+            </div>
+          </div>
+          <div className="space-y-2 mb-4">
+            <label className="text-[9px] font-black uppercase text-gray-500 block">Field / area (optional)</label>
+            <input
+              type="text"
+              value={ceramicSessionLabel}
+              onChange={(e) => setCeramicSessionLabel(e.target.value)}
+              placeholder="e.g. Grid A1, Trench 2"
+              className="w-full border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-amber-50"
+            />
+            <button
+              type="button"
+              onClick={handleSaveCeramicSession}
+              disabled={ceramicCount === 0}
+              className="w-full bg-amber-500 text-black py-2 text-[10px] font-black uppercase border-2 border-black hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Save session ({ceramicCount})
+            </button>
+          </div>
+          <div className="border-t-2 border-black pt-3 flex-1 min-h-0 flex flex-col">
+            <p className="text-[9px] font-black uppercase text-gray-500 mb-2">Saved sessions</p>
+            {ceramicSessions.length === 0 ? (
+              <p className="text-[9px] font-bold text-gray-400 uppercase">No sessions yet. Count and save above.</p>
+            ) : (
+              <ul className="space-y-2 overflow-y-auto max-h-48">
+                {ceramicSessions.map(s => (
+                  <li key={s.id} className="border-2 border-black p-2 bg-gray-50 flex justify-between items-center gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase truncate">{s.label}</p>
+                      <p className="text-[9px] text-gray-500">
+                        {s.count} pcs
+                        {(s.lengthM != null || s.widthM != null) && ` · ${s.lengthM ?? '?'}×${s.widthM ?? '?'} m`}
+                        {s.pieces?.length > 0 && ` · ${s.pieces.filter(p => p.lat != null).length} locations`}
+                        {' · '}{new Date(s.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleUseCeramicSessionCount(s.count)}
+                        className="text-[8px] font-black uppercase border border-black px-2 py-1 hover:bg-black hover:text-white"
+                      >
+                        Use
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCeramicSession(s.id)}
+                        className="text-[8px] font-black uppercase border border-red-600 text-red-600 px-2 py-1 hover:bg-red-600 hover:text-white"
+                      >
+                        Del
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <p className="text-[9px] font-black text-gray-400 uppercase mt-3 text-center">Use → opens Register New Expedition with this count.</p>
         </div>
       )}
 
