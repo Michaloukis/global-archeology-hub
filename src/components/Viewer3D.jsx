@@ -4,6 +4,10 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 
 function SceneContent({ modelObject }) {
   return (
@@ -42,38 +46,65 @@ export default function Viewer3D({ onClose, className = '', fullPage = false }) 
       setLoading(false);
     };
 
+    const onErr = (err) => {
+      setError(err?.message || 'Load failed');
+      cleanup();
+    };
+
     if (name.endsWith('.obj')) {
       const loader = new OBJLoader();
-      loader.load(
-        url,
-        (obj) => {
-          setModelObject(obj);
-          cleanup();
-        },
-        undefined,
-        (err) => {
-          setError(err?.message || 'Failed to load OBJ');
-          cleanup();
-        }
-      );
+      loader.load(url, (obj) => { setModelObject(obj); cleanup(); }, undefined, onErr);
     } else if (name.endsWith('.stl')) {
       const loader = new STLLoader();
       loader.load(
         url,
         (geometry) => {
           const mat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-          const mesh = new THREE.Mesh(geometry, mat);
-          setModelObject(mesh);
+          setModelObject(new THREE.Mesh(geometry, mat));
           cleanup();
         },
         undefined,
-        (err) => {
-          setError(err?.message || 'Failed to load STL');
+        onErr
+      );
+    } else if (name.endsWith('.glb') || name.endsWith('.gltf')) {
+      const loader = new GLTFLoader();
+      loader.load(
+        url,
+        (data) => {
+          setModelObject(data.scene);
           cleanup();
-        }
+        },
+        undefined,
+        onErr
+      );
+    } else if (name.endsWith('.fbx')) {
+      const loader = new FBXLoader();
+      loader.load(url, (obj) => { setModelObject(obj); cleanup(); }, undefined, onErr);
+    } else if (name.endsWith('.dae')) {
+      const loader = new ColladaLoader();
+      loader.load(
+        url,
+        (data) => {
+          setModelObject(data.scene);
+          cleanup();
+        },
+        undefined,
+        onErr
+      );
+    } else if (name.endsWith('.ply')) {
+      const loader = new PLYLoader();
+      loader.load(
+        url,
+        (geometry) => {
+          const mat = new THREE.MeshStandardMaterial({ color: 0x888888, vertexColors: geometry.hasAttribute('color') });
+          setModelObject(new THREE.Mesh(geometry, mat));
+          cleanup();
+        },
+        undefined,
+        onErr
       );
     } else {
-      setError('Use .obj or .stl');
+      setError('Use .obj, .stl, .glb, .gltf, .fbx, .dae, or .ply');
       cleanup();
     }
   }, []);
@@ -92,7 +123,7 @@ export default function Viewer3D({ onClose, className = '', fullPage = false }) 
           <input
             ref={fileInputRef}
             type="file"
-            accept=".obj,.stl"
+            accept=".obj,.stl,.glb,.gltf,.fbx,.dae,.ply"
             onChange={handleFileChange}
             className="hidden"
           />
@@ -100,9 +131,9 @@ export default function Viewer3D({ onClose, className = '', fullPage = false }) 
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={loading}
-            className="px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white disabled:opacity-50"
+            className="px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white disabled:opacity-50 min-h-[44px]"
           >
-            {loading ? 'Loading…' : 'Load .obj / .stl'}
+            {loading ? 'Loading…' : 'Load 3D model'}
           </button>
           {modelObject && (
             <button
