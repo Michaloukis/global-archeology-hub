@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import Viewer3D from './Viewer3D';
 
 const ArchZone = ({ profile, onNavigateToMap }) => {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
@@ -42,6 +43,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   // Ceramic counter (field tool: count sherds in search area)
   const [ceramicCount, setCeramicCount] = useState(0);
   const [isCeramicCounterOpen, setIsCeramicCounterOpen] = useState(false);
+  const [isViewer3DOpen, setIsViewer3DOpen] = useState(false);
   const [ceramicSessionLabel, setCeramicSessionLabel] = useState('');
   const [ceramicDimensionLength, setCeramicDimensionLength] = useState('');
   const [ceramicDimensionWidth, setCeramicDimensionWidth] = useState('');
@@ -633,10 +635,11 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                   item === 'Notepad' ? handleNotepadToggle : 
                   item === 'Compass' ? handleCompassToggle :
                   item === 'Ceramic Counter' ? handleCeramicCounterToggle :
+                  item === '3D Viewer' ? () => setIsViewer3DOpen(prev => !prev) :
                   undefined
                 }
                 className={`border-2 border-black p-3 hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all 
-                  ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`}
+                  ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen) || (item === '3D Viewer' && isViewer3DOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`}
               >
                 {item}
               </div>
@@ -1259,6 +1262,15 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                 <span className="text-[10px] font-black text-gray-400">CHARS: {note.length}</span>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3D Viewer modal */}
+      {isViewer3DOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-6 overflow-y-auto">
+          <div className="w-full max-w-4xl my-8">
+            <Viewer3D onClose={() => setIsViewer3DOpen(false)} />
           </div>
         </div>
       )}
