@@ -24,7 +24,7 @@ function SceneContent({ modelObject }) {
   );
 }
 
-export default function Viewer3D({ onClose, className = '' }) {
+export default function Viewer3D({ onClose, className = '', fullPage = false }) {
   const [modelObject, setModelObject] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -121,7 +121,7 @@ export default function Viewer3D({ onClose, className = '' }) {
         </div>
       </div>
       {error && <p className="text-[10px] font-bold text-red-600 uppercase px-3 py-1 bg-red-50">{error}</p>}
-      <div className="w-full h-[400px] min-h-[300px] bg-gray-900">
+      <div className={`w-full bg-gray-900 ${fullPage ? 'flex-1 min-h-[300px]' : 'h-[400px] min-h-[300px]'}`}>
         <Canvas camera={{ position: [5, 5, 5], fov: 50 }} gl={{ antialias: true }}>
           <SceneContent modelObject={modelObject} />
         </Canvas>

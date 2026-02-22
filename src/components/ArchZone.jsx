@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import Viewer3D from './Viewer3D';
 
 const ArchZone = ({ profile, onNavigateToMap }) => {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
@@ -43,7 +42,6 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   // Ceramic counter (field tool: count sherds in search area)
   const [ceramicCount, setCeramicCount] = useState(0);
   const [isCeramicCounterOpen, setIsCeramicCounterOpen] = useState(false);
-  const [isViewer3DOpen, setIsViewer3DOpen] = useState(false);
   const [ceramicSessionLabel, setCeramicSessionLabel] = useState('');
   const [ceramicDimensionLength, setCeramicDimensionLength] = useState('');
   const [ceramicDimensionWidth, setCeramicDimensionWidth] = useState('');
@@ -627,23 +625,45 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         <div className="space-y-6">
           <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Professional Tools</h3>
           <div className="grid grid-cols-2 gap-2">
-            {['Exclusive Map', 'Notepad', 'Compass', 'Ceramic Counter', 'Data Upload', 'Report Syntax', '2D Illustration', '3D Illustration', '3D Viewer', 'Site Log', 'Field Sync'].map(item => (
-              <div 
-                key={item} 
-                onClick={
-                  item === 'Exclusive Map' ? () => onNavigateToMap?.() :
-                  item === 'Notepad' ? handleNotepadToggle : 
-                  item === 'Compass' ? handleCompassToggle :
-                  item === 'Ceramic Counter' ? handleCeramicCounterToggle :
-                  item === '3D Viewer' ? () => setIsViewer3DOpen(prev => !prev) :
-                  undefined
-                }
-                className={`border-2 border-black p-3 hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all 
-                  ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen) || (item === '3D Viewer' && isViewer3DOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`}
-              >
-                {item}
-              </div>
-            ))}
+            {['Exclusive Map', 'Notepad', 'Compass', 'Ceramic Counter', 'Data Upload', 'Report Syntax', '2D Illustration', '3D Illustration', '3D Viewer', 'Site Log', 'Field Sync'].map(item => {
+              const isLink = item === '2D Illustration' || item === '3D Viewer';
+              const href = item === '2D Illustration' ? '/illustrator-2d' : item === '3D Viewer' ? '/viewer-3d' : null;
+              const className = `border-2 border-black p-3 hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all 
+                ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`;
+              if (isLink && href) {
+                return (
+                  <a
+                    key={item}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={className}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const w = window.open(href, '_blank', 'noopener,noreferrer');
+                      if (!w) window.location.href = href;
+                    }}
+                  >
+                    {item}
+                  </a>
+                );
+              }
+              return (
+                <div
+                  key={item}
+                  onClick={
+                    item === 'Exclusive Map' ? () => onNavigateToMap?.() :
+                    item === 'Notepad' ? handleNotepadToggle :
+                    item === 'Compass' ? handleCompassToggle :
+                    item === 'Ceramic Counter' ? handleCeramicCounterToggle :
+                    undefined
+                  }
+                  className={className}
+                >
+                  {item}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1266,14 +1286,6 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         </div>
       )}
 
-      {/* 3D Viewer modal */}
-      {isViewer3DOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-6 overflow-y-auto">
-          <div className="w-full max-w-4xl my-8">
-            <Viewer3D onClose={() => setIsViewer3DOpen(false)} />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
