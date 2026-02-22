@@ -5,6 +5,7 @@ import SitesMap from './components/SitesMap'
 import ArchZone from './components/ArchZone'
 import EducationZone from './components/EducationZone'
 import JournalTerminal from './components/JournalTerminal'
+import AIAssistant from './components/AIAssistant'
 
 // #region agent log
 const logData = (msg, data, hypothesisId) => {
@@ -277,6 +278,8 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {session && <AIAssistant profile={profile} />}
     </div>
   )
 }
