@@ -56,7 +56,8 @@ export default function AIAssistant({ profile }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-black text-white font-black text-lg shadow-lg border-2 border-gray-800 hover:bg-gray-800 transition-colors"
+        className="fixed z-50 w-16 h-16 sm:w-14 sm:h-14 rounded-full bg-black text-white font-black text-lg shadow-lg border-2 border-gray-800 hover:bg-gray-800 active:bg-gray-700 transition-colors touch-target"
+        style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))', right: 'max(1rem, env(safe-area-inset-right))' }}
         title="AI Assistant"
         aria-label="Toggle AI Assistant"
       >
@@ -64,10 +65,13 @@ export default function AIAssistant({ profile }) {
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-full max-w-md border-4 border-black bg-white shadow-2xl flex flex-col max-h-[70vh]">
-          <div className="p-3 border-b-2 border-black bg-gray-100 flex justify-between items-center">
+        <div
+          className="fixed z-50 left-0 right-0 sm:left-auto sm:right-6 w-full sm:max-w-md border-4 border-black bg-white shadow-2xl flex flex-col max-h-[70vh] sm:max-h-[75vh]"
+          style={{ bottom: 'max(5rem, calc(5rem + env(safe-area-inset-bottom)))' }}
+        >
+          <div className="p-3 border-b-2 border-black bg-gray-100 flex justify-between items-center min-h-[44px]">
             <span className="text-[10px] font-black uppercase tracking-widest">Hub Assistant · {role}</span>
-            <button type="button" onClick={() => setOpen(false)} className="text-black font-black text-lg leading-none px-2">×</button>
+            <button type="button" onClick={() => setOpen(false)} className="text-black font-black text-xl leading-none min-h-[44px] min-w-[44px] flex items-center justify-center -mr-1">×</button>
           </div>
           {!hasKey && (
             <div className="p-3 bg-amber-100 border-b border-black text-[10px] font-bold uppercase">
@@ -100,21 +104,21 @@ export default function AIAssistant({ profile }) {
             {error && <p className="text-[10px] text-red-600 font-bold uppercase">{error}</p>}
             <div ref={messagesEndRef} />
           </div>
-          <div className="p-3 border-t-2 border-black flex gap-2">
+          <div className="p-3 border-t-2 border-black flex gap-2 items-center" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
             <input
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
               placeholder="Ask the Hub..."
-              className="flex-1 px-3 py-2 border-2 border-black text-[10px] font-bold uppercase outline-none"
+              className="flex-1 min-h-[44px] px-3 py-3 border-2 border-black text-sm font-bold uppercase outline-none"
               disabled={!hasKey || loading}
             />
             <button
               type="button"
               onClick={sendMessage}
               disabled={!hasKey || loading || !input.trim()}
-              className="px-4 py-2 bg-black text-white text-[10px] font-black uppercase border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[44px] px-4 py-3 bg-black text-white text-[10px] font-black uppercase border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed touch-target"
             >
               Send
             </button>

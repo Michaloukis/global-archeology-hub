@@ -95,8 +95,8 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] p-6 font-sans">
-      <div className="w-full max-w-md border-2 border-black bg-white p-12 shadow-[8px_8px_0px_rgba(0,0,0,1)]">
+    <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] p-4 sm:p-6 font-sans">
+      <div className="w-full max-w-md border-2 border-black bg-white p-6 sm:p-12 shadow-[8px_8px_0px_rgba(0,0,0,1)]">
         
         <div className="mb-12">
           <h1 className="text-3xl font-black text-black tracking-tighter uppercase leading-none">
@@ -117,7 +117,7 @@ export default function Auth() {
                   placeholder="Official Name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-white border-2 border-black px-4 py-3 text-sm text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
+                  className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
                   required
                 />
               </div>
@@ -128,7 +128,7 @@ export default function Auth() {
                   placeholder="Unique ID"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-white border-2 border-black px-4 py-3 text-sm text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
+                  className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
                   required
                 />
               </div>
@@ -137,7 +137,7 @@ export default function Auth() {
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full bg-white border-2 border-black px-4 py-3 text-sm text-black focus:bg-gray-50 outline-none transition-all cursor-pointer font-bold appearance-none"
+                  className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all cursor-pointer font-bold appearance-none"
                   style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'black\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
                 >
                   <option value="Chief Archeologist">Chief Archeologist</option>
@@ -156,7 +156,7 @@ export default function Auth() {
               placeholder="id@institution.org"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-white border-2 border-black px-4 py-3 text-sm text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
+              className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
               required
             />
           </div>
@@ -168,14 +168,15 @@ export default function Auth() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-white border-2 border-black px-4 py-3 text-sm text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
+              className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
               required
             />
           </div>
 
           <button
+            type="submit"
             disabled={loading}
-            className="w-full bg-black text-white py-4 text-xs font-black uppercase tracking-widest transition-all hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400"
+            className="w-full min-h-[44px] bg-black text-white py-4 px-4 text-base font-black uppercase tracking-widest transition-all hover:bg-gray-800 active:bg-gray-700 disabled:bg-gray-200 disabled:text-gray-400"
           >
             {loading ? 'WAIT...' : isSignUp ? 'Create Profile' : 'Access Hub'}
           </button>
@@ -189,8 +190,9 @@ export default function Auth() {
 
         <div className="mt-12 pt-8 border-t-2 border-black text-center">
           <button
+            type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-black hover:underline text-[11px] font-black uppercase tracking-widest transition-all"
+            className="min-h-[44px] flex items-center justify-center w-full sm:w-auto text-black hover:underline text-[11px] font-black uppercase tracking-widest transition-all active:opacity-80"
           >
             {isSignUp ? 'Back to Login' : 'Register New Identity'}
           </button>

@@ -2,12 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-first: safe areas, touch, prevent iOS zoom on input focus */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
+  padding-left: var(--sal, 0);
+  padding-right: var(--sar, 0);
+  padding-bottom: var(--sab, 0);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Min 16px on inputs to prevent iOS zoom on focus */
+input, select, textarea, button {
+  font-size: max(16px, 1em);
+}
+
+/* Touch-friendly minimum tap target ~44px */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 

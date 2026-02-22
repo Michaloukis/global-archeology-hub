@@ -624,11 +624,11 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         {/* Tools */}
         <div className="space-y-6">
           <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Professional Tools</h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3 sm:gap-2">
             {['Exclusive Map', 'Notepad', 'Compass', 'Ceramic Counter', 'Data Upload', 'Report Syntax', '2D Illustration', '3D Illustration', '3D Viewer', 'Site Log', 'Field Sync'].map(item => {
               const isLink = item === '2D Illustration' || item === '3D Viewer';
               const href = item === '2D Illustration' ? '/illustrator-2d' : item === '3D Viewer' ? '/viewer-3d' : null;
-              const className = `border-2 border-black p-3 hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all 
+              const className = `border-2 border-black p-4 sm:p-3 min-h-[44px] flex items-center justify-center hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all active:bg-red-100 
                 ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`;
               if (isLink && href) {
                 return (
@@ -670,11 +670,12 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
 
       {/* Inbox Modal */}
       {isInboxOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-start justify-center p-6 overflow-y-auto">
-          <div className="bg-white border-4 border-black w-full max-w-4xl shadow-[16px_16px_0px_rgba(0,0,0,1)] p-10 relative my-10">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-start justify-center p-4 sm:p-6 overflow-y-auto" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="bg-white border-4 border-black w-full max-w-4xl shadow-[16px_16px_0px_rgba(0,0,0,1)] p-6 sm:p-10 relative my-4 sm:my-10">
             <button 
+              type="button"
               onClick={() => setIsInboxOpen(false)}
-              className="absolute top-6 right-6 font-black text-xs hover:text-red-600"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 min-h-[44px] min-w-[44px] flex items-center justify-center font-black text-xs hover:text-red-600 active:bg-gray-100 rounded"
             >
               CLOSE [X]
             </button>
@@ -1012,15 +1013,16 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
 
       {/* Ceramic Counter UI */}
       {isCeramicCounterOpen && (
-        <div className="fixed top-24 right-8 w-[90%] md:w-80 max-h-[90vh] flex flex-col bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] z-[100] p-6">
+        <div className="fixed z-[100] flex flex-col bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] max-h-[90vh] w-[calc(100%-2rem)] max-w-[90vw] sm:max-w-none sm:w-80 sm:top-24 sm:right-8 top-[max(5rem,env(safe-area-inset-top))] left-4 right-4 sm:left-auto p-6" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
           <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
             <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
               <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
               Ceramic Counter
             </h4>
             <button
+              type="button"
               onClick={handleCeramicCounterToggle}
-              className="text-xs font-black hover:bg-black hover:text-white px-2 py-1 border border-black transition-colors"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-black hover:bg-black hover:text-white px-3 py-2 border border-black transition-colors"
             >
               CLOSE [X]
             </button>
@@ -1034,14 +1036,14 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
               <button
                 type="button"
                 onClick={handleCeramicAddOne}
-                className="bg-black text-white px-6 py-3 text-sm font-black uppercase hover:bg-amber-600 transition-colors border-2 border-black"
+                className="min-h-[44px] bg-black text-white px-6 py-3 text-sm font-black uppercase hover:bg-amber-600 active:bg-amber-700 transition-colors border-2 border-black"
               >
                 +1
               </button>
               <button
                 type="button"
                 onClick={() => { setCeramicCount(0); setCurrentSessionPieces([]); setCeramicGeoError(''); }}
-                className="border-2 border-black px-4 py-3 text-[10px] font-black uppercase hover:bg-gray-100 transition-colors"
+                className="min-h-[44px] border-2 border-black px-4 py-3 text-[10px] font-black uppercase hover:bg-gray-100 active:bg-gray-200 transition-colors"
               >
                 Reset
               </button>
@@ -1138,15 +1140,16 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
 
       {/* Compass UI */}
       {isCompassOpen && (
-        <div className="fixed top-24 left-8 w-[90%] md:w-80 bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] z-[100] p-8 flex flex-col items-center">
-          <div className="flex justify-between items-center w-full mb-8 border-b-2 border-black pb-2">
+        <div className="fixed z-[100] bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] p-6 sm:p-8 flex flex-col items-center w-[calc(100%-2rem)] max-w-[90vw] sm:max-w-none sm:w-80 sm:top-24 sm:left-8 top-[max(5rem,env(safe-area-inset-top))] left-4 right-4" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="flex justify-between items-center w-full mb-6 sm:mb-8 border-b-2 border-black pb-2">
             <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
               <span className="w-2 h-2 bg-red-600 animate-pulse"></span>
               Field Compass // v1.0
             </h4>
             <button 
+              type="button"
               onClick={handleCompassToggle} 
-              className="text-xs font-black hover:bg-black hover:text-white px-2 py-1 border border-black transition-colors"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-black hover:bg-black hover:text-white px-3 py-2 border border-black transition-colors"
             >
               CLOSE [X]
             </button>
@@ -1202,29 +1205,30 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
 
       {/* Notepad UI - Saved notes + editor */}
       {isNotepadOpen && (
-        <div className="fixed top-24 right-8 w-[95%] max-w-2xl bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] z-[100] flex flex-col max-h-[85vh]">
-          <div className="flex justify-between items-center p-4 border-b-2 border-black">
+        <div className="fixed z-[100] flex flex-col bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] max-h-[85vh] w-[calc(100%-1rem)] max-w-[95vw] sm:max-w-2xl sm:top-24 sm:right-8 top-[max(5rem,env(safe-area-inset-top))] left-2 right-2 sm:left-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="flex justify-between items-center p-4 border-b-2 border-black min-h-[52px]">
             <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
               <span className="w-2 h-2 bg-red-600 animate-pulse"></span>
               Field Notepad // Saved notes
             </h4>
             <button
+              type="button"
               onClick={handleNotepadToggle}
-              className="text-xs font-black hover:bg-black hover:text-white px-2 py-1 border border-black transition-colors"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-black hover:bg-black hover:text-white px-3 py-2 border border-black transition-colors"
             >
               CLOSE [X]
             </button>
           </div>
-          <div className="flex flex-1 min-h-0">
-            <div className="w-44 shrink-0 border-r-2 border-black flex flex-col bg-gray-50">
+          <div className="flex flex-1 min-h-0 flex-col sm:flex-row">
+            <div className="w-full sm:w-44 shrink-0 border-b-2 sm:border-b-0 sm:border-r-2 border-black flex flex-row sm:flex-col bg-gray-50 overflow-x-auto sm:overflow-x-visible">
               <button
                 type="button"
                 onClick={handleNewNote}
-                className="p-2 border-b-2 border-black text-[10px] font-black uppercase bg-black text-white hover:bg-red-600 transition-colors"
+                className="min-h-[44px] shrink-0 p-3 sm:p-2 border-b-0 sm:border-b-2 border-r-2 sm:border-r-0 border-black text-[10px] font-black uppercase bg-black text-white hover:bg-red-600 active:bg-red-700 transition-colors"
               >
                 + New note
               </button>
-              <div className="flex-1 overflow-y-auto p-2">
+              <div className="flex-1 overflow-y-auto overflow-x-auto sm:overflow-x-visible p-2 flex sm:block gap-2 sm:gap-0 flex-row sm:flex-col">
                 {savedNotes.length === 0 ? (
                   <p className="text-[9px] font-bold text-gray-400 uppercase p-2">No saved notes</p>
                 ) : (
@@ -1233,8 +1237,8 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                       key={n.id}
                       type="button"
                       onClick={() => handleSelectNote(n)}
-                      className={`w-full text-left p-2 mb-1 border-2 text-[9px] font-black uppercase transition-colors ${
-                        activeNoteId === n.id ? 'border-black bg-red-600 text-white' : 'border-black bg-white hover:bg-red-50'
+                      className={`shrink-0 sm:shrink min-h-[44px] w-full min-w-[120px] sm:min-w-0 text-left p-3 sm:p-2 mb-0 sm:mb-1 border-2 text-[9px] font-black uppercase transition-colors ${
+                        activeNoteId === n.id ? 'border-black bg-red-600 text-white' : 'border-black bg-white hover:bg-red-50 active:bg-red-100'
                       }`}
                     >
                       <span className="block truncate">{n.title || 'Untitled'}</span>
@@ -1252,7 +1256,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                 value={noteTitle}
                 onChange={handleNoteTitleChange}
                 placeholder="Note title..."
-                className="w-full border-2 border-black p-2 mb-2 text-xs font-black uppercase outline-none focus:bg-gray-50"
+                className="w-full min-h-[44px] border-2 border-black p-3 mb-2 text-base font-black uppercase outline-none focus:bg-gray-50"
               />
               <textarea
                 value={note}
@@ -1265,7 +1269,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                   <button
                     type="button"
                     onClick={handleSaveNote}
-                    className="bg-black text-white px-3 py-2 text-[10px] font-black uppercase hover:bg-red-600 transition-colors"
+                    className="min-h-[44px] bg-black text-white px-4 py-3 text-[10px] font-black uppercase hover:bg-red-600 active:bg-red-700 transition-colors"
                   >
                     Save note
                   </button>
@@ -1273,7 +1277,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                     <button
                       type="button"
                       onClick={handleDeleteNote}
-                      className="border-2 border-red-600 text-red-600 px-3 py-2 text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-colors"
+                      className="min-h-[44px] border-2 border-red-600 text-red-600 px-4 py-3 text-[10px] font-black uppercase hover:bg-red-600 hover:text-white active:bg-red-700 transition-colors"
                     >
                       Delete
                     </button>

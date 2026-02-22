@@ -197,59 +197,59 @@ function App() {
   return (
     <div className="min-h-screen bg-white text-black font-sans">
       {/* Institutional Top Navigation */}
-      <header className={`border-b-4 border-black p-3 md:p-4 fixed top-0 left-0 right-0 bg-white z-50 transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-        <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
-          <div>
-            <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter leading-none cursor-pointer" onClick={() => setView('home')}>
+      <header className={`border-b-4 border-black p-3 md:p-4 fixed top-0 left-0 right-0 bg-white z-50 transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`} style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row justify-between items-start lg:items-end gap-3 md:gap-6">
+          <div className="w-full min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-4xl font-black uppercase tracking-tighter leading-none cursor-pointer select-none" onClick={() => setView('home')}>
               GLOBAL<br />ARCHEOLOGY HUB
             </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-6 text-[10px] font-black uppercase tracking-widest">
-                  <span className="bg-black text-white px-2 py-1">NAME: {profile?.full_name?.toUpperCase() || 'IDENTIFYING...'}</span>
-                  <span className="bg-black text-white px-2 py-1">USER: @{profile?.username?.toUpperCase() || 'N/A'}</span>
-                  <span className="bg-black text-white px-2 py-1">ACCESS: {profile?.role?.toUpperCase() || 'PENDING...'}</span>
-                  {isStudent && (
-                    <span className="bg-indigo-600 text-white px-2 py-1 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-white animate-pulse rounded-full"></span>
-                      LEVEL: {profile?.education_xp || 0} XP
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="mt-1.5 md:mt-2 flex flex-wrap items-center gap-2 md:gap-6 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
+              <span className="bg-black text-white px-2 py-1.5 truncate max-w-[140px] sm:max-w-none">NAME: {profile?.full_name?.toUpperCase() || '...'}</span>
+              <span className="bg-black text-white px-2 py-1.5 truncate max-w-[100px] sm:max-w-none">@{profile?.username?.toUpperCase() || 'N/A'}</span>
+              <span className="bg-black text-white px-2 py-1.5">ACCESS: {profile?.role?.toUpperCase() || '...'}</span>
+              {isStudent && (
+                <span className="bg-indigo-600 text-white px-2 py-1.5 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-white animate-pulse rounded-full shrink-0"></span>
+                  {profile?.education_xp || 0} XP
+                </span>
+              )}
+            </div>
+          </div>
 
-          <div className="flex flex-col md:flex-row gap-6 items-end w-full lg:w-auto">
-            {/* Navigation Search */}
-            <div className="relative border-2 border-black flex items-center bg-white w-full md:w-64">
-              <div className="pl-3 text-black">
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-6 items-stretch sm:items-end w-full lg:w-auto">
+            {/* Navigation Search - 44px min height for touch */}
+            <div className="relative border-2 border-black flex items-center bg-white w-full sm:max-w-[200px] md:w-64 min-h-[44px]">
+              <div className="pl-3 text-black shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
               <input
                 type="text"
-                placeholder="SYSTEM SEARCH..."
+                placeholder="SEARCH..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-2 text-[10px] font-black uppercase tracking-widest outline-none"
+                className="w-full px-3 py-3 sm:py-2 text-sm font-black uppercase tracking-widest outline-none min-w-0"
               />
             </div>
 
             {/* Zone-Based Menu */}
-            <nav className="flex border-2 border-black font-black text-[10px] uppercase tracking-widest overflow-hidden">
-              <button onClick={() => setView('home')} className={`px-3 py-2 border-r-2 border-black ${view === 'home' ? 'bg-black text-white' : 'hover:bg-gray-100'}`}>Homepage</button>
-              <button onClick={() => setView('map')} className={`px-3 py-2 border-r-2 border-black ${view === 'map' ? 'bg-black text-white' : 'hover:bg-gray-100'}`}>Map</button>
+            <nav className="flex border-2 border-black font-black text-[10px] uppercase tracking-widest overflow-x-auto shrink-0 [-webkit-overflow-scrolling:touch] scrollbar-hide">
+              <button onClick={() => setView('home')} className={`min-h-[44px] px-4 py-3 border-r-2 border-black whitespace-nowrap flex items-center justify-center ${view === 'home' ? 'bg-black text-white' : 'hover:bg-gray-100 active:bg-gray-200'}`}>Home</button>
+              <button onClick={() => setView('map')} className={`min-h-[44px] px-4 py-3 border-r-2 border-black whitespace-nowrap flex items-center justify-center ${view === 'map' ? 'bg-black text-white' : 'hover:bg-gray-100 active:bg-gray-200'}`}>Map</button>
               {isStudent && (
-                <button onClick={() => setView('education')} className={`px-3 py-2 border-r-2 border-black ${view === 'education' ? 'bg-black text-white' : 'hover:bg-indigo-50 text-indigo-600'}`}>Edu Lab</button>
+                <button onClick={() => setView('education')} className={`min-h-[44px] px-4 py-3 border-r-2 border-black whitespace-nowrap flex items-center justify-center ${view === 'education' ? 'bg-black text-white' : 'bg-indigo-50 text-indigo-600 active:bg-indigo-100'}`}>Edu Lab</button>
               )}
               {isArcheologist && (
-                <button onClick={() => setView('arch')} className={`px-3 py-2 border-r-2 border-black ${view === 'arch' ? 'bg-black text-white' : 'hover:bg-red-50 text-red-600'}`}>Arch Zone</button>
+                <button onClick={() => setView('arch')} className={`min-h-[44px] px-4 py-3 border-r-2 border-black whitespace-nowrap flex items-center justify-center ${view === 'arch' ? 'bg-black text-white' : 'bg-red-50 text-red-600 active:bg-red-100'}`}>Arch Zone</button>
               )}
-              <button onClick={handleLogout} className="px-3 py-2 hover:bg-black hover:text-white transition-colors">Logout</button>
+              <button onClick={handleLogout} className="min-h-[44px] px-4 py-3 hover:bg-black hover:text-white active:bg-gray-800 transition-colors whitespace-nowrap flex items-center justify-center">Logout</button>
             </nav>
           </div>
         </div>
       </header>
 
-          <main className="max-w-[1400px] mx-auto p-8 md:p-12 min-h-[70vh] pt-24 md:pt-32 text-left">
+          <main className="max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8 lg:p-12 min-h-[70vh] pt-20 sm:pt-24 md:pt-32 pb-6 text-left">
             {view === 'home' && <HomePage searchQuery={searchQuery} />}
             {view === 'map' && <SitesMap searchQuery={searchQuery} profile={profile} />}
             {view === 'education' && isStudent && <EducationZone profile={profile} onNavigateToMap={() => setView('map')} />}
@@ -257,8 +257,8 @@ function App() {
             {view === 'journal' && activeSiteId && <JournalTerminal siteId={activeSiteId} profile={profile} />}
           </main>
 
-      <footer className="bg-black text-white p-12 mt-20 border-t-8 border-gray-900">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 text-[10px] font-black uppercase tracking-[0.3em]">
+      <footer className="bg-black text-white p-6 sm:p-8 md:p-12 mt-12 md:mt-20 border-t-8 border-gray-900" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-12 text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em]">
           <div>
             <h4 className="text-gray-500 mb-4 tracking-normal font-bold">SYSTEM_INFO</h4>
             <p>© 2026 GLOBAL ARCHEOLOGY HUB</p>
