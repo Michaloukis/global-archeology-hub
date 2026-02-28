@@ -36,7 +36,7 @@ function extractProfileFromImage(image, steps = 80) {
   return points;
 }
 
-export default function Illustrator2D({ onClose, className = '' }) {
+export default function Illustrator2D({ onClose, onBack, className = '', fullPage = false, standalone = false }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [profilePoints, setProfilePoints] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -95,45 +95,48 @@ export default function Illustrator2D({ onClose, className = '' }) {
     : '';
 
   return (
-    <div className={`flex flex-col bg-white border-4 border-black overflow-hidden ${className}`}>
-      <div className="flex items-center justify-between gap-4 p-3 border-b-2 border-black bg-gray-100 flex-wrap">
-        <span className="text-[10px] font-black uppercase tracking-widest">2D Illustrator // Arch Zone</span>
+    <div className={`flex flex-col bg-white overflow-hidden ${standalone ? '' : 'border-4 border-black'} ${className}`}>
+      <div className={`flex items-center justify-between gap-4 p-3 flex-wrap shrink-0 ${standalone ? 'border-b border-[#e0ddd6] bg-[#faf9f7]' : 'border-b-2 border-black bg-gray-100'}`}>
+        {!standalone && <span className="text-[10px] font-black uppercase tracking-widest">2D Illustrator // Arch Zone</span>}
         <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageLoad}
-            className="hidden"
-          />
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white">
-            From photo
-          </button>
-          <button
-            type="button"
-            onClick={handleExtractProfile}
-            disabled={!imageUrl || loading}
-            className="px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white disabled:opacity-50"
-          >
-            {loading ? '…' : 'Extract profile'}
-          </button>
-          <button type="button" onClick={handleClear} className="px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-red-600 hover:text-white hover:border-red-600">
-            Clear
-          </button>
-          <button type="button" onClick={handleExportSVG} disabled={!pathD} className="px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white disabled:opacity-50">
-            Export SVG
-          </button>
-          {onClose && (
-            <button type="button" onClick={onClose} className="px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white">
-              Close
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageLoad}
+              className="hidden"
+            />
+            <button type="button" onClick={() => fileInputRef.current?.click()} className={standalone ? 'px-3 py-1.5 border border-[#ccc] bg-white text-xs font-medium hover:bg-gray-50' : 'px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white'}>
+              From photo
             </button>
-          )}
+            <button
+              type="button"
+              onClick={handleExtractProfile}
+              disabled={!imageUrl || loading}
+              className={standalone ? 'px-3 py-1.5 border border-[#ccc] bg-white text-xs font-medium hover:bg-gray-50 disabled:opacity-50' : 'px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white disabled:opacity-50'}
+            >
+              {loading ? '…' : 'Extract profile'}
+            </button>
+            <button type="button" onClick={handleClear} className={standalone ? 'px-3 py-1.5 border border-[#ccc] bg-white text-xs font-medium hover:bg-gray-50 text-red-700' : 'px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-red-600 hover:text-white hover:border-red-600'}>
+              Clear
+            </button>
+            <button type="button" onClick={handleExportSVG} disabled={!pathD} className={standalone ? 'px-3 py-1.5 border border-[#ccc] bg-white text-xs font-medium hover:bg-gray-50 disabled:opacity-50' : 'px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white disabled:opacity-50'}>
+              Export SVG
+            </button>
+            {onClose && (
+              <button type="button" onClick={onClose} className="px-3 py-1.5 border-2 border-black text-[10px] font-black uppercase hover:bg-black hover:text-white">
+                Close
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="p-4 flex flex-col items-center">
-        <p className="text-[9px] font-bold text-gray-500 uppercase mb-2 w-full">Side-view photo, plain background → Extract profile for silhouette</p>
-        <div className="w-full max-w-full overflow-auto border-2 border-black bg-gray-100" style={{ width: SVG_WIDTH, height: SVG_HEIGHT }}>
-          <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} width="100%" height="100%" className="block">
+      <div className={`flex flex-col ${fullPage ? 'flex-1 min-h-0 p-4' : 'p-4'} items-center`}>
+        <p className="text-[9px] font-bold text-gray-500 uppercase mb-2 w-full shrink-0">Side-view photo, plain background → Extract profile for silhouette</p>
+        <div
+          className={`border-2 border-black bg-gray-100 overflow-auto ${fullPage ? 'flex-1 min-w-0 min-h-0 w-full flex items-center justify-center' : ''}`}
+          style={fullPage ? { minHeight: 200 } : { width: SVG_WIDTH, height: SVG_HEIGHT }}
+        >
+          <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} width="100%" height="100%" className="block" preserveAspectRatio="xMidYMid meet">
             {imageUrl && (
               <image href={imageUrl} width={SVG_WIDTH} height={SVG_HEIGHT} preserveAspectRatio="xMidYMid slice" opacity="0.4" />
             )}
