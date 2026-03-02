@@ -15,6 +15,10 @@ const DefaultIcon = L.icon({
 })
 L.Marker.prototype.options.icon = DefaultIcon
 
+function siteVisibility(site) {
+  return site?.visibility || (site?.is_public === false ? 'private' : 'public')
+}
+
 const DEFAULT_SITES = [
   { id: 1, name: 'Giza Plateau', lat: 29.9792, lng: 31.1342, status: 'Finished' },
   { id: 2, name: 'Acropolis of Athens', lat: 37.9715, lng: 23.7257, status: 'Finished' },
@@ -40,6 +44,11 @@ export default function MiniMapWidget({ profile, onOpenMap, embedded = false }) 
   const [sites, setSites] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const isChief = profile?.role === 'Chief Archeologist'
+  const isFieldArch = profile?.role === 'Field Archeologist'
+  const isArcheologist = isChief || isFieldArch
+  const isStudent = profile?.role === 'Student'
+
   useEffect(() => {
     let cancelled = false
     async function fetchSites() {
@@ -49,16 +58,63 @@ export default function MiniMapWidget({ profile, onOpenMap, embedded = false }) 
           if (!cancelled) setLoading(false)
           return
         }
-        const res = await supabase.from('sites').select('id,name,lat,lng,status,visibility,is_public')
-        const data = (res.data || []).filter(s => {
-          const hasCoords = typeof s?.lat === 'number' && typeof s?.lng === 'number'
-          if (!hasCoords) return false
-          const vis = s?.visibility ?? (s?.is_public === false ? 'private' : 'public')
-          if (vis === 'public') return true
-          if (vis === 'student') return profile?.role === 'Student' || profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist'
-          return false
+        let data = []
+        let error = null
+        const publicOnly = !isChief && !isFieldArch
+        if (publicOnly) {
+          const res = await supabase.from('sites').select('*')
+          data = (res.data || []).filter(s => {
+            const v = siteVisibility(s)
+            if (v === 'public') return true
+            if (v === 'student') return isStudent || isArcheologist
+            return false
+          })
+          error = res.error
+        } else if (isChief && profile?.id) {
+          const [publicRes, exclusiveRes] = await Promise.all([
+            supabase.from('sites').select('*'),
+            supabase.from('sites').select('*').or('is_public.eq.true,created_by.eq.' + profile.id)
+          ])
+          const publicData = (publicRes.data || []).filter(s => {
+            const v = siteVisibility(s)
+            return v === 'public' || (v === 'student' && isArcheologist)
+          })
+          const exclusiveData = (exclusiveRes.data || []).filter(s => siteVisibility(s) === 'team' || s.created_by === profile.id)
+          const byId = new Map()
+          publicData.forEach(s => byId.set(s.id, s))
+          exclusiveData.forEach(s => byId.set(s.id, s))
+          data = [...byId.values()]
+          error = publicRes.error || exclusiveRes.error
+        } else if (isFieldArch && profile?.id) {
+          const { data: reg } = await supabase.from('Registry').select('site_id').eq('field_arch_id', profile.id).eq('status', 'Approved')
+          const siteIds = [...new Set((reg || []).map(r => r.site_id).filter(Boolean))]
+          const [allRes, privateRes] = await Promise.all([
+            supabase.from('sites').select('*'),
+            siteIds.length > 0 ? supabase.from('sites').select('*').in('id', siteIds) : { data: [] }
+          ])
+          const byId = new Map()
+          ;(allRes.data || []).filter(s => {
+            const v = siteVisibility(s)
+            return v === 'public' || (v === 'student' && isArcheologist) || v === 'team'
+          }).forEach(s => { byId.set(s.id, s) })
+          ;(privateRes.data || []).forEach(s => { byId.set(s.id, s) })
+          data = [...byId.values()]
+          error = allRes.error || privateRes.error
+        } else {
+          const res = await supabase.from('sites').select('*')
+          data = (res.data || []).filter(s => siteVisibility(s) === 'public')
+          error = res.error
+        }
+        const withCoords = (list) => (list || []).map(s => {
+          if (typeof s?.lat === 'number' && typeof s?.lng === 'number') return s
+          const id = Number(s?.id) || 0
+          return { ...s, lat: 15 + (id % 35) - 5, lng: (id * 37) % 360 - 180 }
         })
-        if (!cancelled) setSites(data.length ? data : DEFAULT_SITES)
+        if (error) {
+          if (!cancelled) setSites(DEFAULT_SITES)
+        } else {
+          if (!cancelled) setSites(data.length ? withCoords(data) : DEFAULT_SITES)
+        }
       } catch (_) {
         if (!cancelled) setSites(DEFAULT_SITES)
       } finally {
@@ -67,7 +123,7 @@ export default function MiniMapWidget({ profile, onOpenMap, embedded = false }) 
     }
     fetchSites()
     return () => { cancelled = true }
-  }, [profile?.role])
+  }, [profile?.id, profile?.role])
 
   const sitesWithCoords = (sites.length ? sites : DEFAULT_SITES).filter(
     s => typeof s?.lat === 'number' && typeof s?.lng === 'number'

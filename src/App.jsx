@@ -250,6 +250,8 @@ const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', archbot:
 const WIDGET_SIZES = ['small', 'medium', 'large']
 const SIZE_CLASS = { small: 'h-[100px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
 const SIZE_CLASS_CONTENT = { small: 'min-h-[120px]', medium: 'min-h-[180px]', large: 'min-h-[260px]' }
+/** Fixed height so ArchBot inner content can fill and avoid bottom gap */
+const SIZE_CLASS_ARCHBOT = { small: 'h-[120px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
 const DEFAULT_HEIGHTS = { small: 100, medium: 180, large: 260 }
 const WIDGET_MIN_H = 80
 const WIDGET_MAX_H = 480
@@ -265,9 +267,10 @@ function snapToGrid(value, step, min, max) {
 const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'archbot'], ['global-events']]
 
 function getDefaultWidgetPreferences() {
+  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot'].includes(id) ? 'large' : 'medium')
   return {
     visible: Object.fromEntries(WIDGET_IDS.map(id => [id, true])),
-    size: Object.fromEntries(WIDGET_IDS.map(id => [id, 'medium'])),
+    size: Object.fromEntries(WIDGET_IDS.map(id => [id, defaultSize(id)])),
     customHeight: {},
     customWidth: {},
     lockToGrid: true,
@@ -320,7 +323,7 @@ const WIDGET_ICONS = {
   'global-events': 'bell'
 }
 
-function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, onResize, onResizeWidth, onRemove, onDragHandleStart, onDragHandleEnd, sizeKey, sizeClassMap, contentClassMap, children }) {
+function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, onResize, onResizeWidth, onRemove, onDragHandleStart, onDragHandleEnd, sizeKey, sizeClassMap, contentClassMap, noPadding, children }) {
   const boxRef = useRef(null)
   const resizeStartRef = useRef({ x: 0, y: 0, w: 0, h: 0, handle: '' })
 
@@ -398,7 +401,7 @@ function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, 
     : `shrink-0 flex flex-col ${sizeClassMap[sizeKey] || sizeClassMap.medium}`
 
   return (
-    <div ref={boxRef} className={`relative bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 box-border ${className}`} style={hasStyle ? style : undefined}>
+    <div ref={boxRef} className={`relative bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg ${noPadding ? 'p-0' : 'p-2.5'} box-border ${className}`} style={hasStyle ? style : undefined}>
       {editMode && (
         <>
           {onDragHandleStart && (
@@ -426,7 +429,7 @@ function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, 
           )}
         </>
       )}
-      <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden ${contentClassMap ? (contentClassMap[sizeKey] || '') : ''}`}>
+      <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col ${contentClassMap ? (contentClassMap[sizeKey] || '') : ''}`}>
         {children}
       </div>
     </div>
@@ -436,6 +439,7 @@ function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, 
 const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, setWidgetPreferences }) => {
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [galleryDragId, setGalleryDragId] = useState(null)
+  const [saveFeedback, setSaveFeedback] = useState(false)
   const undoSnapshotRef = useRef(null)
   const visible = widgetPreferences?.visible ?? getDefaultWidgetPreferences().visible
   const size = widgetPreferences?.size ?? getDefaultWidgetPreferences().size
@@ -516,6 +520,16 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, set
       saveWidgetPreferences(next)
       setWidgetPreferences(next)
     }
+  }
+  const handleLoadDefaults = () => {
+    const next = getDefaultWidgetPreferences()
+    saveWidgetPreferences(next)
+    setWidgetPreferences(next)
+  }
+  const handleSaveLayout = () => {
+    saveWidgetPreferences(widgetPreferences)
+    setSaveFeedback(true)
+    setTimeout(() => setSaveFeedback(false), 2000)
   }
 
   const setVisible = (id, value) => {
@@ -695,13 +709,14 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, set
                           onDragHandleStart={customizeOpen ? onReorderDragStart(id) : undefined}
                           onDragHandleEnd={customizeOpen ? onReorderDragEnd : undefined}
                           sizeKey={size[id]}
-                          sizeClassMap={id === 'archbot' || id === 'global-events' ? SIZE_CLASS_CONTENT : SIZE_CLASS}
+                          sizeClassMap={id === 'archbot' ? SIZE_CLASS_ARCHBOT : id === 'global-events' ? SIZE_CLASS_CONTENT : SIZE_CLASS}
                           contentClassMap={null}
+                          noPadding={id === 'archbot'}
                         >
                           {id === 'minimap' && <MiniMapWidget profile={profile} onOpenMap={onOpenMap} />}
                           {id === 'quickstats' && <QuickStatsWidget profile={profile} onOpenMap={onOpenMap} />}
                           {id === 'archbot' && (
-                            <div className="h-full min-h-[180px]">
+                            <div className="flex-1 min-h-0 flex flex-col min-w-0">
                               <ArchBotChatBox profile={profile} />
                             </div>
                           )}
@@ -775,6 +790,22 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, set
                 title="Revert widget layout to when you opened this panel"
               >
                 Undo
+              </button>
+              <button
+                type="button"
+                onClick={handleLoadDefaults}
+                className="text-xs font-medium text-ink/70 hover:text-ink px-2 py-1 rounded-lg hover:bg-ink/10"
+                title="Reset to default widgets, layout, and sizes"
+              >
+                Default layout
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveLayout}
+                className="text-xs font-medium text-ink/70 hover:text-ink px-2 py-1 rounded-lg hover:bg-ink/10 min-w-[4rem]"
+                title="Save current widget layout"
+              >
+                {saveFeedback ? 'Saved!' : 'Save'}
               </button>
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input

@@ -51,8 +51,8 @@ export default function ArchBotChatBox({ profile }) {
   const hasKey = !!import.meta.env.VITE_GROQ_API_KEY
 
   return (
-    <div className="flex flex-col h-full min-h-[180px] bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg overflow-hidden">
-      <div className="p-1.5 border-b border-ink/20 bg-white/60 shrink-0">
+    <div className="flex flex-col h-full w-full min-h-0 min-w-0 bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg overflow-hidden">
+      <div className="px-2 py-1.5 border-b border-ink/20 bg-white/60 shrink-0 min-w-0">
         <h3 className="text-[10px] font-black uppercase tracking-tight text-ink">ArchBot</h3>
         <p className="text-[8px] font-bold text-ink/60 uppercase">Hub AI · {role}</p>
       </div>
@@ -61,9 +61,9 @@ export default function ArchBotChatBox({ profile }) {
           Set VITE_GROQ_API_KEY in .env to enable.
         </div>
       )}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 min-h-0">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-1.5 px-2 space-y-1.5 min-h-0 min-w-0">
         {messages.length === 0 && (
-          <p className="text-[10px] text-ink/60 font-bold uppercase">Ask about fieldwork, sites, or methods.</p>
+          <p className="text-[10px] text-ink/60 font-bold uppercase break-words">Ask about fieldwork, sites, or methods.</p>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`text-[11px] ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
@@ -82,14 +82,14 @@ export default function ArchBotChatBox({ profile }) {
         {error && <p className="text-[9px] text-red-600 font-bold uppercase">{error}</p>}
         <div ref={messagesEndRef} />
       </div>
-      <div className="p-1.5 border-t border-ink/20 bg-white/60 flex gap-1 items-center shrink-0">
+      <div className="px-2 py-1.5 border-t border-ink/20 bg-white/60 flex gap-1 items-center shrink-0 min-w-0">
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
           placeholder="Ask ArchBot…"
-          className="flex-1 min-h-[32px] px-2 py-1 border border-ink/30 rounded text-[10px] font-medium text-ink outline-none focus:border-ink bg-white/80"
+          className="flex-1 min-w-0 min-h-[32px] px-2 py-1 border border-ink/30 rounded text-[10px] font-medium text-ink outline-none focus:border-ink bg-white/80"
           disabled={!hasKey || loading}
         />
         <button
