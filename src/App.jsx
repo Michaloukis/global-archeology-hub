@@ -634,7 +634,12 @@ function App() {
 
       {/* Mobile: header + main + curved bottom nav (< 768px) */}
       <div className="md:hidden flex flex-col min-h-screen bg-[#f8f3e8]">
-        <header className="fixed top-0 left-0 right-0 z-50 bg-[#f8f3e8]/95 backdrop-blur-sm border-b border-ink/10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <header
+          className={`fixed top-0 left-0 right-0 z-50 bg-[#f8f3e8]/95 backdrop-blur-sm border-b border-ink/10 transition-transform duration-300 ease-out ${
+            isToolRoute ? '-translate-y-full' : 'translate-y-0'
+          }`}
+          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+        >
           <div className="px-4 pb-3">
             <h1 className="text-center text-lg font-bold text-ink">Archeology Hub</h1>
             <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/80 border border-ink/20 px-3 py-2.5 shadow-sm">
@@ -656,21 +661,25 @@ function App() {
         </header>
         <main
           ref={mobileMainRef}
-          className="flex-1 pt-[7.5rem] overflow-y-auto"
+          className={`flex-1 overflow-y-auto transition-[padding] duration-300 ease-out ${isToolRoute ? 'pt-0' : 'pt-[7.5rem]'}`}
           onTouchStart={handleMobileTouchStart}
           onTouchMove={handleMobileTouchMove}
           onTouchEnd={handleMobileTouchEnd}
         >
-          {view === 'home' && <MobileDashboard searchQuery={searchQuery} setSearchQuery={setSearchQuery} profile={profile} onOpenMap={() => setView('map')} />}
-          {view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
-          {view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
-          {view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
-          {view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
-          {view === 'team' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
-          {view === 'social' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
+          {location.pathname === '/viewer-3d' && <Viewer3DPage />}
+          {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
+          {!isToolRoute && view === 'home' && <MobileDashboard searchQuery={searchQuery} setSearchQuery={setSearchQuery} profile={profile} onOpenMap={() => setView('map')} />}
+          {!isToolRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
+          {!isToolRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
+          {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
+          {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
+          {!isToolRoute && view === 'team' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
+          {!isToolRoute && view === 'social' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
         </main>
         <nav
-          className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-sm border-t border-ink/10 rounded-t-3xl shadow-[0_-4px_20px_rgba(44,40,37,0.06)]"
+          className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-sm border-t border-ink/10 rounded-t-3xl shadow-[0_-4px_20px_rgba(44,40,37,0.06)] transition-transform duration-300 ease-out ${
+            isToolRoute ? 'translate-y-full' : 'translate-y-0'
+          }`}
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))', paddingTop: '0.75rem' }}
         >
           <button type="button" onClick={() => setView('home')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'home' ? 'text-ink' : 'text-ink/50'}`} aria-label="Home">

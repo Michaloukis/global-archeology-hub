@@ -57,8 +57,9 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   const [socialHubPanel, setSocialHubPanel] = useState(null);
 
   const [archSearch, setArchSearch] = useState('');
-  const [showToolsPanel, setShowToolsPanel] = useState(false);
   const [showArchivesPanel, setShowArchivesPanel] = useState(false);
+  const [archView, setArchView] = useState('dashboard'); // 'dashboard' | 'tools'
+  const [activeTool, setActiveTool] = useState(null); // 'map' | 'notepad' | 'compass' | 'ceramic' | null (from tools tab)
 
   // #region agent log
   const logData = (msg, data, hypothesisId) => {
@@ -490,8 +491,227 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   const sampleDates = [10, 11, 12, 13, 14, 15];
   const highlightedDates = [12, 13, 14];
 
+  const professionalTools = [
+    { id: 'map', label: 'Exclusive Map', icon: 'map', action: () => setActiveTool('map') },
+    { id: 'notepad', label: 'Notepad', icon: 'notepad', action: () => setActiveTool('notepad') },
+    { id: 'compass', label: 'Compass', icon: 'compass', action: () => setActiveTool('compass') },
+    { id: 'ceramic', label: 'Ceramic Counter', icon: 'counter', action: () => setActiveTool('ceramic') },
+    { id: 'upload', label: 'Data Upload', icon: 'upload' },
+    { id: 'report', label: 'Report Syntax', icon: 'document' },
+    { id: '2d', label: '2D Illustration', icon: 'canvas', action: () => navigate('/illustrator-2d') },
+    { id: '3d-ill', label: '3D Illustration', icon: 'cube' },
+    { id: '3d-view', label: '3D Viewer', icon: 'cube', action: () => navigate('/viewer-3d') },
+    { id: 'sitelog', label: 'Site Log', icon: 'clipboard' },
+    { id: 'sync', label: 'Field Sync', icon: 'sync' },
+  ];
+
+  const ToolIcon = ({ name, className = 'w-8 h-8' }) => {
+    const icons = {
+      map: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" />,
+      notepad: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
+      compass: <><circle cx="12" cy="12" r="9" strokeWidth={2} /><path strokeLinecap="round" strokeWidth={2} d="M12 3v4M12 17v4M3 12h4M17 12h4M5.64 5.64l2.83 2.83M15.53 15.53l2.83 2.83M5.64 18.36l2.83-2.83M15.53 8.47l2.83-2.83" /></>,
+      counter: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16" />,
+      upload: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />,
+      document: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
+      canvas: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />,
+      cube: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />,
+      clipboard: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />,
+      sync: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />,
+    };
+    return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">{icons[name] || icons.document}</svg>;
+  };
+
+  const fullScreenBackButton = (
+    <button
+      type="button"
+      onClick={() => setActiveTool(null)}
+      className="flex items-center gap-1.5 text-ink font-medium text-sm min-h-[44px] px-2 -ml-2"
+    >
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+      Back to tools
+    </button>
+  );
+
+  if (archView === 'tools' && activeTool) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-white flex flex-col" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+        <div className="flex items-center border-b border-ink/20 px-4 py-2 shrink-0">
+          {fullScreenBackButton}
+        </div>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {activeTool === 'map' && (
+            <div className="flex-1 min-h-0 flex flex-col p-4">
+              <div className="rounded-xl overflow-hidden border border-ink/20 flex-1 min-h-0 relative z-0 isolate">
+                <MiniMapWidget profile={profile} onOpenMap={onNavigateToMap} />
+              </div>
+              <button type="button" onClick={() => onNavigateToMap?.()} className="mt-4 w-full py-3 rounded-xl bg-ink text-white text-sm font-semibold">
+                Open full map
+              </button>
+            </div>
+          )}
+          {activeTool === 'notepad' && (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex justify-between items-center p-4 border-b-2 border-black shrink-0">
+                <h4 className="text-xs font-black uppercase tracking-widest">Field Notepad</h4>
+              </div>
+              <div className="flex flex-1 min-h-0 flex-col sm:flex-row overflow-hidden">
+                <div className="w-full sm:w-44 shrink-0 border-b-2 sm:border-b-0 sm:border-r-2 border-black flex flex-row sm:flex-col bg-gray-50 overflow-x-auto sm:overflow-x-visible">
+                  <button type="button" onClick={handleNewNote} className="min-h-[44px] shrink-0 p-3 sm:p-2 border-b-0 sm:border-b-2 border-r-2 sm:border-r-0 border-black text-[10px] font-black uppercase bg-black text-white hover:bg-red-600">
+                    + New note
+                  </button>
+                  <div className="flex-1 overflow-y-auto p-2 flex sm:block gap-2 sm:gap-0 flex-row sm:flex-col">
+                    {savedNotes.length === 0 ? (
+                      <p className="text-[9px] font-bold text-gray-400 uppercase p-2">No saved notes</p>
+                    ) : (
+                      savedNotes.map((n) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => handleSelectNote(n)}
+                          className={`shrink-0 sm:shrink min-h-[44px] w-full min-w-[120px] sm:min-w-0 text-left p-3 sm:p-2 mb-0 sm:mb-1 border-2 text-[9px] font-black uppercase transition-colors ${activeNoteId === n.id ? 'border-black bg-red-600 text-white' : 'border-black bg-white hover:bg-red-50'}`}
+                        >
+                          <span className="block truncate">{n.title || 'Untitled'}</span>
+                          <span className="block text-[7px] opacity-70 mt-0.5">{new Date(n.updatedAt).toLocaleDateString()}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
+                  <input type="text" value={noteTitle} onChange={handleNoteTitleChange} placeholder="Note title..." className="w-full min-h-[44px] border-2 border-black p-3 mb-2 text-base font-black uppercase outline-none focus:bg-gray-50" />
+                  <textarea value={note} onChange={handleNoteChange} placeholder="Enter field observations..." className="flex-1 min-h-[200px] w-full bg-gray-50 border-2 border-black p-4 text-xs font-bold uppercase tracking-wider outline-none focus:bg-white resize-none" />
+                  <div className="flex justify-between items-center gap-2 mt-3 flex-wrap">
+                    <div className="flex gap-2">
+                      <button type="button" onClick={handleSaveNote} className="min-h-[44px] bg-black text-white px-4 py-3 text-[10px] font-black uppercase hover:bg-red-600">Save note</button>
+                      {activeNoteId && (
+                        <button type="button" onClick={handleDeleteNote} className="min-h-[44px] border-2 border-red-600 text-red-600 px-4 py-3 text-[10px] font-black uppercase hover:bg-red-600 hover:text-white">Delete</button>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-black text-gray-400">CHARS: {note.length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {activeTool === 'compass' && (
+            <div className="flex-1 overflow-y-auto flex flex-col items-center p-6">
+              <div className="relative w-48 h-48 border-4 border-black rounded-full flex items-center justify-center bg-gray-50 shadow-inner">
+                <div className="absolute inset-0 transition-transform duration-100 ease-linear" style={{ transform: `rotate(${-heading}deg)` }}>
+                  <span className="absolute top-2 left-1/2 -translate-x-1/2 font-black text-red-600">N</span>
+                  <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-black">S</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 font-black">W</span>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 font-black">E</span>
+                  {[...Array(12)].map((_, i) => (
+                    <div key={i} className="absolute top-0 left-1/2 w-0.5 h-3 bg-black -translate-x-1/2 origin-[0_96px]" style={{ transform: `rotate(${i * 30}deg)` }} />
+                  ))}
+                </div>
+                <div className="relative w-1 h-32 bg-red-600 z-10 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:border-l-[6px] before:border-l-transparent before:border-r-[6px] before:border-r-transparent before:border-b-[12px] before:border-b-red-600 shadow-lg"></div>
+                <div className="absolute w-4 h-4 bg-black rounded-full border-2 border-white z-20"></div>
+              </div>
+              <div className="mt-8 text-center">
+                <div className="text-3xl font-black italic">{Math.round(heading)}°</div>
+                <div className="text-[10px] font-black text-gray-400 mt-1 uppercase">{hasOrientation ? 'SATELLITE_SYNC_ACTIVE' : 'CALIBRATING_SENSORS...'}</div>
+              </div>
+              <div className="mt-6 w-full p-3 bg-gray-50 border-2 border-black border-dashed text-[9px] font-bold text-center uppercase">
+                {compassError ? <span className="text-red-600">{compassError}</span> : hasOrientation ? 'Compass calibrated.' : 'Waiting for device orientation data.'}
+              </div>
+            </div>
+          )}
+          {activeTool === 'ceramic' && (
+            <div className="flex-1 overflow-y-auto p-6">
+              <p className="text-[9px] font-black uppercase text-gray-500 mb-3">+1 records this piece and your current GPS location.</p>
+              <div className="flex flex-col items-center gap-3 mb-4">
+                <div className="w-24 h-24 border-4 border-black flex items-center justify-center bg-amber-50">
+                  <span className="text-4xl font-black tabular-nums">{ceramicCount}</span>
+                </div>
+                <div className="flex gap-3">
+                  <button type="button" onClick={handleCeramicAddOne} className="min-h-[44px] bg-black text-white px-6 py-3 text-sm font-black uppercase hover:bg-amber-600">+1</button>
+                  <button type="button" onClick={() => { setCeramicCount(0); setCurrentSessionPieces([]); setCeramicGeoError(''); }} className="min-h-[44px] border-2 border-black px-4 py-3 text-[10px] font-black uppercase">Reset</button>
+                </div>
+                {ceramicGeoError && <p className="text-[9px] font-black uppercase text-red-600">{ceramicGeoError}</p>}
+              </div>
+              <div className="space-y-2 mb-3">
+                <label className="text-[9px] font-black uppercase text-gray-500 block">Site dimensions (optional)</label>
+                <div className="flex gap-2">
+                  <input type="number" min="0" step="0.1" value={ceramicDimensionLength} onChange={(e) => setCeramicDimensionLength(e.target.value)} placeholder="Length (m)" className="flex-1 min-w-0 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none" />
+                  <input type="number" min="0" step="0.1" value={ceramicDimensionWidth} onChange={(e) => setCeramicDimensionWidth(e.target.value)} placeholder="Width (m)" className="flex-1 min-w-0 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none" />
+                </div>
+              </div>
+              <div className="space-y-2 mb-4">
+                <label className="text-[9px] font-black uppercase text-gray-500 block">Field / area (optional)</label>
+                <input type="text" value={ceramicSessionLabel} onChange={(e) => setCeramicSessionLabel(e.target.value)} placeholder="e.g. Grid A1" className="w-full border-2 border-black p-2 text-[10px] font-bold uppercase outline-none" />
+                <button type="button" onClick={handleSaveCeramicSession} disabled={ceramicCount === 0} className="w-full bg-amber-500 text-black py-2 text-[10px] font-black uppercase border-2 border-black hover:bg-amber-600 disabled:opacity-50">Save session ({ceramicCount})</button>
+              </div>
+              <div className="border-t-2 border-black pt-3">
+                <p className="text-[9px] font-black uppercase text-gray-500 mb-2">Saved sessions</p>
+                {ceramicSessions.length === 0 ? (
+                  <p className="text-[9px] font-bold text-gray-400 uppercase">No sessions yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {ceramicSessions.map(s => (
+                      <li key={s.id} className="border-2 border-black p-2 bg-gray-50 flex justify-between items-center gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black uppercase truncate">{s.label}</p>
+                          <p className="text-[9px] text-gray-500">{s.count} pcs · {new Date(s.createdAt).toLocaleString()}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button type="button" onClick={() => handleUseCeramicSessionCount(s.count)} className="text-[8px] font-black uppercase border border-black px-2 py-1 hover:bg-black hover:text-white">Use</button>
+                          <button type="button" onClick={() => handleDeleteCeramicSession(s.id)} className="text-[8px] font-black uppercase border border-red-600 text-red-600 px-2 py-1 hover:bg-red-600 hover:text-white">Del</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (archView === 'tools') {
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto pb-24 md:pb-0">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => setArchView('dashboard')} className="flex items-center gap-1.5 text-ink/80 hover:text-ink font-medium text-sm min-h-[44px]">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            Back to dashboard
+          </button>
+        </div>
+        <h1 className="text-xl sm:text-2xl font-bold text-ink text-center">Professional Tools</h1>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {professionalTools.map((tool) => {
+            const active = (tool.id === 'notepad' && activeTool === 'notepad') || (tool.id === 'compass' && activeTool === 'compass') || (tool.id === 'ceramic' && activeTool === 'ceramic') || (tool.id === 'map' && activeTool === 'map');
+            const hasAction = typeof tool.action === 'function';
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={hasAction ? tool.action : undefined}
+                disabled={!hasAction}
+                className={`flex flex-col items-center justify-center gap-3 p-5 rounded-2xl border transition-colors min-h-[120px] ${
+                  hasAction
+                    ? active
+                      ? 'bg-ink/10 border-ink/30 text-ink shadow-sm'
+                      : 'bg-white border-ink/20 text-ink hover:bg-ink/5 hover:border-ink/30 shadow-[0_2px_12px_rgba(44,40,37,0.08)]'
+                    : 'bg-white/60 border-ink/10 text-ink/50 cursor-not-allowed'
+                }`}
+              >
+                <div className={`rounded-xl p-3 ${active ? 'bg-ink/15' : 'bg-ink/10'}`}>
+                  <ToolIcon name={tool.icon} className="w-8 h-8 text-ink/80" />
+                </div>
+                <span className="text-xs font-medium text-center leading-tight">{tool.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto pb-24 md:pb-0">
       <h1 className="text-xl sm:text-2xl font-bold text-ink text-center">Archeologists&apos; Dashboard</h1>
 
       <div className="flex items-center gap-2 rounded-xl bg-white/90 border border-ink/20 px-3 py-2.5 shadow-sm max-w-md mx-auto">
@@ -533,7 +753,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
             <h2 className="text-sm font-semibold text-ink">Explore Sites</h2>
           </div>
           <div className="px-4 pb-2 min-h-[200px]">
-            <div className="rounded-xl overflow-hidden border border-ink/10 h-[200px]">
+            <div className="relative z-0 rounded-xl overflow-hidden border border-ink/10 h-[200px] isolate">
               <MiniMapWidget profile={profile} onOpenMap={onNavigateToMap} />
             </div>
             <button type="button" onClick={() => onNavigateToMap?.()} className="mt-2 text-sm font-medium text-ink/80 hover:text-ink flex items-center gap-1">
@@ -568,7 +788,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
           <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16" /></svg>
           Analytics
         </button>
-        <button type="button" onClick={() => setShowToolsPanel(!showToolsPanel)} className="rounded-xl bg-white border border-ink/20 shadow-sm px-5 py-3 flex items-center gap-2 hover:bg-white/95 text-ink font-medium text-sm">
+        <button type="button" onClick={() => setArchView('tools')} className="rounded-xl bg-white border border-ink/20 shadow-sm px-5 py-3 flex items-center gap-2 hover:bg-white/95 text-ink font-medium text-sm">
           <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
           Tools
         </button>
@@ -577,33 +797,6 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
           Archives
         </button>
       </section>
-
-      {showToolsPanel && (
-        <section className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4">
-          <h3 className="text-sm font-semibold text-ink mb-3">Professional Tools</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {['Exclusive Map', 'Notepad', 'Compass', 'Ceramic Counter', '2D Illustration', '3D Viewer'].map(item => {
-              const isLink = item === '2D Illustration' || item === '3D Viewer';
-              const href = item === '2D Illustration' ? '/illustrator-2d' : item === '3D Viewer' ? '/viewer-3d' : null;
-              const active = (item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen);
-              const base = 'rounded-lg border border-ink/20 p-3 text-xs font-medium text-ink hover:bg-ink/5 transition-colors ' + (active ? 'bg-ink/10 border-ink/40' : 'bg-white');
-              if (isLink && href) {
-                return <button key={item} type="button" className={base} onClick={() => navigate(href)}>{item}</button>;
-              }
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  className={base}
-                  onClick={item === 'Exclusive Map' ? () => onNavigateToMap?.() : item === 'Notepad' ? handleNotepadToggle : item === 'Compass' ? handleCompassToggle : item === 'Ceramic Counter' ? handleCeramicCounterToggle : undefined}
-                >
-                  {item}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
       {showArchivesPanel && (
         <section className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4 max-h-[400px] flex flex-col">
