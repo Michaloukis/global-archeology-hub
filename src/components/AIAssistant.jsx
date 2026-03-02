@@ -12,14 +12,17 @@ function buildSystemPrompt(role) {
   return `${base} ${hint}`
 }
 
-export default function AIAssistant({ profile }) {
-  const [open, setOpen] = useState(false)
+export default function AIAssistant({ profile, embedded = false, open: controlledOpen, onClose }) {
+  const [internalOpen, setInternalOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const messagesEndRef = useRef(null)
   const role = profile?.role || 'Enthusiast'
+
+  const open = embedded ? controlledOpen : internalOpen
+  const setOpen = embedded ? (v) => { if (!v) onClose?.() } : setInternalOpen
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   useEffect(() => { scrollToBottom() }, [messages])
@@ -51,28 +54,14 @@ export default function AIAssistant({ profile }) {
 
   const hasKey = !!import.meta.env.VITE_GROQ_API_KEY
 
-  return (
+  const panelContent = (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="fixed z-50 w-16 h-16 sm:w-14 sm:h-14 rounded-full bg-black text-white font-black text-lg shadow-lg border-2 border-gray-800 hover:bg-gray-800 active:bg-gray-700 transition-colors touch-target"
-        style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))', right: 'max(1rem, env(safe-area-inset-right))' }}
-        title="AI Assistant"
-        aria-label="Toggle AI Assistant"
-      >
-        AI
-      </button>
-
-      {open && (
-        <div
-          className="fixed z-50 left-0 right-0 sm:left-auto sm:right-6 w-full sm:max-w-md border-4 border-black bg-white shadow-2xl flex flex-col max-h-[70vh] sm:max-h-[75vh]"
-          style={{ bottom: 'max(5rem, calc(5rem + env(safe-area-inset-bottom)))' }}
-        >
-          <div className="p-3 border-b-2 border-black bg-gray-100 flex justify-between items-center min-h-[44px]">
-            <span className="text-[10px] font-black uppercase tracking-widest">Hub Assistant · {role}</span>
-            <button type="button" onClick={() => setOpen(false)} className="text-black font-black text-xl leading-none min-h-[44px] min-w-[44px] flex items-center justify-center -mr-1">×</button>
-          </div>
+      {!embedded && (
+        <div className="p-3 border-b-2 border-black bg-gray-100 flex justify-between items-center min-h-[44px]">
+          <span className="text-[10px] font-black uppercase tracking-widest">Hub Assistant · {role}</span>
+          <button type="button" onClick={() => setOpen(false)} className="text-black font-black text-xl leading-none min-h-[44px] min-w-[44px] flex items-center justify-center -mr-1">×</button>
+        </div>
+      )}
           {!hasKey && (
             <div className="p-3 bg-amber-100 border-b border-black text-[10px] font-bold uppercase">
               Set VITE_GROQ_API_KEY in .env to enable the assistant.
@@ -123,6 +112,45 @@ export default function AIAssistant({ profile }) {
               Send
             </button>
           </div>
+    </>
+  )
+
+  if (embedded) {
+    if (!open) return null
+    return (
+      <div className="flex flex-col min-h-[280px] max-h-[60vh]">
+        <div className="p-2 border-b border-black/20 flex justify-between items-center">
+          <span className="text-[10px] font-bold uppercase text-gray-600">Hub Assistant · {role}</span>
+          {onClose && <button type="button" onClick={onClose} className="text-black font-bold text-lg leading-none min-h-[36px] min-w-[36px] flex items-center justify-center">×</button>}
+        </div>
+        {panelContent}
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setInternalOpen(!internalOpen)}
+        className="fixed z-50 w-16 h-16 sm:w-14 sm:h-14 rounded-full bg-black text-white font-black text-lg shadow-lg border-2 border-gray-800 hover:bg-gray-800 active:bg-gray-700 transition-colors touch-target"
+        style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))', left: 'max(1rem, env(safe-area-inset-left))', right: 'auto' }}
+        title="AI Assistant"
+        aria-label="Toggle AI Assistant"
+      >
+        AI
+      </button>
+
+      {open && (
+        <div
+          className="fixed z-50 left-0 right-0 sm:left-auto sm:right-6 w-full sm:max-w-md border-4 border-black bg-white shadow-2xl flex flex-col max-h-[70vh] sm:max-h-[75vh]"
+          style={{ bottom: 'max(5rem, calc(5rem + env(safe-area-inset-bottom)))' }}
+        >
+          <div className="p-3 border-b-2 border-black bg-gray-100 flex justify-between items-center min-h-[44px]">
+            <span className="text-[10px] font-black uppercase tracking-widest">Hub Assistant · {role}</span>
+            <button type="button" onClick={() => setInternalOpen(false)} className="text-black font-black text-xl leading-none min-h-[44px] min-w-[44px] flex items-center justify-center -mr-1">×</button>
+          </div>
+          {panelContent}
         </div>
       )}
     </>

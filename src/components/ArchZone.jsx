@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import MiniMapWidget from './MiniMapWidget';
+import AIAssistant from './AIAssistant';
 
 const ArchZone = ({ profile, onNavigateToMap }) => {
   const navigate = useNavigate();
@@ -53,6 +55,10 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
 
   // Social Hub panels: 'chat' | 'forum' | 'events' | null
   const [socialHubPanel, setSocialHubPanel] = useState(null);
+
+  const [archSearch, setArchSearch] = useState('');
+  const [showToolsPanel, setShowToolsPanel] = useState(false);
+  const [showArchivesPanel, setShowArchivesPanel] = useState(false);
 
   // #region agent log
   const logData = (msg, data, hypothesisId) => {
@@ -464,205 +470,224 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   const isChief = profile?.role === 'Chief Archeologist';
   const isFieldArch = profile?.role === 'Field Archeologist';
 
+  const fromArchives = archiveEntries.slice(0, 2).map(entry => ({
+    title: entry.sites?.name || 'Field record',
+    secondary: ((entry.findings || entry.notes) || 'Entry').slice(0, 60) + (((entry.findings || entry.notes) || '').length > 60 ? '…' : ''),
+    siteId: entry.site_id,
+  }));
+  const fromExpeditions = isFieldArch && fromArchives.length < 2
+    ? activeExpeditions
+        .filter(exp => !fromArchives.some(r => r.title === exp.sites?.name))
+        .slice(0, 2 - fromArchives.length)
+        .map(exp => ({ title: exp.sites?.name || 'Expedition', secondary: 'Active expedition', siteId: exp.site_id }))
+    : [];
+  const placeholders = Array(Math.max(0, 2 - fromArchives.length - fromExpeditions.length))
+    .fill(null)
+    .map(() => ({ title: 'Card Title', secondary: 'Secondary text', siteId: null }));
+  const recentActivityItems = [...fromArchives, ...fromExpeditions, ...placeholders].slice(0, 2);
+
+  const dayLabels = ['T', 'W', 'T', 'F', 'S', 'Sa'];
+  const sampleDates = [10, 11, 12, 13, 14, 15];
+  const highlightedDates = [12, 13, 14];
+
   return (
-    <div className="space-y-16">
-      <div className="border-b-4 border-black pb-4 flex justify-between items-end">
-        <div>
-          <h2 className="text-4xl font-black uppercase tracking-tighter italic text-red-600">ARCH ZONE // PROFESSIONAL TERMINAL</h2>
-          <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-widest">Clearance: {profile?.role?.toUpperCase()}</p>
-        </div>
-        <div className="flex gap-4">
-          {isChief && (
-            <>
-              <button 
-                onClick={() => setIsInboxOpen(true)}
-                className="bg-black text-white px-6 py-3 text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-[4px_4px_0px_rgba(220,38,38,1)] flex items-center gap-2"
-              >
-                <span className="relative">
-                  Inbox
-                  {requests.filter(r => r.status === 'Pending').length > 0 && (
-                    <span className="absolute -top-2 -right-4 bg-red-600 text-white text-[8px] px-1 rounded-full animate-bounce">
-                      {requests.filter(r => r.status === 'Pending').length}
-                    </span>
-                  )}
-                </span>
-              </button>
-              <button 
-                onClick={() => setIsSiteFormOpen(true)}
-                className="bg-red-600 text-white px-6 py-3 text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-[4px_4px_0px_rgba(0,0,0,1)]"
-              >
-                + Register New Dig Site
-              </button>
-            </>
-          )}
-        </div>
+    <div className="space-y-8 max-w-5xl mx-auto">
+      <h1 className="text-xl sm:text-2xl font-bold text-ink text-center">Archeologists&apos; Dashboard</h1>
+
+      <div className="flex items-center gap-2 rounded-xl bg-white/90 border border-ink/20 px-3 py-2.5 shadow-sm max-w-md mx-auto">
+        <svg className="w-4 h-4 text-ink/50 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        <input
+          type="text"
+          placeholder="Search"
+          value={archSearch}
+          onChange={(e) => setArchSearch(e.target.value)}
+          className="flex-1 min-w-0 bg-transparent text-sm text-ink placeholder-ink/50 outline-none"
+        />
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Social / Active Expeditions */}
-        <div className="space-y-6">
-          <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">
-            {isFieldArch ? 'My Active Expeditions' : 'Social Hub'}
-          </h3>
-          
-          {isFieldArch ? (
-            <div className="space-y-4">
-              {activeExpeditionsLoading ? (
-                <div className="text-[10px] font-black uppercase tracking-widest animate-pulse">Scanning Registry...</div>
-              ) : activeExpeditions.length === 0 ? (
-                <div className="p-4 border-2 border-black border-dashed text-[10px] font-black uppercase text-gray-400">No approved expeditions found. Apply at the Map.</div>
-              ) : (
-                activeExpeditions.map(exp => (
-                  <div 
-                    key={exp.site_id} 
-                    onClick={() => {
-                      window.open(`/?view=journal&siteId=${exp.site_id}`, '_blank');
-                    }}
-                    className="border-2 border-black p-4 cursor-pointer hover:bg-black hover:text-white transition-all bg-white group"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="text-[8px] font-black uppercase mb-1">Status: Active</div>
-                      <span className="text-[8px] font-black uppercase underline opacity-30 group-hover:opacity-100 transition-opacity">Terminal [↗]</span>
-                    </div>
-                    <h4 className="font-black uppercase text-sm">{exp.sites?.name}</h4>
-                  </div>
-                ))
-              )}
+
+      <section>
+        <h2 className="text-base font-bold text-ink mb-3">Recent Activity</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {recentActivityItems.slice(0, 2).map((item, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={item.siteId ? () => window.open(`/?view=journal&siteId=${item.siteId}`, '_blank') : undefined}
+              className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4 text-left flex gap-3 hover:bg-white/95 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-xl bg-ink/10 flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6 text-ink/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" /></svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-ink text-sm">{item.title}</p>
+                <p className="text-xs text-ink/60 mt-0.5">{item.secondary}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 overflow-hidden">
+          <div className="px-4 pt-3 pb-2">
+            <h2 className="text-sm font-semibold text-ink">Explore Sites</h2>
+          </div>
+          <div className="px-4 pb-2 min-h-[200px]">
+            <div className="rounded-xl overflow-hidden border border-ink/10 h-[200px]">
+              <MiniMapWidget profile={profile} onOpenMap={onNavigateToMap} />
             </div>
-          ) : (
-            <div className="space-y-4">
-              {[
-                { id: 'chat', label: 'Collaboration Chat' },
-                { id: 'forum', label: 'Public Forum' },
-                { id: 'events', label: 'Events & Announcements' }
-              ].map(({ id, label }) => (
+            <button type="button" onClick={() => onNavigateToMap?.()} className="mt-2 text-sm font-medium text-ink/80 hover:text-ink flex items-center gap-1">
+              Map <span aria-hidden>→</span>
+            </button>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 overflow-hidden">
+          <div className="px-4 pt-3 pb-2">
+            <h2 className="text-sm font-semibold text-ink">Upcoming Activity</h2>
+          </div>
+          <div className="px-4 pb-4">
+            <div className="flex gap-1 justify-center mb-2">
+              {dayLabels.map((d, i) => (
+                <span key={i} className="text-[10px] font-medium text-ink/60 w-8 text-center">{d}</span>
+              ))}
+            </div>
+            <div className="flex gap-1 justify-center flex-wrap">
+              {sampleDates.map((d) => (
+                <span key={d} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium ${highlightedDates.includes(d) ? 'bg-ink text-white' : 'bg-ink/10 text-ink/70'}`}>{d}</span>
+              ))}
+            </div>
+            <button type="button" className="mt-3 text-sm font-medium text-ink/80 hover:text-ink flex items-center gap-1">
+              View Calendar <span aria-hidden>→</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="flex flex-wrap gap-3 justify-center">
+        <button type="button" className="rounded-xl bg-white border border-ink/20 shadow-sm px-5 py-3 flex items-center gap-2 hover:bg-white/95 text-ink font-medium text-sm">
+          <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16" /></svg>
+          Analytics
+        </button>
+        <button type="button" onClick={() => setShowToolsPanel(!showToolsPanel)} className="rounded-xl bg-white border border-ink/20 shadow-sm px-5 py-3 flex items-center gap-2 hover:bg-white/95 text-ink font-medium text-sm">
+          <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          Tools
+        </button>
+        <button type="button" onClick={() => setShowArchivesPanel(!showArchivesPanel)} className="rounded-xl bg-white border border-ink/20 shadow-sm px-5 py-3 flex items-center gap-2 hover:bg-white/95 text-ink font-medium text-sm">
+          <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+          Archives
+        </button>
+      </section>
+
+      {showToolsPanel && (
+        <section className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4">
+          <h3 className="text-sm font-semibold text-ink mb-3">Professional Tools</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {['Exclusive Map', 'Notepad', 'Compass', 'Ceramic Counter', '2D Illustration', '3D Viewer'].map(item => {
+              const isLink = item === '2D Illustration' || item === '3D Viewer';
+              const href = item === '2D Illustration' ? '/illustrator-2d' : item === '3D Viewer' ? '/viewer-3d' : null;
+              const active = (item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen);
+              const base = 'rounded-lg border border-ink/20 p-3 text-xs font-medium text-ink hover:bg-ink/5 transition-colors ' + (active ? 'bg-ink/10 border-ink/40' : 'bg-white');
+              if (isLink && href) {
+                return <button key={item} type="button" className={base} onClick={() => navigate(href)}>{item}</button>;
+              }
+              return (
                 <button
-                  key={id}
+                  key={item}
                   type="button"
-                  onClick={() => setSocialHubPanel(id)}
-                  className="w-full text-left border-2 border-black p-4 hover:bg-black hover:text-white transition-all font-bold uppercase text-xs"
+                  className={base}
+                  onClick={item === 'Exclusive Map' ? () => onNavigateToMap?.() : item === 'Notepad' ? handleNotepadToggle : item === 'Compass' ? handleCompassToggle : item === 'Ceramic Counter' ? handleCeramicCounterToggle : undefined}
                 >
-                  {label}
+                  {item}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {showArchivesPanel && (
+        <section className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4 max-h-[400px] flex flex-col">
+          <h3 className="text-sm font-semibold text-ink mb-3">Archives</h3>
+          {archiveLoading ? (
+            <p className="text-xs text-ink/50 animate-pulse">Loading records...</p>
+          ) : archiveEntries.length === 0 ? (
+            <p className="text-xs text-ink/50">No records yet.</p>
+          ) : (
+            <div className="space-y-2 overflow-y-auto pr-1">
+              {archiveEntries.map(entry => (
+                <button key={entry.id} type="button" onClick={() => window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank')} className="w-full text-left rounded-lg border border-ink/10 p-3 hover:bg-ink/5 text-sm text-ink">
+                  <span className="font-medium block">{entry.sites?.name}</span>
+                  <span className="text-xs text-ink/60 truncate block">{entry.findings || entry.notes?.slice(0, 50) || 'Entry'}…</span>
+                  <span className="text-[10px] text-ink/50 block mt-0.5">{new Date(entry.created_at).toLocaleString()}</span>
                 </button>
               ))}
             </div>
           )}
-        </div>
-        
-        {/* Archives / Center Column — recent journal entries (what was recorded), not the site list */}
-        <div className="space-y-6">
-          <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Archives</h3>
-          <div className="bg-gray-50 border-2 border-black p-6 min-h-[400px] flex flex-col">
-            {isFieldArch ? (
-              <>
-                <p className="text-[9px] font-black uppercase text-gray-500 mb-3">Your recent field records</p>
-                {archiveLoading ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Loading records...</span>
-                  </div>
-                ) : archiveEntries.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 p-6">
-                    <p className="text-[10px] font-black uppercase text-gray-400">No records yet.</p>
-                    <p className="text-[9px] font-bold text-gray-500 uppercase">Use &quot;My Active Expeditions&quot; to open a site terminal and add entries.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                    {archiveEntries.map(entry => (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        onClick={() => window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank')}
-                        className="w-full text-left border-2 border-black p-3 bg-white hover:bg-black hover:text-white transition-all"
-                      >
-                        <span className="text-[8px] font-black uppercase text-gray-500 block">{entry.sites?.name}</span>
-                        <span className="text-[9px] font-black uppercase block mt-0.5 truncate">{entry.findings || entry.notes?.slice(0, 40) || 'Entry'}…</span>
-                        <span className="text-[7px] font-bold opacity-70 block mt-1">{new Date(entry.created_at).toLocaleString()}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : isChief ? (
-              <>
-                <p className="text-[9px] font-black uppercase text-gray-500 mb-3">Recent activity on your sites</p>
-                {archiveLoading || requestsLoading ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Loading records...</span>
-                  </div>
-                ) : archiveEntries.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 p-6">
-                    <p className="text-[10px] font-black uppercase text-gray-400">No records yet.</p>
-                    <p className="text-[9px] font-bold text-gray-500 uppercase">Activity from field personnel will appear here.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                    {archiveEntries.map(entry => (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        onClick={() => window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank')}
-                        className="w-full text-left border-2 border-black p-3 bg-white hover:bg-black hover:text-white transition-all"
-                      >
-                        <span className="text-[8px] font-black uppercase text-gray-500 block">{entry.sites?.name}</span>
-                        <span className="text-[9px] font-black uppercase block mt-0.5 truncate">{entry.findings || entry.notes?.slice(0, 40) || 'Entry'}…</span>
-                        <span className="text-[7px] font-bold opacity-70 block mt-1">
-                          {entry.profiles?.full_name && <>{entry.profiles.full_name} · </>}
-                          {new Date(entry.created_at).toLocaleString()}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 p-6">
-                <p className="text-[10px] font-black uppercase text-gray-400">Archives</p>
-                <p className="text-[9px] font-bold text-gray-500 uppercase">Field journals are available in the Field Terminal.</p>
-              </div>
-            )}
-          </div>
-        </div>
+        </section>
+      )}
 
-        {/* Tools */}
-        <div className="space-y-6">
-          <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Professional Tools</h3>
-          <div className="grid grid-cols-2 gap-3 sm:gap-2">
-            {['Exclusive Map', 'Notepad', 'Compass', 'Ceramic Counter', 'Data Upload', 'Report Syntax', '2D Illustration', '3D Illustration', '3D Viewer', 'Site Log', 'Field Sync'].map(item => {
-              const isLink = item === '2D Illustration' || item === '3D Viewer';
-              const href = item === '2D Illustration' ? '/illustrator-2d' : item === '3D Viewer' ? '/viewer-3d' : null;
-              const className = `border-2 border-black p-4 sm:p-3 min-h-[44px] flex items-center justify-center hover:bg-red-50 cursor-pointer font-black uppercase text-[10px] text-center transition-all active:bg-red-100 
-                ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`;
-              if (isLink && href) {
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    className={className}
-                    onClick={() => navigate(href)}
-                  >
-                    {item}
-                  </button>
-                );
-              }
-              return (
-                <div
-                  key={item}
-                  onClick={
-                    item === 'Exclusive Map' ? () => onNavigateToMap?.() :
-                    item === 'Notepad' ? handleNotepadToggle :
-                    item === 'Compass' ? handleCompassToggle :
-                    item === 'Ceramic Counter' ? handleCeramicCounterToggle :
-                    undefined
-                  }
-                  className={className}
-                >
-                  {item}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4">
+          <h2 className="text-base font-bold text-ink mb-3">Team</h2>
+          <ul className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <li key={i} className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-ink/10 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 </div>
-              );
-            })}
+                <div>
+                  <p className="text-sm font-medium text-ink">User {i}</p>
+                  <p className="text-xs text-ink/50">Secondary text</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => setSocialHubPanel('chat')} className="mt-3 w-full rounded-xl border border-ink/20 py-2.5 px-3 flex items-center justify-center gap-2 text-sm font-medium text-ink hover:bg-ink/5">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+            AI Assistant
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+          </button>
+        </div>
+        <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4">
+          <h2 className="text-base font-bold text-ink mb-3">Social Activity</h2>
+          <div className="space-y-3">
+            {[
+              { user: 'User3', time: '2h ago', likes: 16, text: 'Excited to be starting a new dig site in Jordan! Hoping to uncover some interesting artifacts.', likesBottom: 24, comments: 8 },
+              { user: 'User3', time: '2h ago', likes: 16, text: 'Excited to be starting a new dig site in Jordan! Hoping to uncover some interesting artifacts.', likesBottom: 24, comments: 8 },
+            ].map((post, i) => (
+              <button key={i} type="button" onClick={() => setSocialHubPanel('forum')} className="w-full text-left rounded-xl border border-ink/10 p-3 hover:bg-ink/5 transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-ink/10" />
+                    <span className="text-sm font-medium text-ink">{post.user}</span>
+                  </div>
+                  <span className="text-xs text-ink/50">{post.time}</span>
+                </div>
+                <p className="text-xs text-ink/70 mt-2 leading-snug">{post.text}</p>
+                <div className="flex items-center gap-3 mt-2 text-[11px] text-ink/50">
+                  <span>❤️ {post.likesBottom}</span>
+                  <span>💬 {post.comments}</span>
+                  <span aria-hidden>→</span>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
+
+      {isChief && (
+        <div className="flex flex-wrap gap-3 justify-center pt-4 border-t border-ink/10">
+          <button type="button" onClick={() => setIsInboxOpen(true)} className="rounded-xl bg-ink text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+            Inbox
+            {requests.filter(r => r.status === 'Pending').length > 0 && (
+              <span className="bg-white text-ink text-xs px-1.5 py-0.5 rounded-full">{requests.filter(r => r.status === 'Pending').length}</span>
+            )}
+          </button>
+          <button type="button" onClick={() => setIsSiteFormOpen(true)} className="rounded-xl bg-white border border-ink/20 text-ink px-4 py-2.5 text-sm font-medium hover:bg-ink/5">
+            + Register New Dig Site
+          </button>
+        </div>
+      )}
 
       {/* Inbox Modal */}
       {isInboxOpen && (
@@ -777,38 +802,7 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
             </button>
 
             {socialHubPanel === 'chat' && (
-              <>
-                <div className="mb-4">
-                  <h3 className="text-2xl font-black uppercase tracking-tighter">Collaboration Chat</h3>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Channel: #expedition-general (demo)</p>
-                </div>
-                <div className="border-2 border-black bg-gray-50 min-h-[280px] max-h-[360px] overflow-y-auto p-4 space-y-4 mb-4">
-                  {[
-                    { who: 'Chief_Martinez', msg: 'Field team: confirm lidar data upload by EOD. We need it for the seminar prep.', time: '09:12' },
-                    { who: 'Field_Arch_01', msg: 'Copy that. Section B is done, uploading now.', time: '09:34' },
-                    { who: 'Chief_Martinez', msg: 'Good. Students — reminder: Public Forum is open for the stratigraphy Q&A.', time: '10:01' },
-                    { who: 'Field_Arch_02', msg: 'Roman Forum (Student Lab) — found a possible new context layer. Logging in Journal.', time: '11:22' },
-                    { who: 'Chief_Martinez', msg: 'Noted. Tag it as student-visible when you post.', time: '11:45' }
-                  ].map((m, i) => (
-                    <div key={i} className="flex flex-col gap-0.5">
-                      <span className="text-[8px] font-black uppercase text-gray-500">
-                        {m.who} <span className="text-gray-400 font-normal">{m.time}</span>
-                      </span>
-                      <p className="text-xs font-bold uppercase leading-snug pl-2 border-l-2 border-black">{m.msg}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Type a message... (demo — not sent)"
-                    disabled
-                    className="flex-1 border-2 border-black p-2 text-xs font-bold uppercase bg-white opacity-60"
-                  />
-                  <button type="button" disabled className="bg-gray-300 text-gray-500 px-4 py-2 text-[10px] font-black uppercase cursor-not-allowed">Send</button>
-                </div>
-                <p className="text-[9px] font-black text-gray-400 uppercase mt-2">Live messaging will be wired in a future release.</p>
-              </>
+              <AIAssistant profile={profile} embedded open onClose={() => setSocialHubPanel(null)} />
             )}
 
             {socialHubPanel === 'forum' && (

@@ -127,18 +127,9 @@ const MobileDashboard = ({ searchQuery, setSearchQuery, profile, onOpenMap }) =>
         </button>
       </div>
       <div className="px-4 pb-2">
-        <button type="button" onClick={onOpenMap} className="w-full text-left block">
-          <div className="aspect-[4/3] rounded-xl bg-[#e8e4dc] relative overflow-hidden border border-ink/10 flex items-center justify-center">
-            <svg className="w-full h-full text-ink/25" viewBox="0 0 200 150" fill="currentColor" aria-hidden>
-              <path d="M20 60 Q60 20 100 50 T180 40 L160 120 Q100 140 50 110 Z" />
-              <path d="M40 100 Q80 70 140 90 L120 130 Q70 125 30 115 Z" />
-              <circle cx="55" cy="55" r="3" fill="rgba(44,40,37,0.5)" />
-              <circle cx="120" cy="70" r="3" fill="rgba(44,40,37,0.5)" />
-              <circle cx="90" cy="100" r="3" fill="rgba(44,40,37,0.5)" />
-              <circle cx="140" cy="45" r="3" fill="rgba(44,40,37,0.5)" />
-            </svg>
-          </div>
-        </button>
+        <div className="aspect-[4/3] rounded-xl overflow-hidden border border-ink/10 min-h-[160px]">
+          <MiniMapWidget profile={profile} onOpenMap={onOpenMap} />
+        </div>
         <div className="mt-3 flex flex-col gap-0.5">
           <p className="text-xs text-ink/80 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-600/90 shrink-0" aria-hidden /> Active Sites
@@ -638,7 +629,7 @@ function App() {
             </main>
           </div>
         </div>
-        {session && view !== 'home' && <AIAssistant profile={profile} />}
+        {session && view !== 'home' && view !== 'arch' && <AIAssistant profile={profile} />}
       </div>
 
       {/* Mobile: header + main + curved bottom nav (< 768px) */}
@@ -694,16 +685,16 @@ function App() {
             <NavIcon name="map" className="w-6 h-6" />
             <span className="text-[10px] font-medium">Map</span>
           </button>
-          <button type="button" className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Notifications">
-            <NavIcon name="bell" className="w-6 h-6" />
-            <span className="text-[10px] font-medium">Alerts</span>
+          <button type="button" onClick={() => setView('arch')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'arch' ? 'text-ink' : 'text-ink/50'}`} aria-label="Arch Zone">
+            <NavIcon name="toolbox" className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Arch Zone</span>
           </button>
           <button type="button" className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Profile">
             <NavIcon name="user" className="w-6 h-6" />
             <span className="text-[10px] font-medium">Profile</span>
           </button>
         </nav>
-        {session && view !== 'home' && <AIAssistant profile={profile} />}
+        {session && view !== 'home' && view !== 'arch' && <AIAssistant profile={profile} />}
       </div>
     </div>
   )
