@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
 const ArchZone = ({ profile, onNavigateToMap }) => {
+  const navigate = useNavigate();
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isCompassOpen, setIsCompassOpen] = useState(false);
   const [isSiteFormOpen, setIsSiteFormOpen] = useState(false);
@@ -632,20 +634,14 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                 ${(item === 'Notepad' && isNotepadOpen) || (item === 'Compass' && isCompassOpen) || (item === 'Ceramic Counter' && isCeramicCounterOpen) ? 'bg-red-600 text-white border-red-600 scale-105' : 'bg-white'}`;
               if (isLink && href) {
                 return (
-                  <a
+                  <button
                     key={item}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    type="button"
                     className={className}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const w = window.open(href, '_blank', 'noopener,noreferrer');
-                      if (!w) window.location.href = href;
-                    }}
+                    onClick={() => navigate(href)}
                   >
                     {item}
-                  </a>
+                  </button>
                 );
               }
               return (

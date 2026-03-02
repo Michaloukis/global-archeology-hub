@@ -95,50 +95,52 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-md border-2 border-black bg-white p-6 sm:p-12 shadow-[8px_8px_0px_rgba(0,0,0,1)]">
-        
-        <div className="mb-12">
-          <h1 className="text-3xl font-black text-black tracking-tighter uppercase leading-none">
+    <div
+      className="min-h-screen h-full flex items-center justify-center parchment-main p-4 sm:p-6 font-sans text-ink"
+      style={{ minHeight: '100dvh', paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      <div className="w-full max-w-md bg-white/80 backdrop-blur-xl border border-ink/20 rounded-[2rem] shadow-[4px_4px_16px_rgba(44,40,37,0.12)] p-6 sm:p-10">
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-black text-yellow-400 tracking-tighter uppercase leading-none">
             Global Archeology Hub
           </h1>
-          <p className="text-[10px] text-gray-400 tracking-[0.3em] mt-3 font-bold uppercase">
-            Authentication Module // v2.0.0
+          <p className="text-[10px] text-ink/60 tracking-widest mt-2 font-bold uppercase">
+            Authentication · v2.0
           </p>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-8">
+        <form onSubmit={handleAuth} className="space-y-6">
           {isSignUp && (
             <>
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-black uppercase tracking-widest">Full Name</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-ink uppercase tracking-widest">Full Name</label>
                 <input
                   type="text"
                   placeholder="Official Name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
+                  className="w-full min-h-[44px] bg-white/80 border border-ink/30 rounded-lg px-4 py-3 text-ink placeholder-ink/50 outline-none focus:border-ink transition-colors font-medium"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-black uppercase tracking-widest">Username</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-ink uppercase tracking-widest">Username</label>
                 <input
                   type="text"
                   placeholder="Unique ID"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
+                  className="w-full min-h-[44px] bg-white/80 border border-ink/30 rounded-lg px-4 py-3 text-ink placeholder-ink/50 outline-none focus:border-ink transition-colors font-medium"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-black uppercase tracking-widest">Designation</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-ink uppercase tracking-widest">Designation</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all cursor-pointer font-bold appearance-none"
-                  style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'black\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
+                  className="w-full min-h-[44px] bg-white/80 border border-ink/30 rounded-lg px-4 py-3 text-ink outline-none focus:border-ink transition-colors font-medium cursor-pointer appearance-none"
+                  style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%232c2825\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
                 >
                   <option value="Chief Archeologist">Chief Archeologist</option>
                   <option value="Field Archeologist">Field Archeologist</option>
@@ -148,27 +150,27 @@ export default function Auth() {
               </div>
             </>
           )}
-          
-          <div className="space-y-2">
-            <label className="text-[11px] font-black text-black uppercase tracking-widest">Email</label>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-ink uppercase tracking-widest">Email</label>
             <input
               type="email"
               placeholder="id@institution.org"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
+              className="w-full min-h-[44px] bg-white/80 border border-ink/30 rounded-lg px-4 py-3 text-ink placeholder-ink/50 outline-none focus:border-ink transition-colors font-medium"
               required
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-black text-black uppercase tracking-widest">Security Password</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-ink uppercase tracking-widest">Password</label>
             <input
               type="password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full min-h-[44px] bg-white border-2 border-black px-4 py-3 text-base text-black focus:bg-gray-50 outline-none transition-all placeholder:text-gray-300 font-bold"
+              className="w-full min-h-[44px] bg-white/80 border border-ink/30 rounded-lg px-4 py-3 text-ink placeholder-ink/50 outline-none focus:border-ink transition-colors font-medium"
               required
             />
           </div>
@@ -176,23 +178,23 @@ export default function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full min-h-[44px] bg-black text-white py-4 px-4 text-base font-black uppercase tracking-widest transition-all hover:bg-gray-800 active:bg-gray-700 disabled:bg-gray-200 disabled:text-gray-400"
+            className="w-full min-h-[44px] bg-ink text-white py-3 px-4 rounded-lg text-sm font-black uppercase tracking-widest transition-all hover:opacity-90 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
           >
-            {loading ? 'WAIT...' : isSignUp ? 'Create Profile' : 'Access Hub'}
+            {loading ? 'Wait…' : isSignUp ? 'Create Profile' : 'Access Hub'}
           </button>
         </form>
 
         {message && (
-          <div className="mt-8 p-4 border-2 border-black text-[10px] font-black text-center uppercase tracking-widest">
+          <div className="mt-6 p-3 rounded-lg border border-ink/20 bg-white/60 text-[10px] font-bold text-ink text-center uppercase tracking-widest">
             {message}
           </div>
         )}
 
-        <div className="mt-12 pt-8 border-t-2 border-black text-center">
+        <div className="mt-8 pt-6 border-t border-ink/20 text-center">
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="min-h-[44px] flex items-center justify-center w-full sm:w-auto text-black hover:underline text-[11px] font-black uppercase tracking-widest transition-all active:opacity-80"
+            className="min-h-[44px] flex items-center justify-center w-full sm:w-auto text-ink hover:text-ink/80 text-[10px] font-black uppercase tracking-widest transition-colors touch-target"
           >
             {isSignUp ? 'Back to Login' : 'Register New Identity'}
           </button>

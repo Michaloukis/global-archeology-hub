@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
 import SitesMap from './components/SitesMap'
@@ -6,6 +7,11 @@ import ArchZone from './components/ArchZone'
 import EducationZone from './components/EducationZone'
 import JournalTerminal from './components/JournalTerminal'
 import AIAssistant from './components/AIAssistant'
+import ArchBotChatBox from './components/ArchBotChatBox'
+import QuickStatsWidget from './components/QuickStatsWidget'
+import MiniMapWidget from './components/MiniMapWidget'
+import Illustrator2DPage from './pages/Illustrator2DPage.jsx'
+import Viewer3DPage from './pages/Viewer3DPage.jsx'
 
 // #region agent log
 const logData = (msg, data, hypothesisId) => {
@@ -100,22 +106,359 @@ const HomePage = ({ searchQuery }) => {
   );
 }
 
+const MOBILE_ACTIVITY = [
+  { id: 1, type: 'person', name: 'Dr. Sarah Chen', time: '7 hours ago', description: 'New findings from the Bronze Age settlement in Crete suggest advanced water management systems. Initial carbon dating confirms structures from 1600 BCE.' },
+  { id: 2, type: 'event', name: 'Mediterranean Archaeol...', tag: 'Event', time: '5 hours ago', title: 'Virtual Symposium: Recent Discoveries in Underwater Archaeology.', date: 'December 20, 2025', location: 'Online Event', registered: 247 },
+  { id: 3, type: 'person', name: 'Prof. James Morrison', time: '1 day ago', description: 'Completed preliminary analysis of ceramic fragments from the Indus Valley site. The glazing techniques show remarkable sophistication for the period.' },
+];
+
+const MobileDashboard = ({ searchQuery, setSearchQuery, profile, onOpenMap }) => (
+  <div className="p-4 pb-28 space-y-6 parchment-main min-h-full">
+    <div>
+      <h2 className="text-lg font-bold text-ink">The Global Archaeology Hub</h2>
+      <p className="text-sm text-ink/70 mt-0.5">A global standardized archaeology data platform</p>
+    </div>
+
+    <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 overflow-hidden">
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <span className="text-sm font-semibold text-ink">Global Sites</span>
+        <button type="button" onClick={onOpenMap} className="text-sm font-medium text-ink/80 hover:text-ink flex items-center gap-0.5">
+          View Full Map →
+        </button>
+      </div>
+      <div className="px-4 pb-2">
+        <button type="button" onClick={onOpenMap} className="w-full text-left block">
+          <div className="aspect-[4/3] rounded-xl bg-[#e8e4dc] relative overflow-hidden border border-ink/10 flex items-center justify-center">
+            <svg className="w-full h-full text-ink/25" viewBox="0 0 200 150" fill="currentColor" aria-hidden>
+              <path d="M20 60 Q60 20 100 50 T180 40 L160 120 Q100 140 50 110 Z" />
+              <path d="M40 100 Q80 70 140 90 L120 130 Q70 125 30 115 Z" />
+              <circle cx="55" cy="55" r="3" fill="rgba(44,40,37,0.5)" />
+              <circle cx="120" cy="70" r="3" fill="rgba(44,40,37,0.5)" />
+              <circle cx="90" cy="100" r="3" fill="rgba(44,40,37,0.5)" />
+              <circle cx="140" cy="45" r="3" fill="rgba(44,40,37,0.5)" />
+            </svg>
+          </div>
+        </button>
+        <div className="mt-3 flex flex-col gap-0.5">
+          <p className="text-xs text-ink/80 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-600/90 shrink-0" aria-hidden /> Active Sites
+          </p>
+          <p className="text-[11px] text-ink/60">Public-safe data only.</p>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h3 className="text-base font-bold text-ink mb-3">Recent Activity</h3>
+      <div className="space-y-3">
+        {MOBILE_ACTIVITY.map(item => (
+          <div key={item.id} className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4">
+            <div className="flex gap-3">
+              <div className="w-9 h-9 rounded-full bg-ink/10 flex items-center justify-center shrink-0">
+                <NavIcon name={item.type === 'event' ? 'document' : 'user'} className="w-4 h-4 text-ink/70" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-sm font-semibold text-ink">{item.name}</span>
+                  {item.tag && <span className="text-[10px] font-medium text-ink/70 bg-ink/10 px-1.5 py-0.5 rounded">{item.tag}</span>}
+                  <span className="text-[11px] text-ink/50">{item.time}</span>
+                </div>
+                <p className="text-xs text-ink/80 mt-1 leading-snug">{item.description || item.title}</p>
+                {item.date && (
+                  <div className="mt-2 space-y-0.5 text-[11px] text-ink/60">
+                    <p>🗓️ {item.date}</p>
+                    <p>🌐 {item.location}</p>
+                    <p>👤 {item.registered} registered</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="text-center mt-4">
+        <button type="button" className="text-sm font-medium text-ink/80 hover:text-ink">View All Activity</button>
+      </div>
+    </div>
+  </div>
+);
+
+const ARTICLES = [
+  { id: 'ARCH_2025_001', title: 'Massive Mayan City "Valeriana" Discovered via Lidar in Mexico', summary: 'Archaeologists have discovered a hidden Mayan city covering nearly 16.6 square kilometers.', source: 'SMITHSONIAN', date: 'OCT 2025', url: 'https://www.smithsonianmag.com/smart-news/archaeologists-discover-massive-lost-maya-city-mexico-using-lidar-180985356/', image: 'https://images.unsplash.com/photo-1543716091-a840c05249ec?w=400&h=225&fit=crop' },
+  { id: 'ARCH_2025_002', title: 'Rare 4,000-Year-Old Circular Structure Found on Crete Hilltop', summary: 'A unique Minoan building of "monumental" proportions unearthed on Papoura Hill.', source: 'SMITHSONIAN', date: 'JUN 2024', url: 'https://www.smithsonianmag.com/smart-news/monumental-4000-year-old-circular-labyrinth-unearthed-greek-island-180984534/', image: 'https://images.unsplash.com/photo-1573843981267-be1999f9e4e5?w=400&h=225&fit=crop' },
+  { id: 'ARCH_2025_003', title: 'Pompeii: Uncovering the "House of the Painters at Work"', summary: 'New excavations revealed frescoes and tools left during the eruption of AD 79.', source: 'SMITHSONIAN', date: 'MAY 2024', url: 'https://www.smithsonianmag.com/smart-news/paintbrushes-bowls-pigment-unearthed-pompeii-180984442/', image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&h=225&fit=crop' },
+];
+
+function ArticleCardImage({ url, image: explicitImage, alt, className = '' }) {
+  const [imageUrl, setImageUrl] = useState(explicitImage || null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (explicitImage) {
+      setImageUrl(explicitImage);
+      return;
+    }
+    if (!url || failed) return;
+    const encoded = encodeURIComponent(url);
+    fetch(`https://api.microlink.io?url=${encoded}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const img = data?.data?.image?.url;
+        if (img) setImageUrl(img);
+        else setFailed(true);
+      })
+      .catch(() => setFailed(true));
+  }, [url, explicitImage, failed]);
+
+  const placeholder = (
+    <div className={`bg-white/30 rounded-md flex items-center justify-center text-ink/40 border border-ink/20 ${className}`}>
+      <svg className="w-14 h-14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+    </div>
+  );
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={alt}
+        className={className}
+        loading="lazy"
+        onError={() => { setFailed(true); setImageUrl(null); }}
+      />
+    );
+  }
+  return placeholder;
+}
+const EVENTS = [
+  { title: 'International Seminar on Lidar Tech', day: '12', month: 'FEB', loc: 'Virtual Hub' },
+  { title: 'Field Expedition: Giza Plateau', day: '24', month: 'MAR', loc: 'Cairo, Egypt' },
+  { title: 'Lab Workshop: Carbon Dating 2.0', day: '05', month: 'APR', loc: 'London, UK' },
+];
+
+const NavIcon = ({ name, className = 'w-5 h-5' }) => {
+  const icons = {
+    document: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
+    chart: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16" />,
+    map: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></>,
+    wrench: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></>,
+    toolbox: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10h14v9a2 2 0 01-2 2H7a2 2 0 01-2-2v-9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10V6a2 2 0 012-2h2a2 2 0 012 2v4M9 10h6" /></>,
+    people: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />,
+    social: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />,
+    cog: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></>,
+    home: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
+    globe: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />,
+    bell: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-6-6 6 6 0 00-6 6v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />,
+    user: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
+    search: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
+  };
+  return <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">{icons[name] || icons.document}</svg>;
+};
+
+const WIDGET_IDS = ['minimap', 'quickstats', 'archbot', 'global-events']
+const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', archbot: 'ArchBot', 'global-events': 'Global Events' }
+const WIDGET_SIZES = ['small', 'medium', 'large']
+const SIZE_CLASS = { small: 'h-[100px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
+const SIZE_CLASS_CONTENT = { small: 'min-h-[120px]', medium: 'min-h-[180px]', large: 'min-h-[260px]' }
+
+function getDefaultWidgetPreferences() {
+  return {
+    visible: Object.fromEntries(WIDGET_IDS.map(id => [id, true])),
+    size: Object.fromEntries(WIDGET_IDS.map(id => [id, 'medium']))
+  }
+}
+
+function loadWidgetPreferences() {
+  try {
+    const raw = localStorage.getItem('global-archeology-dashboard-widgets')
+    if (!raw) return getDefaultWidgetPreferences()
+    const parsed = JSON.parse(raw)
+    const def = getDefaultWidgetPreferences()
+    return {
+      visible: { ...def.visible, ...(parsed.visible || {}) },
+      size: { ...def.size, ...(parsed.size || {}) }
+    }
+  } catch (_) {
+    return getDefaultWidgetPreferences()
+  }
+}
+
+function saveWidgetPreferences(prefs) {
+  try {
+    localStorage.setItem('global-archeology-dashboard-widgets', JSON.stringify(prefs))
+  } catch (_) {}
+}
+
+const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, setWidgetPreferences }) => {
+  const [customizeOpen, setCustomizeOpen] = useState(false)
+  const visible = widgetPreferences?.visible ?? getDefaultWidgetPreferences().visible
+  const size = widgetPreferences?.size ?? getDefaultWidgetPreferences().size
+
+  const setVisible = (id, value) => {
+    setWidgetPreferences(prev => {
+      const next = { ...prev, visible: { ...prev.visible, [id]: value } }
+      saveWidgetPreferences(next)
+      return next
+    })
+  }
+  const setSize = (id, value) => {
+    setWidgetPreferences(prev => {
+      const next = { ...prev, size: { ...prev.size, [id]: value } }
+      saveWidgetPreferences(next)
+      return next
+    })
+  }
+
+  return (
+    <div className="relative parchment-main p-3 md:p-4 h-full flex flex-col min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1 min-h-0 max-w-[1400px] mx-auto w-full" style={{ gridTemplateRows: 'minmax(0, 1fr)' }}>
+        <div className="md:col-span-1 flex flex-col min-h-0 h-full overflow-hidden">
+          <div className="shrink-0 pr-1 pb-1.5 bg-transparent">
+            <div className="bg-white/60 backdrop-blur-sm border border-ink/40 rounded-lg p-2 flex items-center gap-1.5">
+              <input type="text" placeholder="Search" defaultValue={searchQuery} className="flex-1 bg-transparent border-0 outline-none text-ink placeholder-ink/60 text-xs min-w-0" />
+              <svg className="w-4 h-4 text-ink/50 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+            <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1 pt-1.5">Latest Reports</h3>
+          </div>
+          <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 space-y-2 pr-1 mt-1">
+            {ARTICLES.map(article => (
+              <div key={article.id} onClick={() => window.open(article.url, '_blank')} className="bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 cursor-pointer hover:bg-white/70 transition-colors group shrink-0">
+                <div className="aspect-video rounded-md mb-2 overflow-hidden border border-ink/20 bg-white/30">
+                  <ArticleCardImage url={article.url} image={article.image} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex justify-between items-center mb-0.5">
+                  <span className="text-[9px] font-semibold text-red-700 bg-red-50/80 px-1 py-0.5 rounded">{article.source}</span>
+                  <span className="text-[9px] text-ink/60">{article.date}</span>
+                </div>
+                <h3 className="font-bold text-ink text-xs group-hover:underline leading-tight line-clamp-2">{article.title}</h3>
+                <p className="text-[10px] text-ink/70 mt-0.5 leading-snug line-clamp-2">{article.summary}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="md:col-span-2 flex flex-col gap-2 min-h-0 overflow-y-auto scrollbar-hide h-full overflow-x-hidden">
+          {visible.minimap !== false && (
+            <div className={`bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 shrink-0 flex flex-col ${SIZE_CLASS[size.minimap] || SIZE_CLASS.medium}`}>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <MiniMapWidget profile={profile} onOpenMap={onOpenMap} />
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 shrink-0">
+            {visible.quickstats !== false && (
+              <div className={`bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 shrink-0 flex flex-col ${SIZE_CLASS[size.quickstats] || SIZE_CLASS.medium}`}>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <QuickStatsWidget profile={profile} onOpenMap={onOpenMap} />
+                </div>
+              </div>
+            )}
+            {visible.archbot !== false && (
+              <div className={`shrink-0 ${SIZE_CLASS_CONTENT[size.archbot] || SIZE_CLASS_CONTENT.medium}`}>
+                <div className="h-full min-h-[180px] bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5">
+                  <ArchBotChatBox profile={profile} />
+                </div>
+              </div>
+            )}
+          </div>
+          {visible['global-events'] !== false && (
+            <div className={`bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 shrink-0 ${SIZE_CLASS_CONTENT[size['global-events']] || SIZE_CLASS_CONTENT.medium}`}>
+              <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1.5 mb-2">Global Events</h3>
+              <div className="space-y-2">
+                {EVENTS.map(e => (
+                  <div key={e.title} className="flex gap-2 items-center border-b border-ink/20 pb-2 last:border-0 last:pb-0">
+                    <div className="bg-ink text-white p-1.5 text-center min-w-[40px] rounded shrink-0">
+                      <div className="text-[9px] font-bold leading-tight">{e.month}</div>
+                      <div className="text-sm font-bold leading-tight">{e.day}</div>
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-ink text-[11px] leading-tight">{e.title}</h4>
+                      <p className="text-[9px] text-ink/60 mt-0.5">Location: {e.loc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {customizeOpen && (
+            <div className="shrink-0 bg-white/80 backdrop-blur-sm border border-ink/40 rounded-lg p-3 space-y-3">
+              <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1.5">Widgets</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {WIDGET_IDS.map(id => (
+                  <div key={id} className="flex flex-wrap items-center gap-2 p-2 rounded-lg bg-white/50 border border-ink/20">
+                    <label className="flex items-center gap-1.5 cursor-pointer min-w-0">
+                      <input type="checkbox" checked={visible[id] !== false} onChange={e => setVisible(id, e.target.checked)} className="rounded border-ink/40" />
+                      <span className="text-xs font-medium text-ink truncate">{WIDGET_LABELS[id]}</span>
+                    </label>
+                    <select value={size[id] || 'medium'} onChange={e => setSize(id, e.target.value)} className="text-xs border border-ink/30 rounded px-1.5 py-0.5 bg-white/80 text-ink min-w-0">
+                      {WIDGET_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="shrink-0 flex items-center justify-end gap-1 pr-1 pt-1">
+            <button
+              type="button"
+              onClick={() => setCustomizeOpen(o => !o)}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-ink/30 bg-white/60 backdrop-blur-sm text-ink hover:bg-white/80 text-xs font-medium"
+              title="Add/remove widgets and change size"
+            >
+              <NavIcon name="cog" className="w-4 h-4" />
+              Customize widgets
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [view, setView] = useState('home') 
+  const [view, setView] = useState('home')
   const [searchQuery, setSearchQuery] = useState('')
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [lastScrollTime, setLastScrollTime] = useState(Date.now())
   const [activeSiteId, setActiveSiteId] = useState(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [widgetPreferences, setWidgetPreferences] = useState(() => loadWidgetPreferences())
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false)
+  const mobileMainRef = useRef(null)
+  const touchStartY = useRef(0)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const isToolRoute = location.pathname === '/illustrator-2d' || location.pathname === '/viewer-3d'
+
+  const pullTriggered = useRef(false)
+  const handleMobileTouchStart = (e) => {
+    if (mobileMainRef.current?.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY
+      pullTriggered.current = false
+    }
+  }
+  const handleMobileTouchMove = (e) => {
+    if (isPullRefreshing || !mobileMainRef.current || mobileMainRef.current.scrollTop > 0) return
+    const y = e.touches[0].clientY
+    if (y - touchStartY.current > 60) pullTriggered.current = true
+  }
+  const handleMobileTouchEnd = () => {
+    if (!pullTriggered.current) return
+    pullTriggered.current = false
+    setIsPullRefreshing(true)
+    setTimeout(() => setIsPullRefreshing(false), 800)
+  }
+
+  // Auto-hide sidebar when entering a tool route
+  useEffect(() => {
+    if (isToolRoute) setSidebarCollapsed(true)
+  }, [isToolRoute])
 
   useEffect(() => {
-    // Basic Routing Logic for New Tab / Sharing
     const params = new URLSearchParams(window.location.search)
     const viewParam = params.get('view')
     const siteParam = params.get('siteId')
-
     if (viewParam === 'journal' && siteParam) {
       setView('journal')
       setActiveSiteId(siteParam)
@@ -156,25 +499,30 @@ function App() {
   }, [lastScrollY, lastScrollTime])
 
   useEffect(() => {
-    supabase?.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      if (session) fetchProfile(session.user.id)
-    })
+    setWidgetPreferences(loadWidgetPreferences())
+  }, [])
 
-    const { data: { subscription } } = supabase?.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      if (session) fetchProfile(session.user.id)
-      else setProfile(null)
-    }) || { data: { subscription: null } }
-
-    return () => subscription?.unsubscribe()
+  useEffect(() => {
+    if (supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session)
+        if (session) fetchProfile(session.user.id)
+      })
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session)
+        if (session) fetchProfile(session.user.id)
+        else setProfile(null)
+      })
+      return () => subscription?.unsubscribe()
+    } else {
+      setSession(null)
+      setProfile(null)
+    }
   }, [])
 
   async function fetchProfile(userId) {
+    if (!supabase) return
     const response = await supabase.from('profiles').select('*').eq('id', userId)
-    
-    console.log('DEBUG: Profile structure:', response.data?.[0]);
-
     if (response.error) {
       console.error('Profile fetch error', response.error)
     } else if (response.data && response.data.length > 0) {
@@ -183,103 +531,180 @@ function App() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    if (supabase) await supabase.auth.signOut()
   }
 
   if (!session) return <Auth />
 
-  // Access Control Helpers
   const isArcheologist = profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist'
   const isStudent = profile?.role === 'Student'
-
-  const filteredTasks = [] // Placeholder for task manager if added back
+  const pcNavItems = [
+    { viewKey: 'home', label: 'Home', icon: 'home' },
+    ...(isArcheologist ? [{ viewKey: 'arch', label: 'Tools', icon: 'toolbox' }] : []),
+    { viewKey: 'map', label: 'Map', icon: 'map' },
+    ...(isStudent ? [{ viewKey: 'education', label: 'Edu Lab', icon: 'document' }] : []),
+    { viewKey: 'team', label: 'Team', icon: 'people' },
+    { viewKey: 'social', label: 'Social', icon: 'social' },
+  ]
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans">
-      {/* Institutional Top Navigation */}
-      <header className={`border-b-4 border-black p-3 md:p-4 fixed top-0 left-0 right-0 bg-white z-50 transition-transform duration-500 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`} style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row justify-between items-start lg:items-end gap-3 md:gap-6">
-          <div className="w-full min-w-0">
-            <h1 className="text-xl sm:text-2xl md:text-4xl font-black uppercase tracking-tighter leading-none cursor-pointer select-none" onClick={() => setView('home')}>
-              GLOBAL<br />ARCHEOLOGY HUB
-            </h1>
-            <div className="mt-1.5 md:mt-2 flex flex-wrap items-center gap-2 md:gap-6 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
-              <span className="bg-black text-white px-2 py-1.5 truncate max-w-[140px] sm:max-w-none">NAME: {profile?.full_name?.toUpperCase() || '...'}</span>
-              <span className="bg-black text-white px-2 py-1.5 truncate max-w-[100px] sm:max-w-none">@{profile?.username?.toUpperCase() || 'N/A'}</span>
-              <span className="bg-black text-white px-2 py-1.5">ACCESS: {profile?.role?.toUpperCase() || '...'}</span>
-              {isStudent && (
-                <span className="bg-indigo-600 text-white px-2 py-1.5 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-white animate-pulse rounded-full shrink-0"></span>
-                  {profile?.education_xp || 0} XP
-                </span>
-              )}
+    <div className="min-h-screen bg-[#f8f3e8] text-ink font-sans">
+      {/* PC: sidebar + parchment main (768px+) */}
+      <div className="hidden md:flex md:h-screen md:flex-col parchment-main overflow-hidden">
+        <div className="flex flex-1 min-h-0 min-w-0 relative h-full overflow-hidden">
+          {/* On tool route: overlay sidebar with left-edge hover zone (auto-show on hover, auto-hide on leave) */}
+          {isToolRoute ? (
+            <div
+              className="fixed left-0 top-0 bottom-0 z-50 flex transition-[width] duration-300 ease-out"
+              style={{ width: sidebarCollapsed ? 12 : 72 }}
+              onMouseEnter={() => setSidebarCollapsed(false)}
+              onMouseLeave={() => setSidebarCollapsed(true)}
+            >
+              <aside
+                className="h-full w-[72px] shrink-0 flex flex-col rounded-[2rem] overflow-hidden transition-transform duration-300 ease-out bg-white/80 backdrop-blur-xl border-r border-t border-b border-ink/20"
+                style={{ transform: sidebarCollapsed ? 'translateX(calc(-100% + 12px))' : 'translateX(0)' }}
+              >
+                <div className="p-1.5 border-b border-ink/10 shrink-0 flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-parchment-300 border border-ink/20 flex items-center justify-center mb-1">
+                    <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  </div>
+                  <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || 'User'}</p>
+                </div>
+                <div className="p-1 border-b border-ink/10 shrink-0 flex justify-center">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-ink/30 bg-white/80">
+                    <svg className="w-4 h-4 text-ink/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  </div>
+                </div>
+                <nav className="flex-1 min-h-0 overflow-hidden py-1 flex flex-col items-center gap-0.5">
+                  {pcNavItems.map(({ viewKey, label, icon }) => (
+                    <button key={label} onClick={() => { navigate('/'); setView(viewKey); }} className="group w-full flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg min-w-0 text-ink hover:bg-parchment-100">
+                      <NavIcon name={icon} className="w-5 h-5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
+                      <span className="text-[9px] font-medium leading-tight text-center line-clamp-2">{label}</span>
+                    </button>
+                  ))}
+                </nav>
+                <div className="border-t border-ink/20 p-1 shrink-0">
+                  <button className="group w-full flex flex-col items-center justify-center py-1.5 gap-0.5 text-ink hover:bg-parchment-100 rounded-lg" title="Settings">
+                    <NavIcon name="cog" className="w-5 h-5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
+                    <span className="text-[9px] font-medium leading-tight">Settings</span>
+                  </button>
+                </div>
+              </aside>
             </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-6 items-stretch sm:items-end w-full lg:w-auto">
-            {/* Navigation Search - 44px min height for touch */}
-            <div className="relative border-2 border-black flex items-center bg-white w-full sm:max-w-[200px] md:w-64 min-h-[44px]">
-              <div className="pl-3 text-black shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+          ) : (
+            /* Normal hub: always-visible sidebar */
+            <aside className="w-[72px] shrink-0 h-screen flex flex-col rounded-[2rem] overflow-hidden sticky top-0 bg-white/80 backdrop-blur-xl border-r border-t border-b border-ink/20">
+              <div className="p-1.5 border-b border-ink/10 shrink-0 flex flex-col items-center">
+                <div className="w-8 h-8 rounded-full bg-parchment-300 border border-ink/20 flex items-center justify-center mb-1">
+                  <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </div>
+                <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || 'User'}</p>
               </div>
+              <div className="p-1 border-b border-ink/10 shrink-0 flex justify-center">
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-ink/30 bg-white/80">
+                  <svg className="w-4 h-4 text-ink/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+              </div>
+              <nav className="flex-1 min-h-0 overflow-hidden py-1 flex flex-col items-center gap-0.5">
+                {pcNavItems.map(({ viewKey, label, icon }) => (
+                  <button key={label} onClick={() => { navigate('/'); setView(viewKey); }} className={`group w-full flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg min-w-0 ${view === viewKey ? 'bg-parchment-300/80 text-ink' : 'text-ink hover:bg-parchment-100'}`}>
+                    <NavIcon name={icon} className={`w-5 h-5 shrink-0 transition-transform duration-150 group-hover:scale-110 ${view === viewKey ? 'text-yellow-400' : ''}`} />
+                    <span className="text-[9px] font-medium leading-tight text-center line-clamp-2">{label}</span>
+                  </button>
+                ))}
+              </nav>
+              <div className="border-t border-ink/20 p-1 shrink-0">
+                <button className="group w-full flex flex-col items-center justify-center py-1.5 gap-0.5 text-ink hover:bg-parchment-100 rounded-lg" title="Settings">
+                  <NavIcon name="cog" className="w-5 h-5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
+                  <span className="text-[9px] font-medium leading-tight">Settings</span>
+                </button>
+              </div>
+            </aside>
+          )}
+          <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-transparent overflow-hidden ${isToolRoute ? 'pl-0' : 'pl-4'} h-full`}>
+            <main className={`flex-1 min-h-0 bg-transparent ${!isToolRoute && view === 'home' ? 'overflow-hidden flex flex-col h-full' : 'overflow-auto'}`}>
+              {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
+              {location.pathname === '/viewer-3d' && <Viewer3DPage />}
+              {!isToolRoute && view === 'home' && (
+                <div className="h-full min-h-0 overflow-hidden flex flex-col">
+                  <DashboardPage searchQuery={searchQuery} profile={profile} onOpenMap={() => setView('map')} widgetPreferences={widgetPreferences} setWidgetPreferences={setWidgetPreferences} />
+                </div>
+              )}
+              {!isToolRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}
+              {!isToolRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
+              {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
+              {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} /></div></div>}
+              {!isToolRoute && (view === 'objects' || view === 'team' || view === 'social') && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
+            </main>
+          </div>
+        </div>
+        {session && view !== 'home' && <AIAssistant profile={profile} />}
+      </div>
+
+      {/* Mobile: header + main + curved bottom nav (< 768px) */}
+      <div className="md:hidden flex flex-col min-h-screen bg-[#f8f3e8]">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#f8f3e8]/95 backdrop-blur-sm border-b border-ink/10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+          <div className="px-4 pb-3">
+            <h1 className="text-center text-lg font-bold text-ink">Archeology Hub</h1>
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/80 border border-ink/20 px-3 py-2.5 shadow-sm">
               <input
                 type="text"
-                placeholder="SEARCH..."
+                placeholder="Input field"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-3 sm:py-2 text-sm font-black uppercase tracking-widest outline-none min-w-0"
+                className="flex-1 min-w-0 bg-transparent text-sm text-ink placeholder-ink/50 outline-none"
               />
+              <NavIcon name="search" className="w-4 h-4 text-ink/50 shrink-0" />
             </div>
-
-            {/* Zone-Based Menu */}
-            <nav className="flex border-2 border-black font-black text-[10px] uppercase tracking-widest overflow-x-auto shrink-0 [-webkit-overflow-scrolling:touch] scrollbar-hide">
-              <button onClick={() => setView('home')} className={`min-h-[44px] px-4 py-3 border-r-2 border-black whitespace-nowrap flex items-center justify-center ${view === 'home' ? 'bg-black text-white' : 'hover:bg-gray-100 active:bg-gray-200'}`}>Home</button>
-              <button onClick={() => setView('map')} className={`min-h-[44px] px-4 py-3 border-r-2 border-black whitespace-nowrap flex items-center justify-center ${view === 'map' ? 'bg-black text-white' : 'hover:bg-gray-100 active:bg-gray-200'}`}>Map</button>
-              {isStudent && (
-                <button onClick={() => setView('education')} className={`min-h-[44px] px-4 py-3 border-r-2 border-black whitespace-nowrap flex items-center justify-center ${view === 'education' ? 'bg-black text-white' : 'bg-indigo-50 text-indigo-600 active:bg-indigo-100'}`}>Edu Lab</button>
-              )}
-              {isArcheologist && (
-                <button onClick={() => setView('arch')} className={`min-h-[44px] px-4 py-3 border-r-2 border-black whitespace-nowrap flex items-center justify-center ${view === 'arch' ? 'bg-black text-white' : 'bg-red-50 text-red-600 active:bg-red-100'}`}>Arch Zone</button>
-              )}
-              <button onClick={handleLogout} className="min-h-[44px] px-4 py-3 hover:bg-black hover:text-white active:bg-gray-800 transition-colors whitespace-nowrap flex items-center justify-center">Logout</button>
-            </nav>
+            {isPullRefreshing && (
+              <div className="flex justify-center mt-2">
+                <div className="w-5 h-5 rounded-full border-2 border-ink/30 border-t-ink animate-spin" aria-hidden />
+              </div>
+            )}
           </div>
-        </div>
-      </header>
-
-          <main className="max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8 lg:p-12 min-h-[70vh] pt-20 sm:pt-24 md:pt-32 pb-6 text-left">
-            {view === 'home' && <HomePage searchQuery={searchQuery} />}
-            {view === 'map' && <SitesMap searchQuery={searchQuery} profile={profile} />}
-            {view === 'education' && isStudent && <EducationZone profile={profile} onNavigateToMap={() => setView('map')} />}
-            {view === 'arch' && isArcheologist && <ArchZone profile={profile} onNavigateToMap={() => setView('map')} />}
-            {view === 'journal' && activeSiteId && <JournalTerminal siteId={activeSiteId} profile={profile} />}
-          </main>
-
-      <footer className="bg-black text-white p-6 sm:p-8 md:p-12 mt-12 md:mt-20 border-t-8 border-gray-900" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-12 text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em]">
-          <div>
-            <h4 className="text-gray-500 mb-4 tracking-normal font-bold">SYSTEM_INFO</h4>
-            <p>© 2026 GLOBAL ARCHEOLOGY HUB</p>
-            <p>UNIT_ID: {session?.user?.id?.substring(0,16).toUpperCase() || 'ANONYMOUS'}</p>
-          </div>
-          <div>
-            <h4 className="text-gray-500 mb-4 tracking-normal font-bold">CLEARANCE_LEVEL</h4>
-            <p>{profile?.role?.toUpperCase() || 'STANDARD'} // {isArcheologist ? 'UNRESTRICTED' : 'STANDARD'}</p>
-          </div>
-          <div className="flex flex-col gap-2">
-            <h4 className="text-gray-500 mb-4 tracking-normal font-bold">ZONES_ACTIVE</h4>
-            <div className="flex gap-4">
-              <span className="text-emerald-500">PUBLIC_HUB</span>
-              {isStudent && <span className="text-indigo-500">EDU_LAB</span>}
-              {isArcheologist && <span className="text-red-500">ARCH_ZONE</span>}
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {session && <AIAssistant profile={profile} />}
+        </header>
+        <main
+          ref={mobileMainRef}
+          className="flex-1 pt-[7.5rem] overflow-y-auto"
+          onTouchStart={handleMobileTouchStart}
+          onTouchMove={handleMobileTouchMove}
+          onTouchEnd={handleMobileTouchEnd}
+        >
+          {view === 'home' && <MobileDashboard searchQuery={searchQuery} setSearchQuery={setSearchQuery} profile={profile} onOpenMap={() => setView('map')} />}
+          {view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
+          {view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
+          {view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
+          {view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
+          {view === 'team' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
+          {view === 'social' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
+        </main>
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-sm border-t border-ink/10 rounded-t-3xl shadow-[0_-4px_20px_rgba(44,40,37,0.06)]"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))', paddingTop: '0.75rem' }}
+        >
+          <button type="button" onClick={() => setView('home')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'home' ? 'text-ink' : 'text-ink/50'}`} aria-label="Home">
+            <NavIcon name="home" className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Home</span>
+          </button>
+          <button type="button" onClick={() => setView('map')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'map' ? 'text-ink' : 'text-ink/50'}`} aria-label="Map">
+            <NavIcon name="globe" className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Sites</span>
+          </button>
+          <button type="button" onClick={() => setView('map')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'map' ? 'text-ink' : 'text-ink/50'}`} aria-label="Map">
+            <NavIcon name="map" className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Map</span>
+          </button>
+          <button type="button" className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Notifications">
+            <NavIcon name="bell" className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Alerts</span>
+          </button>
+          <button type="button" className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Profile">
+            <NavIcon name="user" className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Profile</span>
+          </button>
+        </nav>
+        {session && view !== 'home' && <AIAssistant profile={profile} />}
+      </div>
     </div>
   )
 }
