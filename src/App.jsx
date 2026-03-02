@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
@@ -6,7 +6,6 @@ import SitesMap from './components/SitesMap'
 import ArchZone from './components/ArchZone'
 import EducationZone from './components/EducationZone'
 import JournalTerminal from './components/JournalTerminal'
-import AIAssistant from './components/AIAssistant'
 import ArchBotChatBox from './components/ArchBotChatBox'
 import QuickStatsWidget from './components/QuickStatsWidget'
 import MiniMapWidget from './components/MiniMapWidget'
@@ -128,7 +127,7 @@ const MobileDashboard = ({ searchQuery, setSearchQuery, profile, onOpenMap }) =>
       </div>
       <div className="px-4 pb-2">
         <div className="aspect-[4/3] rounded-xl overflow-hidden border border-ink/10 min-h-[160px]">
-          <MiniMapWidget profile={profile} onOpenMap={onOpenMap} />
+          <MiniMapWidget profile={profile} onOpenMap={onOpenMap} embedded />
         </div>
         <div className="mt-3 flex flex-col gap-0.5">
           <p className="text-xs text-ink/80 flex items-center gap-1.5">
@@ -241,6 +240,7 @@ const NavIcon = ({ name, className = 'w-5 h-5' }) => {
     bell: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-6-6 6 6 0 00-6 6v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />,
     user: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
     search: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
+    grid: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></>,
   };
   return <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">{icons[name] || icons.document}</svg>;
 };
@@ -250,12 +250,34 @@ const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', archbot:
 const WIDGET_SIZES = ['small', 'medium', 'large']
 const SIZE_CLASS = { small: 'h-[100px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
 const SIZE_CLASS_CONTENT = { small: 'min-h-[120px]', medium: 'min-h-[180px]', large: 'min-h-[260px]' }
+const DEFAULT_HEIGHTS = { small: 100, medium: 180, large: 260 }
+const WIDGET_MIN_H = 80
+const WIDGET_MAX_H = 480
+const WIDGET_MIN_W = 200
+const WIDGET_MAX_W = 1200
+const WIDGET_GRID_STEP = 40
+
+function snapToGrid(value, step, min, max) {
+  const n = Math.round(value / step) * step
+  return Math.max(min, Math.min(max, n))
+}
+
+const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'archbot'], ['global-events']]
 
 function getDefaultWidgetPreferences() {
   return {
     visible: Object.fromEntries(WIDGET_IDS.map(id => [id, true])),
-    size: Object.fromEntries(WIDGET_IDS.map(id => [id, 'medium']))
+    size: Object.fromEntries(WIDGET_IDS.map(id => [id, 'medium'])),
+    customHeight: {},
+    customWidth: {},
+    lockToGrid: true,
+    layout: DEFAULT_LAYOUT.map(row => [...row])
   }
+}
+
+function orderToLayout(order) {
+  if (!Array.isArray(order) || order.length === 0) return getDefaultWidgetPreferences().layout
+  return order.map(id => [id])
 }
 
 function loadWidgetPreferences() {
@@ -264,9 +286,21 @@ function loadWidgetPreferences() {
     if (!raw) return getDefaultWidgetPreferences()
     const parsed = JSON.parse(raw)
     const def = getDefaultWidgetPreferences()
+    let layout = def.layout
+    if (Array.isArray(parsed.layout) && parsed.layout.length > 0) {
+      layout = parsed.layout.map(row => Array.isArray(row) ? row.filter(id => WIDGET_IDS.includes(id)) : []).filter(row => row.length > 0)
+      const used = new Set(layout.flat())
+      WIDGET_IDS.filter(id => !used.has(id)).forEach(id => layout.push([id]))
+    } else if (Array.isArray(parsed.order) && parsed.order.length > 0) {
+      layout = orderToLayout(WIDGET_IDS.filter(id => parsed.order.includes(id)).concat(WIDGET_IDS.filter(id => !parsed.order.includes(id))))
+    }
     return {
       visible: { ...def.visible, ...(parsed.visible || {}) },
-      size: { ...def.size, ...(parsed.size || {}) }
+      size: { ...def.size, ...(parsed.size || {}) },
+      customHeight: { ...(parsed.customHeight || {}) },
+      customWidth: { ...(parsed.customWidth || {}) },
+      lockToGrid: parsed.lockToGrid !== undefined ? parsed.lockToGrid : def.lockToGrid,
+      layout
     }
   } catch (_) {
     return getDefaultWidgetPreferences()
@@ -279,10 +313,210 @@ function saveWidgetPreferences(prefs) {
   } catch (_) {}
 }
 
+const WIDGET_ICONS = {
+  minimap: 'map',
+  quickstats: 'chart',
+  archbot: 'user',
+  'global-events': 'bell'
+}
+
+function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, onResize, onResizeWidth, onRemove, onDragHandleStart, onDragHandleEnd, sizeKey, sizeClassMap, contentClassMap, children }) {
+  const boxRef = useRef(null)
+  const resizeStartRef = useRef({ x: 0, y: 0, w: 0, h: 0, handle: '' })
+
+  const getHeight = () => {
+    if (editMode && height != null) return height
+    const sz = sizeKey || 'medium'
+    return DEFAULT_HEIGHTS[sz] ?? 180
+  }
+  const getWidth = () => {
+    if (editMode && customWidthPx != null) return customWidthPx
+    const el = boxRef.current
+    return el ? el.getBoundingClientRect().width : 400
+  }
+
+  const onResizeStart = useCallback((e, handle) => {
+    e.stopPropagation()
+    const el = boxRef.current
+    const rect = el?.getBoundingClientRect()
+    const currentW = customWidthPx != null ? customWidthPx : (rect?.width ?? 400)
+    const currentH = height != null ? height : (rect?.height ?? getHeight())
+    resizeStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      w: currentW,
+      h: currentH,
+      handle
+    }
+    const onMove = (e2) => {
+      const dx = e2.clientX - resizeStartRef.current.x
+      const dy = e2.clientY - resizeStartRef.current.y
+      let { w, h } = resizeStartRef.current
+      const hdl = resizeStartRef.current.handle
+      const minHVal = minH ?? WIDGET_MIN_H
+      if (hdl.includes('e')) w = Math.max(WIDGET_MIN_W, Math.min(WIDGET_MAX_W, w + dx))
+      if (hdl.includes('w')) w = Math.max(WIDGET_MIN_W, Math.min(WIDGET_MAX_W, w - dx))
+      if (hdl.includes('s')) h = Math.max(minHVal, Math.min(WIDGET_MAX_H, h + dy))
+      if (hdl.includes('n')) h = Math.max(minHVal, Math.min(WIDGET_MAX_H, h - dy))
+      if (hdl.includes('e') || hdl.includes('w')) onResizeWidth(id, w)
+      if (hdl.includes('n') || hdl.includes('s')) onResize(id, h)
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [id, height, customWidthPx, minH, onResize, onResizeWidth])
+
+  const cornerHandle = (handle, cursor) => (
+    <div
+      key={handle}
+      role="presentation"
+      className="absolute z-10 bg-transparent"
+      style={{
+        width: 14,
+        height: 14,
+        [handle.includes('e') ? 'right' : 'left']: -2,
+        [handle.includes('s') ? 'bottom' : 'top']: -2,
+        cursor
+      }}
+      onMouseDown={(e) => onResizeStart(e, handle)}
+      title="Resize"
+    />
+  )
+
+  const useCustomHeight = editMode && height != null
+  const useCustomWidth = editMode && customWidthPx != null
+  const style = {
+    ...(useCustomHeight ? { height: height, minHeight: height } : {}),
+    ...(useCustomWidth ? { width: customWidthPx, minWidth: customWidthPx, maxWidth: customWidthPx } : {})
+  }
+  const hasStyle = useCustomHeight || useCustomWidth
+  const className = useCustomHeight
+    ? 'shrink-0 flex flex-col min-h-0'
+    : `shrink-0 flex flex-col ${sizeClassMap[sizeKey] || sizeClassMap.medium}`
+
+  return (
+    <div ref={boxRef} className={`relative bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 box-border ${className}`} style={hasStyle ? style : undefined}>
+      {editMode && (
+        <>
+          {onDragHandleStart && (
+            <div
+              draggable
+              onDragStart={onDragHandleStart}
+              onDragEnd={onDragHandleEnd}
+              className="absolute top-1.5 left-1.5 w-6 h-6 rounded bg-ink/20 hover:bg-ink/40 text-ink flex items-center justify-center cursor-grab active:cursor-grabbing z-[11]"
+              aria-label="Drag to reorder"
+              title="Drag to move widget"
+            >
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 6h2v2H8V6zm0 5h2v2H8v-2zm0 5h2v2H8v-2zm5-10h2v2h-2V6zm0 5h2v2h-2v-2zm0 5h2v2h-2v-2z"/></svg>
+            </div>
+          )}
+          {(onResize && onResizeWidth) && (
+            <>
+              {cornerHandle('nw', 'nwse-resize')}
+              {cornerHandle('ne', 'nesw-resize')}
+              {cornerHandle('sw', 'nesw-resize')}
+              {cornerHandle('se', 'nwse-resize')}
+            </>
+          )}
+          {onRemove && (
+            <button type="button" onClick={() => onRemove(id)} className="absolute top-1.5 right-1.5 w-6 h-6 rounded bg-ink/20 hover:bg-ink/40 text-ink flex items-center justify-center text-xs font-bold z-10" aria-label="Remove widget">×</button>
+          )}
+        </>
+      )}
+      <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden ${contentClassMap ? (contentClassMap[sizeKey] || '') : ''}`}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, setWidgetPreferences }) => {
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  const [galleryDragId, setGalleryDragId] = useState(null)
+  const undoSnapshotRef = useRef(null)
   const visible = widgetPreferences?.visible ?? getDefaultWidgetPreferences().visible
   const size = widgetPreferences?.size ?? getDefaultWidgetPreferences().size
+  const customHeight = widgetPreferences?.customHeight ?? {}
+  const customWidth = widgetPreferences?.customWidth ?? {}
+  const lockToGrid = widgetPreferences?.lockToGrid !== false
+
+  const layout = widgetPreferences?.layout ?? getDefaultWidgetPreferences().layout
+  const [dropTarget, setDropTarget] = useState(null)
+  const dropTargetRef = useRef(null)
+  const [draggedWidgetId, setDraggedWidgetId] = useState(null)
+
+  const setLayout = (newLayout) => {
+    setWidgetPreferences(prev => {
+      const next = { ...prev, layout: newLayout }
+      saveWidgetPreferences(next)
+      return next
+    })
+  }
+
+  const findInLayout = (lay, id) => {
+    for (let r = 0; r < lay.length; r++)
+      for (let c = 0; c < lay[r].length; c++)
+        if (lay[r][c] === id) return [r, c]
+    return [-1, -1]
+  }
+  const removeWidgetFromLayout = (lay, id) => {
+    const out = lay.map(row => row.filter(w => w !== id))
+    return out.filter(row => row.length > 0)
+  }
+  const insertAt = (lay, rowIndex, colIndex, placement, id) => {
+    let layout = removeWidgetFromLayout(lay, id)
+    const [srcRow, srcCol] = findInLayout(lay, id)
+    let targetRow = rowIndex
+    const removedEntireRow = srcRow >= 0 && lay[srcRow].length === 1
+    if (removedEntireRow && srcRow < rowIndex) targetRow = rowIndex - 1
+    if (removedEntireRow && srcRow === rowIndex) {
+      targetRow = placement === 'below' ? rowIndex + 1 : rowIndex
+    }
+    let targetCol = colIndex
+    if (removedEntireRow && srcRow === rowIndex && (placement === 'left' || placement === 'right')) {
+      targetCol = placement === 'left' ? 0 : 1
+    } else if (srcRow === rowIndex && (placement === 'left' || placement === 'right')) {
+      if (srcCol < colIndex || (placement === 'right' && srcCol === colIndex)) targetCol = placement === 'left' ? colIndex - 1 : colIndex
+    }
+    if (placement === 'above') {
+      layout = [...layout.slice(0, targetRow), [id], ...layout.slice(targetRow)]
+    } else if (placement === 'below') {
+      layout = [...layout.slice(0, targetRow + 1), [id], ...layout.slice(targetRow + 1)]
+    } else if (placement === 'left') {
+      const row = [...(layout[targetRow] || [])]
+      row.splice(targetCol, 0, id)
+      layout = [...layout.slice(0, targetRow), row, ...layout.slice(targetRow + 1)]
+    } else {
+      const row = [...(layout[targetRow] || [])]
+      row.splice(targetCol + 1, 0, id)
+      layout = [...layout.slice(0, targetRow), row, ...layout.slice(targetRow + 1)]
+    }
+    return layout
+  }
+
+  useEffect(() => {
+    if (customizeOpen) {
+      undoSnapshotRef.current = {
+        visible: { ...(widgetPreferences?.visible ?? getDefaultWidgetPreferences().visible) },
+        size: { ...(widgetPreferences?.size ?? getDefaultWidgetPreferences().size) },
+        customHeight: { ...(widgetPreferences?.customHeight ?? {}) },
+        customWidth: { ...(widgetPreferences?.customWidth ?? {}) },
+        lockToGrid: widgetPreferences?.lockToGrid !== false,
+        layout: (widgetPreferences?.layout ?? getDefaultWidgetPreferences().layout).map(row => [...row])
+      }
+    }
+  }, [customizeOpen])
+
+  const handleUndo = () => {
+    if (undoSnapshotRef.current) {
+      const next = { ...widgetPreferences, ...undoSnapshotRef.current }
+      saveWidgetPreferences(next)
+      setWidgetPreferences(next)
+    }
+  }
 
   const setVisible = (id, value) => {
     setWidgetPreferences(prev => {
@@ -297,6 +531,82 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, set
       saveWidgetPreferences(next)
       return next
     })
+  }
+  const setCustomHeight = (id, value) => {
+    const snapped = lockToGrid ? snapToGrid(value, WIDGET_GRID_STEP, WIDGET_MIN_H, WIDGET_MAX_H) : Math.max(WIDGET_MIN_H, Math.min(WIDGET_MAX_H, value))
+    setWidgetPreferences(prev => {
+      const next = { ...prev, customHeight: { ...prev.customHeight, [id]: snapped } }
+      saveWidgetPreferences(next)
+      return next
+    })
+  }
+  const setLockToGrid = (value) => {
+    setWidgetPreferences(prev => {
+      const next = { ...prev, lockToGrid: value }
+      saveWidgetPreferences(next)
+      return next
+    })
+  }
+  const setCustomWidth = (id, value) => {
+    const snapped = lockToGrid ? snapToGrid(value, WIDGET_GRID_STEP, WIDGET_MIN_W, WIDGET_MAX_W) : Math.max(WIDGET_MIN_W, Math.min(WIDGET_MAX_W, value))
+    setWidgetPreferences(prev => {
+      const next = { ...prev, customWidth: { ...prev.customWidth, [id]: snapped } }
+      saveWidgetPreferences(next)
+      return next
+    })
+  }
+
+  const onWidgetDrop = (e) => {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('application/x-widget-id')
+    if (id) addWidgetToBottom(id)
+    setGalleryDragId(null)
+  }
+  const addWidgetToBottom = (id) => {
+    setVisible(id, true)
+    setLayout([...removeWidgetFromLayout(layout, id), [id]])
+  }
+  const onWidgetDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }
+
+  const onReorderDragStart = (id) => (e) => {
+    e.dataTransfer.setData('application/x-widget-reorder-id', id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', id)
+    setDraggedWidgetId(id)
+  }
+  const onReorderDragEnd = () => {
+    setDraggedWidgetId(null)
+    setDropTarget(null)
+    dropTargetRef.current = null
+  }
+  const onReorderDragOver = (e, rowIndex, colIndex) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    const rect = e.currentTarget.getBoundingClientRect()
+    const wy = (e.clientY - rect.top) / rect.height
+    const wx = (e.clientX - rect.left) / rect.width
+    let placement
+    if (wy < 0.25) placement = 'above'
+    else if (wy > 0.75) placement = 'below'
+    else if (wx < 0.5) placement = 'left'
+    else placement = 'right'
+    const target = { rowIndex, colIndex, placement }
+    dropTargetRef.current = target
+    setDropTarget(target)
+  }
+  const onReorderDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const draggedId = e.dataTransfer.getData('application/x-widget-reorder-id') || e.dataTransfer.getData('text/plain')
+    if (!draggedId) return
+    const target = dropTargetRef.current ?? dropTarget
+    setDropTarget(null)
+    dropTargetRef.current = null
+    if (!target) return
+    const { rowIndex, colIndex, placement } = target
+    const newLayout = insertAt(layout, rowIndex, colIndex, placement, draggedId)
+    setLayout(newLayout)
   }
 
   return (
@@ -326,80 +636,180 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, set
             ))}
           </div>
         </div>
-        <div className="md:col-span-2 flex flex-col gap-2 min-h-0 overflow-y-auto scrollbar-hide h-full overflow-x-hidden">
-          {visible.minimap !== false && (
-            <div className={`bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 shrink-0 flex flex-col ${SIZE_CLASS[size.minimap] || SIZE_CLASS.medium}`}>
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <MiniMapWidget profile={profile} onOpenMap={onOpenMap} />
+        <div
+          className="md:col-span-2 flex flex-col gap-2 min-h-0 overflow-y-auto scrollbar-hide h-full overflow-x-hidden"
+          onDragOver={customizeOpen ? (e) => {
+            e.preventDefault()
+            if (e.dataTransfer.types.indexOf('application/x-widget-reorder-id') !== -1) {
+              e.dataTransfer.dropEffect = 'move'
+              if (!e.target.closest('[data-widget-wrapper]')) {
+                const target = { rowIndex: layout.length, colIndex: 0, placement: 'above' }
+                dropTargetRef.current = target
+                setDropTarget(target)
+              }
+            } else {
+              e.dataTransfer.dropEffect = 'copy'
+            }
+          } : undefined}
+          onDrop={customizeOpen ? (e) => {
+            const reorderId = e.dataTransfer.getData('application/x-widget-reorder-id')
+            if (reorderId) {
+              onReorderDrop(e)
+            } else {
+              onWidgetDrop(e)
+            }
+          } : undefined}
+          onDragLeave={customizeOpen ? () => { setDropTarget(null); dropTargetRef.current = null } : undefined}
+          style={customizeOpen ? { outline: '2px dashed rgba(44,40,37,0.2)', outlineOffset: -2 } : undefined}
+        >
+          {layout.map((row, rowIndex) => (
+            <Fragment key={rowIndex}>
+              {customizeOpen && dropTarget?.placement === 'above' && dropTarget?.rowIndex === rowIndex && (
+                <div className="h-1 flex-shrink-0 rounded bg-ink/60 my-0.5 min-h-[4px] border-t-2 border-ink/70" aria-hidden />
+              )}
+              <div className="flex flex-wrap gap-2 shrink-0 min-h-0">
+                {row.map((id, colIndex) => {
+                  if (visible[id] === false) return null
+                  const wrapperStyle = customWidth[id] != null ? { width: customWidth[id], flex: '0 0 auto' } : { flex: '1 1 0', minWidth: 200 }
+                  return (
+                    <Fragment key={id}>
+                      {customizeOpen && dropTarget?.rowIndex === rowIndex && dropTarget?.colIndex === colIndex && dropTarget?.placement === 'left' && (
+                        <div className="w-1 flex-shrink-0 rounded bg-ink/60 min-h-[24px] border-l-2 border-ink/70 self-stretch" aria-hidden />
+                      )}
+                      <div
+                        data-widget-wrapper
+                        className="shrink-0 min-w-0"
+                        style={wrapperStyle}
+                        onDragOver={customizeOpen ? (e) => onReorderDragOver(e, rowIndex, colIndex) : undefined}
+                        onDrop={customizeOpen ? onReorderDrop : undefined}
+                      >
+                        <ResizableWidgetBox
+                          id={id}
+                          editMode={customizeOpen}
+                          height={customHeight[id]}
+                          width={customWidth[id]}
+                          minH={id === 'archbot' ? 120 : id === 'global-events' ? 100 : undefined}
+                          onResize={setCustomHeight}
+                          onResizeWidth={customizeOpen ? setCustomWidth : undefined}
+                          onRemove={customizeOpen ? (widgetId) => setVisible(widgetId, false) : undefined}
+                          onDragHandleStart={customizeOpen ? onReorderDragStart(id) : undefined}
+                          onDragHandleEnd={customizeOpen ? onReorderDragEnd : undefined}
+                          sizeKey={size[id]}
+                          sizeClassMap={id === 'archbot' || id === 'global-events' ? SIZE_CLASS_CONTENT : SIZE_CLASS}
+                          contentClassMap={null}
+                        >
+                          {id === 'minimap' && <MiniMapWidget profile={profile} onOpenMap={onOpenMap} />}
+                          {id === 'quickstats' && <QuickStatsWidget profile={profile} onOpenMap={onOpenMap} />}
+                          {id === 'archbot' && (
+                            <div className="h-full min-h-[180px]">
+                              <ArchBotChatBox profile={profile} />
+                            </div>
+                          )}
+                          {id === 'global-events' && (
+                            <div className="h-full">
+                              <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1.5 mb-2">Global Events</h3>
+                              <div className="space-y-2">
+                                {EVENTS.map(e => (
+                                  <div key={e.title} className="flex gap-2 items-center border-b border-ink/20 pb-2 last:border-0 last:pb-0">
+                                    <div className="bg-ink text-white p-1.5 text-center min-w-[40px] rounded shrink-0">
+                                      <div className="text-[9px] font-bold leading-tight">{e.month}</div>
+                                      <div className="text-sm font-bold leading-tight">{e.day}</div>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="font-semibold text-ink text-[11px] leading-tight">{e.title}</h4>
+                                      <p className="text-[9px] text-ink/60 mt-0.5">Location: {e.loc}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </ResizableWidgetBox>
+                      </div>
+                      {customizeOpen && dropTarget?.rowIndex === rowIndex && dropTarget?.colIndex === colIndex && dropTarget?.placement === 'right' && (
+                        <div className="w-1 flex-shrink-0 rounded bg-ink/60 min-h-[24px] border-r-2 border-ink/70 self-stretch" aria-hidden />
+                      )}
+                    </Fragment>
+                  )
+                })}
               </div>
-            </div>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 shrink-0">
-            {visible.quickstats !== false && (
-              <div className={`bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 shrink-0 flex flex-col ${SIZE_CLASS[size.quickstats] || SIZE_CLASS.medium}`}>
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <QuickStatsWidget profile={profile} onOpenMap={onOpenMap} />
-                </div>
-              </div>
-            )}
-            {visible.archbot !== false && (
-              <div className={`shrink-0 ${SIZE_CLASS_CONTENT[size.archbot] || SIZE_CLASS_CONTENT.medium}`}>
-                <div className="h-full min-h-[180px] bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5">
-                  <ArchBotChatBox profile={profile} />
-                </div>
-              </div>
-            )}
-          </div>
-          {visible['global-events'] !== false && (
-            <div className={`bg-white/50 backdrop-blur-sm border border-ink/40 rounded-lg p-2.5 shrink-0 ${SIZE_CLASS_CONTENT[size['global-events']] || SIZE_CLASS_CONTENT.medium}`}>
-              <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1.5 mb-2">Global Events</h3>
-              <div className="space-y-2">
-                {EVENTS.map(e => (
-                  <div key={e.title} className="flex gap-2 items-center border-b border-ink/20 pb-2 last:border-0 last:pb-0">
-                    <div className="bg-ink text-white p-1.5 text-center min-w-[40px] rounded shrink-0">
-                      <div className="text-[9px] font-bold leading-tight">{e.month}</div>
-                      <div className="text-sm font-bold leading-tight">{e.day}</div>
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-semibold text-ink text-[11px] leading-tight">{e.title}</h4>
-                      <p className="text-[9px] text-ink/60 mt-0.5">Location: {e.loc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {customizeOpen && (
-            <div className="shrink-0 bg-white/80 backdrop-blur-sm border border-ink/40 rounded-lg p-3 space-y-3">
-              <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1.5">Widgets</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {WIDGET_IDS.map(id => (
-                  <div key={id} className="flex flex-wrap items-center gap-2 p-2 rounded-lg bg-white/50 border border-ink/20">
-                    <label className="flex items-center gap-1.5 cursor-pointer min-w-0">
-                      <input type="checkbox" checked={visible[id] !== false} onChange={e => setVisible(id, e.target.checked)} className="rounded border-ink/40" />
-                      <span className="text-xs font-medium text-ink truncate">{WIDGET_LABELS[id]}</span>
-                    </label>
-                    <select value={size[id] || 'medium'} onChange={e => setSize(id, e.target.value)} className="text-xs border border-ink/30 rounded px-1.5 py-0.5 bg-white/80 text-ink min-w-0">
-                      {WIDGET_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
+              {customizeOpen && dropTarget?.placement === 'below' && dropTarget?.rowIndex === rowIndex && (
+                <div className="h-1 flex-shrink-0 rounded bg-ink/60 my-0.5 min-h-[4px] border-t-2 border-ink/70" aria-hidden />
+              )}
+            </Fragment>
+          ))}
+          {customizeOpen && dropTarget?.rowIndex === layout.length && dropTarget?.placement === 'above' && (
+            <div className="h-1 flex-shrink-0 rounded bg-ink/60 my-0.5 min-h-[4px] border-t-2 border-ink/70" aria-hidden />
           )}
           <div className="shrink-0 flex items-center justify-end gap-1 pr-1 pt-1">
             <button
               type="button"
               onClick={() => setCustomizeOpen(o => !o)}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-ink/30 bg-white/60 backdrop-blur-sm text-ink hover:bg-white/80 text-xs font-medium"
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium ${customizeOpen ? 'border-ink bg-ink text-white hover:bg-ink/90' : 'border-ink/30 bg-white/60 backdrop-blur-sm text-ink hover:bg-white/80'}`}
               title="Add/remove widgets and change size"
             >
               <NavIcon name="cog" className="w-4 h-4" />
-              Customize widgets
+              {customizeOpen ? 'Done editing' : 'Customize widgets'}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Vista-style bottom tab: Widget gallery (drag-and-drop to add) */}
+      {customizeOpen && (
+        <div className="absolute bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-t border-ink/30 shadow-[0_-4px_20px_rgba(44,40,37,0.08)] rounded-t-2xl flex flex-col max-h-[280px]">
+          <div className="shrink-0 px-4 pt-3 pb-2 border-b border-ink/20 flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-sm font-bold text-ink">Add widgets</h3>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCustomizeOpen(false)}
+                className="text-xs font-medium text-ink/70 hover:text-ink px-2 py-1 rounded-lg hover:bg-ink/10"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleUndo}
+                className="text-xs font-medium text-ink/70 hover:text-ink px-2 py-1 rounded-lg hover:bg-ink/10"
+                title="Revert widget layout to when you opened this panel"
+              >
+                Undo
+              </button>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={lockToGrid}
+                  onChange={(e) => setLockToGrid(e.target.checked)}
+                  className="rounded border-ink/40 text-ink"
+                />
+                <span className="text-xs font-medium text-ink">Lock to grid ({WIDGET_GRID_STEP}px)</span>
+              </label>
+              <span className="text-[10px] text-ink/60 hidden sm:inline">Drag a widget onto the dashboard above</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-hide p-4">
+            <div className="flex flex-wrap gap-3">
+              {WIDGET_IDS.map(id => (
+                <button
+                  key={id}
+                  type="button"
+                  draggable
+                  onDragStart={(e) => { e.dataTransfer.setData('application/x-widget-id', id); e.dataTransfer.effectAllowed = 'copy'; setGalleryDragId(id) }}
+                  onDragEnd={() => setGalleryDragId(null)}
+                  onClick={() => addWidgetToBottom(id)}
+                  className={`flex flex-col items-center justify-center w-24 h-20 rounded-xl border-2 bg-white/80 cursor-grab active:cursor-grabbing border-ink/30 hover:border-ink/50 hover:shadow-md transition-all shrink-0 ${galleryDragId === id ? 'opacity-70 scale-95' : ''}`}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-ink/10 flex items-center justify-center text-ink/80">
+                    <NavIcon name={WIDGET_ICONS[id]} className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-medium text-ink mt-1.5 text-center leading-tight px-0.5">{WIDGET_LABELS[id]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -531,7 +941,7 @@ function App() {
   const isStudent = profile?.role === 'Student'
   const pcNavItems = [
     { viewKey: 'home', label: 'Home', icon: 'home' },
-    ...(isArcheologist ? [{ viewKey: 'arch', label: 'Tools', icon: 'toolbox' }] : []),
+    ...(isArcheologist ? [{ viewKey: 'arch', label: 'Arch Zone', icon: 'grid' }] : []),
     { viewKey: 'map', label: 'Map', icon: 'map' },
     ...(isStudent ? [{ viewKey: 'education', label: 'Edu Lab', icon: 'document' }] : []),
     { viewKey: 'team', label: 'Team', icon: 'people' },
@@ -623,20 +1033,19 @@ function App() {
               )}
               {!isToolRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}
               {!isToolRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
-              {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
+              {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop /></div></div>}
               {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} /></div></div>}
               {!isToolRoute && (view === 'objects' || view === 'team' || view === 'social') && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
             </main>
           </div>
         </div>
-        {session && view !== 'home' && view !== 'arch' && <AIAssistant profile={profile} />}
       </div>
 
       {/* Mobile: header + main + curved bottom nav (< 768px) */}
       <div className="md:hidden flex flex-col min-h-screen bg-[#f8f3e8]">
         <header
-          className={`fixed top-0 left-0 right-0 z-50 bg-[#f8f3e8]/95 backdrop-blur-sm border-b border-ink/10 transition-transform duration-300 ease-out ${
-            isToolRoute ? '-translate-y-full' : 'translate-y-0'
+          className={`fixed top-0 left-0 right-0 z-[1000] bg-[#f8f3e8]/95 backdrop-blur-sm border-b border-ink/10 transition-transform duration-300 ease-out ${
+            view !== 'home' || isToolRoute ? '-translate-y-full' : 'translate-y-0'
           }`}
           style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
@@ -661,7 +1070,9 @@ function App() {
         </header>
         <main
           ref={mobileMainRef}
-          className={`flex-1 overflow-y-auto transition-[padding] duration-300 ease-out ${isToolRoute ? 'pt-0' : 'pt-[7.5rem]'}`}
+          className={`flex-1 overflow-y-auto transition-[padding] duration-300 ease-out ${
+            isToolRoute ? 'pt-0' : view === 'home' ? 'pt-[7.5rem]' : 'pt-4'
+          }`}
           onTouchStart={handleMobileTouchStart}
           onTouchMove={handleMobileTouchMove}
           onTouchEnd={handleMobileTouchEnd}
@@ -671,7 +1082,7 @@ function App() {
           {!isToolRoute && view === 'home' && <MobileDashboard searchQuery={searchQuery} setSearchQuery={setSearchQuery} profile={profile} onOpenMap={() => setView('map')} />}
           {!isToolRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
           {!isToolRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
-          {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
+          {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} /></div>}
           {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
           {!isToolRoute && view === 'team' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
           {!isToolRoute && view === 'social' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
@@ -682,28 +1093,23 @@ function App() {
           }`}
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))', paddingTop: '0.75rem' }}
         >
-          <button type="button" onClick={() => setView('home')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'home' ? 'text-ink' : 'text-ink/50'}`} aria-label="Home">
-            <NavIcon name="home" className="w-6 h-6" />
+          <button type="button" onClick={() => setView('home')} className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Home">
+            <NavIcon name="home" className={`w-6 h-6 ${view === 'home' ? 'text-ink' : 'text-ink/50'}`} />
             <span className="text-[10px] font-medium">Home</span>
           </button>
-          <button type="button" onClick={() => setView('map')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'map' ? 'text-ink' : 'text-ink/50'}`} aria-label="Map">
-            <NavIcon name="globe" className="w-6 h-6" />
-            <span className="text-[10px] font-medium">Sites</span>
-          </button>
-          <button type="button" onClick={() => setView('map')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'map' ? 'text-ink' : 'text-ink/50'}`} aria-label="Map">
-            <NavIcon name="map" className="w-6 h-6" />
+          <button type="button" onClick={() => setView('map')} className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Map">
+            <NavIcon name="map" className={`w-6 h-6 ${view === 'map' ? 'text-ink' : 'text-ink/50'}`} />
             <span className="text-[10px] font-medium">Map</span>
           </button>
-          <button type="button" onClick={() => setView('arch')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'arch' ? 'text-ink' : 'text-ink/50'}`} aria-label="Arch Zone">
-            <NavIcon name="toolbox" className="w-6 h-6" />
+          <button type="button" onClick={() => setView('arch')} className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Arch Zone">
+            <NavIcon name="grid" className={`w-6 h-6 ${view === 'arch' ? 'text-ink' : 'text-ink/50'}`} />
             <span className="text-[10px] font-medium">Arch Zone</span>
           </button>
           <button type="button" className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Profile">
-            <NavIcon name="user" className="w-6 h-6" />
+            <NavIcon name="user" className="w-6 h-6 text-ink/50" />
             <span className="text-[10px] font-medium">Profile</span>
           </button>
         </nav>
-        {session && view !== 'home' && view !== 'arch' && <AIAssistant profile={profile} />}
       </div>
     </div>
   )

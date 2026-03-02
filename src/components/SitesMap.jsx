@@ -163,7 +163,7 @@ L.Marker.prototype.options.icon = DefaultIcon
 
 const ArtifactIcon = L.divIcon({
   className: 'artifact-marker',
-  html: '<div style="width:16px;height:16px;border-radius:50%;background:#b91c1c;border:2px solid #000;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
+  html: '<div style="width:16px;height:16px;border-radius:50%;background:#f43f5e;border:2px solid rgba(44,40,37,0.3);box-shadow:0 1px 4px rgba(44,40,37,0.2);"></div>',
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 })
@@ -599,24 +599,24 @@ export default function SitesMap({ searchQuery, profile }) {
   })
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="h-4 w-4 bg-black"></div>
-              <h2 className="text-3xl font-black uppercase tracking-tighter">Global Site Registry</h2>
-            </div>
-            <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
+          <div className="space-y-3">
+            <h2 className="text-2xl font-bold text-ink">Global Site Registry</h2>
+            <div className="flex flex-wrap gap-4 text-xs font-medium text-ink/60">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div> In Progress
+                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                <span>In Progress</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div> Finished
+                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                <span>Finished</span>
               </div>
               {(isArcheologist || (isStudent && mapMode === 'student')) && (
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full border-2 border-black" style={{ background: '#b91c1c' }}></div> Artifact / Find
+                  <div className="w-2 h-2 rounded-full bg-rose-500 border border-ink/20"></div>
+                  <span>Artifact / Find</span>
                 </div>
               )}
             </div>
@@ -624,53 +624,53 @@ export default function SitesMap({ searchQuery, profile }) {
         </div>
 
         {/* Map mode + Filters */}
-        <div className="border-2 border-black p-4 bg-gray-50 flex flex-col gap-4">
+        <div className="rounded-2xl border border-ink/20 bg-white shadow-[0_2px_12px_rgba(44,40,37,0.08)] p-4 flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <span className="text-[10px] font-black uppercase text-gray-500">View:</span>
+            <span className="text-sm font-medium text-ink/70">View:</span>
             {isArcheologist ? (
-              <div className="flex border-2 border-black overflow-hidden">
+              <div className="flex rounded-xl overflow-hidden border border-ink/20">
                 <button
                   type="button"
                   onClick={() => setMapMode('public')}
-                  className={`px-4 py-2 text-[10px] font-black uppercase ${mapMode === 'public' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                  className={`px-4 py-2.5 text-sm font-medium transition-colors ${mapMode === 'public' ? 'bg-ink text-white' : 'bg-white text-ink hover:bg-ink/5'}`}
                 >
                   Public Map
                 </button>
                 <button
                   type="button"
                   onClick={() => setMapMode('exclusive')}
-                  className={`px-4 py-2 text-[10px] font-black uppercase border-l-2 border-black ${mapMode === 'exclusive' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                  className={`px-4 py-2.5 text-sm font-medium border-l border-ink/20 transition-colors ${mapMode === 'exclusive' ? 'bg-ink text-white' : 'bg-white text-ink hover:bg-ink/5'}`}
                 >
                   Exclusive Map
                 </button>
               </div>
             ) : isStudent ? (
-              <div className="flex border-2 border-black overflow-hidden">
+              <div className="flex rounded-xl overflow-hidden border border-ink/20">
                 <button
                   type="button"
                   onClick={() => setMapMode('public')}
-                  className={`px-4 py-2 text-[10px] font-black uppercase ${mapMode === 'public' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                  className={`px-4 py-2.5 text-sm font-medium transition-colors ${mapMode === 'public' ? 'bg-ink text-white' : 'bg-white text-ink hover:bg-ink/5'}`}
                 >
                   Public Map
                 </button>
                 <button
                   type="button"
                   onClick={() => setMapMode('student')}
-                  className={`px-4 py-2 text-[10px] font-black uppercase border-l-2 border-black ${mapMode === 'student' ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-gray-100'}`}
+                  className={`px-4 py-2.5 text-sm font-medium border-l border-ink/20 transition-colors ${mapMode === 'student' ? 'bg-ink text-white' : 'bg-white text-ink hover:bg-ink/5'}`}
                 >
                   Student Map
                 </button>
               </div>
             ) : (
-              <span className="text-[10px] font-black uppercase bg-black text-white px-3 py-1">Public Map</span>
+              <span className="text-sm font-medium text-ink bg-ink/10 px-3 py-1.5 rounded-lg">Public Map</span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="text-[10px] font-black uppercase text-gray-500">Filters:</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-ink/70">Filters:</span>
             <select
               value={filterSource}
               onChange={(e) => setFilterSource(e.target.value)}
-              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
             >
               <option value="all">All sources</option>
               <option value="public">Public only</option>
@@ -683,7 +683,7 @@ export default function SitesMap({ searchQuery, profile }) {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
             >
               <option value="both">Sites & Artifacts</option>
               <option value="sites">Sites only</option>
@@ -692,7 +692,7 @@ export default function SitesMap({ searchQuery, profile }) {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
             >
               <option value="all">All statuses</option>
               <option value="In Progress">In Progress</option>
@@ -701,7 +701,7 @@ export default function SitesMap({ searchQuery, profile }) {
             <select
               value={filterTour}
               onChange={(e) => setFilterTour(e.target.value)}
-              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
             >
               <option value="all">All sites</option>
               <option value="with_tour">With 360° tour</option>
@@ -710,7 +710,7 @@ export default function SitesMap({ searchQuery, profile }) {
             <select
               value={filterRegion}
               onChange={(e) => setFilterRegion(e.target.value)}
-              className="border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase bg-white"
+              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
             >
               <option value="all">All regions</option>
               <option value="europe">Europe</option>
@@ -724,19 +724,19 @@ export default function SitesMap({ searchQuery, profile }) {
       </div>
 
       <div
-        className="border-4 border-black h-[600px] w-full relative z-0 overflow-hidden shadow-[12px_12px_0px_rgba(0,0,0,0.1)] [&_.leaflet-container]:!rounded-none [&_.leaflet-container]:!h-full [&_.leaflet-container]:!w-full [&_.leaflet-container]:!m-0 [&_.leaflet-container]:!p-0 [&_.leaflet-container_.leaflet-map-pane]:!inset-0 [&_.leaflet-container_.leaflet-tile-pane]:!inset-0"
+        className="rounded-2xl border border-ink/20 h-[600px] w-full relative z-0 overflow-hidden shadow-[0_2px_12px_rgba(44,40,37,0.08)] [&_.leaflet-container]:!rounded-2xl [&_.leaflet-container]:!h-full [&_.leaflet-container]:!w-full [&_.leaflet-container]:!m-0 [&_.leaflet-container]:!p-0 [&_.leaflet-container_.leaflet-map-pane]:!inset-0 [&_.leaflet-container_.leaflet-tile-pane]:!inset-0"
         style={{ boxSizing: 'border-box' }}
       >
         {loading && (
-          <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center font-black uppercase tracking-[0.5em]">
-            Loading Geospatial Data...
+          <div className="absolute inset-0 bg-[#f8f3e8]/90 z-10 flex items-center justify-center text-ink font-medium">
+            Loading geospatial data…
           </div>
         )}
         {filterRegion !== 'all' && (
           <button
             type="button"
             onClick={() => setFilterRegion('all')}
-            className="absolute top-3 right-3 z-[11] bg-black text-white border-2 border-white px-3 py-2 text-[10px] font-black uppercase shadow-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+            className="absolute top-3 right-3 z-[11] bg-ink text-white rounded-xl px-4 py-2.5 text-sm font-medium shadow-lg hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0h.5a2.5 2.5 0 002.5-2.5V8m0-4.414l-2-2M12 8V4a2 2 0 00-2-2H6a2 2 0 00-2 2v4" />
@@ -767,14 +767,14 @@ export default function SitesMap({ searchQuery, profile }) {
           {filterType !== 'sites' && filteredArtifacts.filter(art => typeof art?.lat === 'number' && typeof art?.lng === 'number').map(art => (
             <Marker key={`art-${art.id}`} position={[art.lat, art.lng]} icon={ArtifactIcon}>
               <Popup>
-                <div className="font-sans p-2 min-w-[200px]">
-                  <span className="text-[8px] font-black uppercase text-red-600 block">Artifact / Find</span>
-                  <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black w-fit block mb-1 ${getArtifactSourceLabel(art) === 'Public' ? 'bg-green-100' : getArtifactSourceLabel(art) === 'Student' ? 'bg-indigo-100' : getArtifactSourceLabel(art) === 'Team' ? 'bg-amber-100' : 'bg-gray-200'}`}>
+                <div className="font-sans p-3 min-w-[200px] text-[#2c2825]">
+                  <span className="text-[10px] font-semibold text-rose-600 block mb-1">Artifact / Find</span>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-[#2c2825]/20 w-fit block mb-2 ${getArtifactSourceLabel(art) === 'Public' ? 'bg-emerald-50 text-emerald-800' : getArtifactSourceLabel(art) === 'Student' ? 'bg-indigo-50 text-indigo-800' : getArtifactSourceLabel(art) === 'Team' ? 'bg-amber-50 text-amber-800' : 'bg-[#f8f3e8] text-[#2c2825]'}`}>
                     {getArtifactSourceLabel(art)}
                   </span>
-                  <span className="text-[9px] font-black uppercase block">{art.findings || art.notes?.slice(0, 50) || 'Recorded'}</span>
-                  <span className="text-[7px] text-gray-500 block mt-1">{art.sites?.name} · {new Date(art.created_at).toLocaleDateString()}</span>
-                  <span className="text-[7px] font-bold text-gray-400 block">LOC: {Number(art.lat).toFixed(4)}°, {Number(art.lng).toFixed(4)}°</span>
+                  <span className="text-xs font-medium text-[#2c2825] block">{art.findings || art.notes?.slice(0, 50) || 'Recorded'}</span>
+                  <span className="text-[10px] text-[#2c2825]/60 block mt-1">{art.sites?.name} · {new Date(art.created_at).toLocaleDateString()}</span>
+                  <span className="text-[10px] text-[#2c2825]/50 block mt-0.5">LOC: {Number(art.lat).toFixed(4)}°, {Number(art.lng).toFixed(4)}°</span>
                 </div>
               </Popup>
             </Marker>
@@ -782,40 +782,39 @@ export default function SitesMap({ searchQuery, profile }) {
           {filterType !== 'artifacts' && filteredSites.map(site => (
             <Marker key={site.id} position={[site.lat, site.lng]}>
                   <Popup>
-                    <div className="font-sans p-2 min-w-[250px] max-w-[300px]">
-                      <h3 className="font-black uppercase text-lg border-b-2 border-black mb-2 leading-tight">{site.name}</h3>
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black ${getSiteSourceLabel(site) === 'Public' ? 'bg-green-100' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-100' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-100' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-red-100' : 'bg-indigo-100'}`}>
+                    <div className="font-sans p-3 min-w-[250px] max-w-[300px] text-[#2c2825]">
+                      <h3 className="font-bold text-base border-b border-[#2c2825]/20 pb-2 mb-2 leading-tight">{site.name}</h3>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-[#2c2825]/20 ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-800' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-800' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-800' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-rose-50 text-rose-800' : 'bg-indigo-50 text-indigo-800'}`}>
                           {getSiteSourceLabel(site)}
                         </span>
-                        <div className={`text-[10px] font-black uppercase px-2 py-1 inline-block border border-black w-fit ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-[#2c2825]/20 ${site.status === 'Finished' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
                           {site.status}
-                        </div>
+                        </span>
                       </div>
-                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter block mb-3">
-                        LOC: {site.lat.toFixed(4)}°N, {site.lng.toFixed(4)}°E (DD)
+                      <span className="text-[10px] text-[#2c2825]/50 block mb-3">
+                        LOC: {site.lat.toFixed(4)}°N, {site.lng.toFixed(4)}°E
                       </span>
 
                       {/* Live Intel Section */}
                       {journals[site.id] && journals[site.id].length > 0 && (
-                        <div className="mb-4 space-y-2 border-t-2 border-black pt-2">
+                        <div className="mb-3 space-y-2 border-t border-[#2c2825]/20 pt-2">
                           <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 bg-red-600 animate-pulse"></span>
-                            <span className="text-[9px] font-black uppercase">Live Field Intel:</span>
+                            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
+                            <span className="text-[10px] font-semibold">Live Field Intel</span>
                           </div>
-                          
                           {journals[site.id].slice(0, 1).map(intel => (
                             <div key={intel.id} className="space-y-2">
                               {intel.image_url && (
-                                <img src={intel.image_url} className="w-full h-24 object-cover border border-black grayscale hover:grayscale-0 transition-all" alt="Field evidence" />
+                                <img src={intel.image_url} className="w-full h-24 object-cover rounded border border-[#2c2825]/20 grayscale hover:grayscale-0 transition-all" alt="Field evidence" />
                               )}
                               {intel.findings && (
-                                <div className="bg-gray-50 p-2 border border-black text-[10px] font-bold uppercase leading-tight">
-                                  <span className="text-red-600">LATEST FIND:</span> {intel.findings}
+                                <div className="bg-[#f8f3e8] p-2 rounded border border-[#2c2825]/20 text-[10px] font-medium leading-tight">
+                                  <span className="text-rose-600">Latest find:</span> {intel.findings}
                                 </div>
                               )}
                               {(profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist') && intel.notes && (
-                                <p className="text-[9px] font-bold text-gray-500 uppercase leading-relaxed italic">
+                                <p className="text-[10px] text-[#2c2825]/60 leading-relaxed italic">
                                   "{intel.notes.substring(0, 60)}..."
                                 </p>
                               )}
@@ -827,19 +826,18 @@ export default function SitesMap({ searchQuery, profile }) {
                       <div className="flex flex-col gap-2 mt-2">
                         <button 
                           onClick={() => site.tourUrl && window.open(site.tourUrl, '_blank')}
-                          className="w-full bg-black text-white text-[10px] font-black uppercase py-2 hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                          className="w-full bg-[#2c2825] text-white text-xs font-medium py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                         >
-                          <span>Launch 360 Tour</span>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          <span>Launch 360° Tour</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         </button>
-
                         {isFieldArch && site.status !== 'Finished' && !userRequests.includes(site.id) && (
                           <button 
                             onClick={() => setActiveSiteForRequest(site)}
-                            className="w-full bg-red-600 text-white text-[10px] font-black uppercase py-2 hover:bg-black transition-colors flex items-center justify-center gap-2"
+                            className="w-full bg-rose-500 text-white text-xs font-medium py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center"
                           >
                             Request to Join
                           </button>
@@ -853,150 +851,146 @@ export default function SitesMap({ searchQuery, profile }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {filteredSites.length === 0 ? (
-          <div className="col-span-full border-2 border-black border-dashed p-12 text-center">
-            <p className="text-xs font-black uppercase text-gray-400 tracking-widest">No sites match the current search parameters.</p>
+          <div className="col-span-full rounded-2xl border border-ink/20 border-dashed bg-white/60 p-12 text-center">
+            <p className="text-sm text-ink/60">No sites match the current filters.</p>
           </div>
         ) : (
           filteredSites.map(site => (
-            <div key={site.id} className="border-2 border-black p-6 bg-white hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all cursor-pointer group flex flex-col justify-between">
+            <div key={site.id} className="rounded-2xl border border-ink/10 bg-white p-5 shadow-[0_2px_12px_rgba(44,40,37,0.08)] hover:shadow-[0_4px_20px_rgba(44,40,37,0.12)] transition-shadow flex flex-col justify-between">
               <div>
-                <div className="flex flex-wrap justify-between items-start gap-2 mb-4">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Site_{site.id.toString().padStart(3, '0')}</span>
-                  <div className="flex gap-2">
-                    <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 border border-black ${getSiteSourceLabel(site) === 'Public' ? 'bg-green-100' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-100' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-100' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-red-100' : 'bg-indigo-100'}`}>
+                <div className="flex flex-wrap justify-between items-start gap-2 mb-3">
+                  <span className="text-xs font-medium text-ink/50">Site {site.id.toString().padStart(3, '0')}</span>
+                  <div className="flex gap-1.5">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-ink/20 ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-800' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-800' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-800' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-rose-50 text-rose-800' : 'bg-ink/10 text-ink'}`}>
                       {getSiteSourceLabel(site)}
                     </span>
-                    <span className={`text-[9px] font-black uppercase px-2 py-1 border border-black ${site.status === 'Finished' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-ink/20 ${site.status === 'Finished' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
                       {site.status}
                     </span>
                   </div>
                 </div>
-                <h4 className="font-black text-xl uppercase tracking-tighter mb-4 group-hover:underline">{site.name}</h4>
-                
-                {/* Integrated Intel in Card */}
+                <h4 className="font-bold text-lg text-ink mb-3">{site.name}</h4>
                 {journals[site.id] && journals[site.id].length > 0 ? (
-                  <div className="mb-6 p-4 bg-gray-50 border-2 border-black border-dashed">
+                  <div className="mb-4 p-3 rounded-xl bg-[#f8f3e8] border border-ink/10">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse"></div>
-                      <span className="text-[8px] font-black uppercase">Latest Dispatch:</span>
+                      <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
+                      <span className="text-[10px] font-semibold text-ink/70">Latest dispatch</span>
                     </div>
                     {journals[site.id][0].image_url && (
-                      <img src={journals[site.id][0].image_url} className="w-full h-24 object-cover border border-black mb-3 grayscale hover:grayscale-0 transition-all" alt="Latest finding" />
+                      <img src={journals[site.id][0].image_url} className="w-full h-24 object-cover rounded-lg border border-ink/10 mb-2 grayscale hover:grayscale-0 transition-all" alt="Latest finding" />
                     )}
-                    <p className="text-[10px] font-black uppercase leading-tight text-black">
-                      {journals[site.id][0].findings || 'SITE OBSERVATION RECORDED'}
+                    <p className="text-xs font-medium text-ink leading-tight">
+                      {journals[site.id][0].findings || 'Site observation recorded'}
                     </p>
                   </div>
                 ) : (
-                  <p className="text-[11px] font-bold text-gray-500 leading-relaxed uppercase mb-6">
+                  <p className="text-sm text-ink/60 leading-relaxed mb-4 line-clamp-3">
                     {site.description}
                   </p>
                 )}
               </div>
-              
               <div className="flex gap-2 mt-auto">
-                <button 
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (site.tourUrl) window.open(site.tourUrl, '_blank');
                   }}
-                  className="flex-1 border-2 border-black bg-white text-black text-[10px] font-black uppercase py-3 hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
+                  className="flex-1 rounded-xl border border-ink/20 bg-white text-ink text-sm font-medium py-3 hover:bg-ink/5 transition-colors flex items-center justify-center gap-2"
                 >
                   <span>Explore in 360°</span>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                 </button>
-
                 {isFieldArch && site.status !== 'Finished' && !userRequests.includes(site.id) && (
-                  <button 
+                  <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveSiteForRequest(site);
                     }}
-                    className="flex-1 border-2 border-red-600 bg-red-600 text-white text-[10px] font-black uppercase py-3 hover:bg-black hover:border-black transition-all flex items-center justify-center gap-2"
+                    className="flex-1 rounded-xl bg-rose-500 text-white text-sm font-medium py-3 hover:opacity-90 transition-opacity flex items-center justify-center"
                   >
                     Request to Join
                   </button>
                 )}
               </div>
             </div>
-        )))}
+          )))}
       </div>
 
       {/* Request Modal */}
       {activeSiteForRequest && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-start justify-center p-6 overflow-y-auto">
-          <div className="bg-white border-4 border-black w-full max-w-lg shadow-[16px_16px_0px_rgba(0,0,0,1)] p-10 relative my-10">
-            <button 
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-[150] flex items-start justify-center p-6 overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-ink/20 w-full max-w-lg shadow-[0_8px_32px_rgba(44,40,37,0.15)] p-8 relative my-10">
+            <button
+              type="button"
               onClick={() => setActiveSiteForRequest(null)}
-              className="absolute top-6 right-6 font-black text-xs hover:text-red-600"
+              className="absolute top-5 right-5 text-ink/60 hover:text-ink text-sm font-medium"
+              aria-label="Close"
             >
-              CLOSE [X]
+              Close
             </button>
-            
-            <div className="mb-8">
-              <h3 className="text-2xl font-black uppercase tracking-tighter">Expedition Application</h3>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Applying for: {activeSiteForRequest.name}</p>
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-ink">Expedition Application</h3>
+              <p className="text-sm text-ink/60 mt-1">Applying for: {activeSiteForRequest.name}</p>
             </div>
-
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest">Years of Field Experience</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-ink">Years of field experience</label>
                   <input
                     type="number"
                     value={experience}
                     onChange={(e) => setExperience(e.target.value)}
                     placeholder="e.g. 5"
-                    className="w-full border-2 border-black p-3 text-xs font-bold outline-none focus:bg-gray-50"
+                    className="w-full rounded-xl border border-ink/20 p-3 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest">Specialization</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-ink">Specialization</label>
                   <input
                     type="text"
                     value={specialization}
                     onChange={(e) => setSpecialization(e.target.value)}
                     placeholder="e.g. Pottery, Bioarchaeology"
-                    className="w-full border-2 border-black p-3 text-xs font-bold uppercase outline-none focus:bg-gray-50"
+                    className="w-full rounded-xl border border-ink/20 p-3 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
                     required
                   />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest">Availability / Timeframe</label>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-ink">Availability / timeframe</label>
                 <input
                   type="text"
                   value={availability}
                   onChange={(e) => setAvailability(e.target.value)}
                   placeholder="e.g. Summer 2026, Immediate"
-                  className="w-full border-2 border-black p-3 text-xs font-bold uppercase outline-none focus:bg-gray-50"
+                  className="w-full rounded-xl border border-ink/20 p-3 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
                   required
                 />
               </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest">Cover Letter / Personal Note</label>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-ink">Cover letter / personal note</label>
                 <textarea
                   value={requestMessage}
                   onChange={(e) => setRequestMessage(e.target.value)}
-                  placeholder="State why you want to join this specific dig..."
-                  className="w-full h-32 border-2 border-black p-4 text-xs font-bold uppercase outline-none focus:bg-gray-50 resize-none"
+                  placeholder="State why you want to join this specific dig…"
+                  className="w-full h-32 rounded-xl border border-ink/20 p-4 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20 resize-none"
                   required
                 />
               </div>
-
               <button
+                type="button"
                 disabled={submitLoading}
                 onClick={() => handleSendRequest(activeSiteForRequest)}
-                className="w-full bg-black text-white py-4 text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all disabled:bg-gray-200"
+                className="w-full rounded-xl bg-ink text-white py-3.5 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitLoading ? 'DISPATCHING DOSSIER...' : 'Submit Professional Application'}
+                {submitLoading ? 'Submitting…' : 'Submit application'}
               </button>
             </div>
           </div>

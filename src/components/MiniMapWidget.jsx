@@ -36,7 +36,7 @@ function FitBounds({ sites }) {
   return null
 }
 
-export default function MiniMapWidget({ profile, onOpenMap }) {
+export default function MiniMapWidget({ profile, onOpenMap, embedded = false }) {
   const [sites, setSites] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -74,19 +74,21 @@ export default function MiniMapWidget({ profile, onOpenMap }) {
   )
 
   return (
-    <div className="h-full flex flex-col min-h-0 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-2 py-1 border-b border-ink/20 shrink-0">
-        <span className="text-[10px] font-semibold text-ink">Dig sites</span>
-        {onOpenMap && (
-          <button
-            type="button"
-            onClick={onOpenMap}
-            className="text-[9px] font-medium text-ink/80 hover:text-ink hover:underline"
-          >
-            View full map →
-          </button>
-        )}
-      </div>
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden ${embedded ? 'rounded-none' : 'rounded-lg'}`}>
+      {!embedded && (
+        <div className="flex items-center justify-between px-2 py-1 border-b border-ink/20 shrink-0">
+          <span className="text-[10px] font-semibold text-ink">Dig sites</span>
+          {onOpenMap && (
+            <button
+              type="button"
+              onClick={onOpenMap}
+              className="text-[9px] font-medium text-ink/80 hover:text-ink hover:underline"
+            >
+              View full map →
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex-1 min-h-0 relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center text-ink/50 text-xs">Loading…</div>
@@ -96,7 +98,7 @@ export default function MiniMapWidget({ profile, onOpenMap }) {
             zoom={2}
             scrollWheelZoom={false}
             dragging={true}
-            className="h-full w-full rounded-b-lg"
+            className="h-full w-full rounded-b-lg minimap-no-zoom"
           >
             <FitBounds sites={sitesWithCoords} />
             <TileLayer

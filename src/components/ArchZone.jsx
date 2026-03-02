@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import MiniMapWidget from './MiniMapWidget';
 import AIAssistant from './AIAssistant';
 
-const ArchZone = ({ profile, onNavigateToMap }) => {
+const ArchZone = ({ profile, onNavigateToMap, isDesktop = false }) => {
   const navigate = useNavigate();
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isCompassOpen, setIsCompassOpen] = useState(false);
@@ -492,7 +492,6 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
   const highlightedDates = [12, 13, 14];
 
   const professionalTools = [
-    { id: 'map', label: 'Exclusive Map', icon: 'map', action: () => setActiveTool('map') },
     { id: 'notepad', label: 'Notepad', icon: 'notepad', action: () => setActiveTool('notepad') },
     { id: 'compass', label: 'Compass', icon: 'compass', action: () => setActiveTool('compass') },
     { id: 'ceramic', label: 'Ceramic Counter', icon: 'counter', action: () => setActiveTool('ceramic') },
@@ -539,55 +538,45 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
           {fullScreenBackButton}
         </div>
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {activeTool === 'map' && (
-            <div className="flex-1 min-h-0 flex flex-col p-4">
-              <div className="rounded-xl overflow-hidden border border-ink/20 flex-1 min-h-0 relative z-0 isolate">
-                <MiniMapWidget profile={profile} onOpenMap={onNavigateToMap} />
-              </div>
-              <button type="button" onClick={() => onNavigateToMap?.()} className="mt-4 w-full py-3 rounded-xl bg-ink text-white text-sm font-semibold">
-                Open full map
-              </button>
-            </div>
-          )}
           {activeTool === 'notepad' && (
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <div className="flex justify-between items-center p-4 border-b-2 border-black shrink-0">
-                <h4 className="text-xs font-black uppercase tracking-widest">Field Notepad</h4>
+              <div className="flex justify-between items-center p-4 border-b border-ink/20 shrink-0">
+                <h4 className="text-sm font-semibold text-ink">Field Notepad</h4>
               </div>
               <div className="flex flex-1 min-h-0 flex-col sm:flex-row overflow-hidden">
-                <div className="w-full sm:w-44 shrink-0 border-b-2 sm:border-b-0 sm:border-r-2 border-black flex flex-row sm:flex-col bg-gray-50 overflow-x-auto sm:overflow-x-visible">
-                  <button type="button" onClick={handleNewNote} className="min-h-[44px] shrink-0 p-3 sm:p-2 border-b-0 sm:border-b-2 border-r-2 sm:border-r-0 border-black text-[10px] font-black uppercase bg-black text-white hover:bg-red-600">
+                <div className="w-full sm:w-44 shrink-0 border-b sm:border-b-0 sm:border-r border-ink/20 flex flex-row sm:flex-col bg-ink/5 overflow-x-auto sm:overflow-x-visible">
+                  <button type="button" onClick={handleNewNote} className="min-h-[44px] shrink-0 p-3 sm:p-2 border-b-0 sm:border-b sm:border-r sm:border-r-0 border-ink/20 text-sm font-medium bg-ink text-white hover:opacity-90">
                     + New note
                   </button>
                   <div className="flex-1 overflow-y-auto p-2 flex sm:block gap-2 sm:gap-0 flex-row sm:flex-col">
                     {savedNotes.length === 0 ? (
-                      <p className="text-[9px] font-bold text-gray-400 uppercase p-2">No saved notes</p>
+                      <p className="text-xs text-ink/50 p-2">No saved notes</p>
                     ) : (
                       savedNotes.map((n) => (
                         <button
                           key={n.id}
                           type="button"
                           onClick={() => handleSelectNote(n)}
-                          className={`shrink-0 sm:shrink min-h-[44px] w-full min-w-[120px] sm:min-w-0 text-left p-3 sm:p-2 mb-0 sm:mb-1 border-2 text-[9px] font-black uppercase transition-colors ${activeNoteId === n.id ? 'border-black bg-red-600 text-white' : 'border-black bg-white hover:bg-red-50'}`}
+                          className={`shrink-0 sm:shrink min-h-[44px] w-full min-w-[120px] sm:min-w-0 text-left p-3 sm:p-2 mb-0 sm:mb-1 rounded-lg text-xs font-medium transition-colors ${activeNoteId === n.id ? 'bg-ink text-white border border-ink' : 'border border-ink/20 bg-white text-ink hover:bg-ink/5'}`}
                         >
                           <span className="block truncate">{n.title || 'Untitled'}</span>
-                          <span className="block text-[7px] opacity-70 mt-0.5">{new Date(n.updatedAt).toLocaleDateString()}</span>
+                          <span className="block text-[10px] opacity-70 mt-0.5">{new Date(n.updatedAt).toLocaleDateString()}</span>
                         </button>
                       ))
                     )}
                   </div>
                 </div>
                 <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
-                  <input type="text" value={noteTitle} onChange={handleNoteTitleChange} placeholder="Note title..." className="w-full min-h-[44px] border-2 border-black p-3 mb-2 text-base font-black uppercase outline-none focus:bg-gray-50" />
-                  <textarea value={note} onChange={handleNoteChange} placeholder="Enter field observations..." className="flex-1 min-h-[200px] w-full bg-gray-50 border-2 border-black p-4 text-xs font-bold uppercase tracking-wider outline-none focus:bg-white resize-none" />
+                  <input type="text" value={noteTitle} onChange={handleNoteTitleChange} placeholder="Note title…" className="w-full min-h-[44px] rounded-xl border border-ink/20 p-3 mb-2 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
+                  <textarea value={note} onChange={handleNoteChange} placeholder="Enter field observations…" className="flex-1 min-h-[200px] w-full rounded-xl border border-ink/20 p-4 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20 resize-none" />
                   <div className="flex justify-between items-center gap-2 mt-3 flex-wrap">
                     <div className="flex gap-2">
-                      <button type="button" onClick={handleSaveNote} className="min-h-[44px] bg-black text-white px-4 py-3 text-[10px] font-black uppercase hover:bg-red-600">Save note</button>
+                      <button type="button" onClick={handleSaveNote} className="min-h-[44px] rounded-xl bg-ink text-white px-4 py-3 text-sm font-medium hover:opacity-90">Save note</button>
                       {activeNoteId && (
-                        <button type="button" onClick={handleDeleteNote} className="min-h-[44px] border-2 border-red-600 text-red-600 px-4 py-3 text-[10px] font-black uppercase hover:bg-red-600 hover:text-white">Delete</button>
+                        <button type="button" onClick={handleDeleteNote} className="min-h-[44px] rounded-xl border border-rose-500 text-rose-600 px-4 py-3 text-sm font-medium hover:bg-rose-50">Delete</button>
                       )}
                     </div>
-                    <span className="text-[10px] font-black text-gray-400">CHARS: {note.length}</span>
+                    <span className="text-xs text-ink/50">{note.length} chars</span>
                   </div>
                 </div>
               </div>
@@ -595,68 +584,68 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
           )}
           {activeTool === 'compass' && (
             <div className="flex-1 overflow-y-auto flex flex-col items-center p-6">
-              <div className="relative w-48 h-48 border-4 border-black rounded-full flex items-center justify-center bg-gray-50 shadow-inner">
+              <div className="relative w-48 h-48 rounded-full flex items-center justify-center bg-white border border-ink/20 shadow-[0_2px_12px_rgba(44,40,37,0.08)]">
                 <div className="absolute inset-0 transition-transform duration-100 ease-linear" style={{ transform: `rotate(${-heading}deg)` }}>
-                  <span className="absolute top-2 left-1/2 -translate-x-1/2 font-black text-red-600">N</span>
-                  <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-black">S</span>
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 font-black">W</span>
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 font-black">E</span>
+                  <span className="absolute top-2 left-1/2 -translate-x-1/2 font-semibold text-rose-500 text-sm">N</span>
+                  <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-semibold text-ink/70 text-sm">S</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 font-semibold text-ink/70 text-sm">W</span>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 font-semibold text-ink/70 text-sm">E</span>
                   {[...Array(12)].map((_, i) => (
-                    <div key={i} className="absolute top-0 left-1/2 w-0.5 h-3 bg-black -translate-x-1/2 origin-[0_96px]" style={{ transform: `rotate(${i * 30}deg)` }} />
+                    <div key={i} className="absolute top-0 left-1/2 w-0.5 h-3 bg-ink/30 rounded -translate-x-1/2 origin-[0_96px]" style={{ transform: `rotate(${i * 30}deg)` }} />
                   ))}
                 </div>
-                <div className="relative w-1 h-32 bg-red-600 z-10 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:border-l-[6px] before:border-l-transparent before:border-r-[6px] before:border-r-transparent before:border-b-[12px] before:border-b-red-600 shadow-lg"></div>
-                <div className="absolute w-4 h-4 bg-black rounded-full border-2 border-white z-20"></div>
+                <div className="relative w-1 h-32 bg-rose-500 z-10 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:border-l-[6px] before:border-l-transparent before:border-r-[6px] before:border-r-transparent before:border-b-[12px] before:border-b-rose-500 shadow-lg rounded-full"></div>
+                <div className="absolute w-4 h-4 bg-ink rounded-full border-2 border-white z-20 shadow"></div>
               </div>
               <div className="mt-8 text-center">
-                <div className="text-3xl font-black italic">{Math.round(heading)}°</div>
-                <div className="text-[10px] font-black text-gray-400 mt-1 uppercase">{hasOrientation ? 'SATELLITE_SYNC_ACTIVE' : 'CALIBRATING_SENSORS...'}</div>
+                <div className="text-3xl font-bold text-ink">{Math.round(heading)}°</div>
+                <div className="text-xs text-ink/60 mt-1">{hasOrientation ? 'Calibrated' : 'Calibrating…'}</div>
               </div>
-              <div className="mt-6 w-full p-3 bg-gray-50 border-2 border-black border-dashed text-[9px] font-bold text-center uppercase">
-                {compassError ? <span className="text-red-600">{compassError}</span> : hasOrientation ? 'Compass calibrated.' : 'Waiting for device orientation data.'}
+              <div className="mt-6 w-full p-4 rounded-xl bg-ink/5 border border-ink/20 text-xs text-ink/80 text-center">
+                {compassError ? <span className="text-rose-600">{compassError}</span> : hasOrientation ? 'Compass calibrated.' : 'Waiting for device orientation data.'}
               </div>
             </div>
           )}
           {activeTool === 'ceramic' && (
             <div className="flex-1 overflow-y-auto p-6">
-              <p className="text-[9px] font-black uppercase text-gray-500 mb-3">+1 records this piece and your current GPS location.</p>
+              <p className="text-xs text-ink/60 mb-3">+1 records a piece and your current GPS location.</p>
               <div className="flex flex-col items-center gap-3 mb-4">
-                <div className="w-24 h-24 border-4 border-black flex items-center justify-center bg-amber-50">
-                  <span className="text-4xl font-black tabular-nums">{ceramicCount}</span>
+                <div className="w-24 h-24 rounded-2xl border border-ink/20 flex items-center justify-center bg-amber-50/80 shadow-[0_2px_12px_rgba(44,40,37,0.08)]">
+                  <span className="text-4xl font-bold tabular-nums text-ink">{ceramicCount}</span>
                 </div>
                 <div className="flex gap-3">
-                  <button type="button" onClick={handleCeramicAddOne} className="min-h-[44px] bg-black text-white px-6 py-3 text-sm font-black uppercase hover:bg-amber-600">+1</button>
-                  <button type="button" onClick={() => { setCeramicCount(0); setCurrentSessionPieces([]); setCeramicGeoError(''); }} className="min-h-[44px] border-2 border-black px-4 py-3 text-[10px] font-black uppercase">Reset</button>
+                  <button type="button" onClick={handleCeramicAddOne} className="min-h-[44px] rounded-xl bg-ink text-white px-6 py-3 text-sm font-medium hover:opacity-90">+1</button>
+                  <button type="button" onClick={() => { setCeramicCount(0); setCurrentSessionPieces([]); setCeramicGeoError(''); }} className="min-h-[44px] rounded-xl border border-ink/20 text-ink px-4 py-3 text-sm font-medium hover:bg-ink/5">Reset</button>
                 </div>
-                {ceramicGeoError && <p className="text-[9px] font-black uppercase text-red-600">{ceramicGeoError}</p>}
+                {ceramicGeoError && <p className="text-xs text-rose-600">{ceramicGeoError}</p>}
               </div>
               <div className="space-y-2 mb-3">
-                <label className="text-[9px] font-black uppercase text-gray-500 block">Site dimensions (optional)</label>
+                <label className="text-xs font-medium text-ink/70 block">Site dimensions (optional)</label>
                 <div className="flex gap-2">
-                  <input type="number" min="0" step="0.1" value={ceramicDimensionLength} onChange={(e) => setCeramicDimensionLength(e.target.value)} placeholder="Length (m)" className="flex-1 min-w-0 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none" />
-                  <input type="number" min="0" step="0.1" value={ceramicDimensionWidth} onChange={(e) => setCeramicDimensionWidth(e.target.value)} placeholder="Width (m)" className="flex-1 min-w-0 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none" />
+                  <input type="number" min="0" step="0.1" value={ceramicDimensionLength} onChange={(e) => setCeramicDimensionLength(e.target.value)} placeholder="Length (m)" className="flex-1 min-w-0 rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
+                  <input type="number" min="0" step="0.1" value={ceramicDimensionWidth} onChange={(e) => setCeramicDimensionWidth(e.target.value)} placeholder="Width (m)" className="flex-1 min-w-0 rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
                 </div>
               </div>
               <div className="space-y-2 mb-4">
-                <label className="text-[9px] font-black uppercase text-gray-500 block">Field / area (optional)</label>
-                <input type="text" value={ceramicSessionLabel} onChange={(e) => setCeramicSessionLabel(e.target.value)} placeholder="e.g. Grid A1" className="w-full border-2 border-black p-2 text-[10px] font-bold uppercase outline-none" />
-                <button type="button" onClick={handleSaveCeramicSession} disabled={ceramicCount === 0} className="w-full bg-amber-500 text-black py-2 text-[10px] font-black uppercase border-2 border-black hover:bg-amber-600 disabled:opacity-50">Save session ({ceramicCount})</button>
+                <label className="text-xs font-medium text-ink/70 block">Field / area (optional)</label>
+                <input type="text" value={ceramicSessionLabel} onChange={(e) => setCeramicSessionLabel(e.target.value)} placeholder="e.g. Grid A1" className="w-full rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
+                <button type="button" onClick={handleSaveCeramicSession} disabled={ceramicCount === 0} className="w-full rounded-xl bg-amber-500 text-ink py-3 text-sm font-medium border border-ink/20 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed">Save session ({ceramicCount})</button>
               </div>
-              <div className="border-t-2 border-black pt-3">
-                <p className="text-[9px] font-black uppercase text-gray-500 mb-2">Saved sessions</p>
+              <div className="border-t border-ink/20 pt-3">
+                <p className="text-xs font-medium text-ink/70 mb-2">Saved sessions</p>
                 {ceramicSessions.length === 0 ? (
-                  <p className="text-[9px] font-bold text-gray-400 uppercase">No sessions yet.</p>
+                  <p className="text-xs text-ink/50">No sessions yet.</p>
                 ) : (
                   <ul className="space-y-2">
                     {ceramicSessions.map(s => (
-                      <li key={s.id} className="border-2 border-black p-2 bg-gray-50 flex justify-between items-center gap-2">
+                      <li key={s.id} className="rounded-xl border border-ink/20 p-3 bg-white shadow-[0_2px_8px_rgba(44,40,37,0.06)] flex justify-between items-center gap-2">
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black uppercase truncate">{s.label}</p>
-                          <p className="text-[9px] text-gray-500">{s.count} pcs · {new Date(s.createdAt).toLocaleString()}</p>
+                          <p className="text-sm font-medium text-ink truncate">{s.label}</p>
+                          <p className="text-xs text-ink/50">{s.count} pcs · {new Date(s.createdAt).toLocaleString()}</p>
                         </div>
-                        <div className="flex gap-1 shrink-0">
-                          <button type="button" onClick={() => handleUseCeramicSessionCount(s.count)} className="text-[8px] font-black uppercase border border-black px-2 py-1 hover:bg-black hover:text-white">Use</button>
-                          <button type="button" onClick={() => handleDeleteCeramicSession(s.id)} className="text-[8px] font-black uppercase border border-red-600 text-red-600 px-2 py-1 hover:bg-red-600 hover:text-white">Del</button>
+                        <div className="flex gap-1.5 shrink-0">
+                          <button type="button" onClick={() => handleUseCeramicSessionCount(s.count)} className="text-xs font-medium rounded-lg border border-ink/20 px-2.5 py-1 text-ink hover:bg-ink/5">Use</button>
+                          <button type="button" onClick={() => handleDeleteCeramicSession(s.id)} className="text-xs font-medium rounded-lg border border-rose-500 text-rose-600 px-2.5 py-1 hover:bg-rose-50">Del</button>
                         </div>
                       </li>
                     ))}
@@ -681,8 +670,8 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-ink text-center">Professional Tools</h1>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {professionalTools.map((tool) => {
-            const active = (tool.id === 'notepad' && activeTool === 'notepad') || (tool.id === 'compass' && activeTool === 'compass') || (tool.id === 'ceramic' && activeTool === 'ceramic') || (tool.id === 'map' && activeTool === 'map');
+          {professionalTools.filter((tool) => !(tool.id === 'ceramic' && isDesktop) && !(tool.id === 'compass' && isDesktop)).map((tool) => {
+            const active = (tool.id === 'notepad' && activeTool === 'notepad') || (tool.id === 'compass' && activeTool === 'compass') || (tool.id === 'ceramic' && activeTool === 'ceramic');
             const hasAction = typeof tool.action === 'function';
             return (
               <button
@@ -796,6 +785,10 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
           <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
           Archives
         </button>
+        <button type="button" onClick={() => setSocialHubPanel('chat')} className="rounded-xl bg-white border border-ink/20 shadow-sm px-5 py-3 flex items-center gap-2 hover:bg-white/95 text-ink font-medium text-sm">
+          <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+          AI Assistant
+        </button>
       </section>
 
       {showArchivesPanel && (
@@ -835,11 +828,6 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
               </li>
             ))}
           </ul>
-          <button type="button" onClick={() => setSocialHubPanel('chat')} className="mt-3 w-full rounded-xl border border-ink/20 py-2.5 px-3 flex items-center justify-center gap-2 text-sm font-medium text-ink hover:bg-ink/5">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-            AI Assistant
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-          </button>
         </div>
         <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4">
           <h2 className="text-base font-bold text-ink mb-3">Social Activity</h2>
@@ -983,20 +971,22 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
         </div>
       )}
 
-      {/* Social Hub modals */}
-      {socialHubPanel && (
+      {/* AI Assistant: no wrapper so no white box behind popup */}
+      {socialHubPanel === 'chat' && (
+        <AIAssistant profile={profile} embedded open onClose={() => setSocialHubPanel(null)} />
+      )}
+
+      {/* Social Hub modals (Forum, etc.) */}
+      {socialHubPanel && socialHubPanel !== 'chat' && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-start justify-center p-6 overflow-y-auto">
-          <div className="bg-white border-4 border-black w-full max-w-2xl shadow-[16px_16px_0px_rgba(0,0,0,1)] p-10 relative my-10">
+          <div className="bg-white rounded-2xl border border-ink/20 w-full max-w-2xl shadow-[0_8px_32px_rgba(44,40,37,0.15)] p-10 relative my-10">
             <button
               onClick={() => setSocialHubPanel(null)}
-              className="absolute top-6 right-6 font-black text-xs hover:text-red-600"
+              className="absolute top-6 right-6 text-sm font-medium text-ink/60 hover:text-ink rounded-xl hover:bg-ink/5 px-2 py-1"
+              aria-label="Close"
             >
-              CLOSE [X]
+              Close
             </button>
-
-            {socialHubPanel === 'chat' && (
-              <AIAssistant profile={profile} embedded open onClose={() => setSocialHubPanel(null)} />
-            )}
 
             {socialHubPanel === 'forum' && (
               <>
@@ -1196,238 +1186,127 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
 
       {/* Ceramic Counter UI */}
       {isCeramicCounterOpen && (
-        <div className="fixed z-[100] flex flex-col bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] max-h-[90vh] w-[calc(100%-2rem)] max-w-[90vw] sm:max-w-none sm:w-80 sm:top-24 sm:right-8 top-[max(5rem,env(safe-area-inset-top))] left-4 right-4 sm:left-auto p-6" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-          <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
-            <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+        <div className="fixed z-[100] flex flex-col bg-white rounded-2xl border border-ink/20 shadow-[0_8px_32px_rgba(44,40,37,0.15)] max-h-[90vh] w-[calc(100%-2rem)] max-w-[90vw] sm:max-w-none sm:w-80 sm:top-24 sm:right-8 top-[max(5rem,env(safe-area-inset-top))] left-4 right-4 sm:left-auto p-6" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="flex justify-between items-center mb-4 border-b border-ink/20 pb-3">
+            <h4 className="text-sm font-semibold text-ink flex items-center gap-2">
+              <span className="w-2 h-2 bg-amber-500 rounded-full" />
               Ceramic Counter
             </h4>
-            <button
-              type="button"
-              onClick={handleCeramicCounterToggle}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-black hover:bg-black hover:text-white px-3 py-2 border border-black transition-colors"
-            >
-              CLOSE [X]
-            </button>
+            <button type="button" onClick={handleCeramicCounterToggle} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm text-ink/60 hover:text-ink rounded-xl hover:bg-ink/5" aria-label="Close">Close</button>
           </div>
-          <p className="text-[9px] font-black uppercase text-gray-500 mb-3">+1 records this piece and your current GPS location (allow location when prompted).</p>
+          <p className="text-xs text-ink/60 mb-3">+1 records a piece and your GPS location (allow location when prompted).</p>
           <div className="flex flex-col items-center gap-3 mb-4">
-            <div className="w-24 h-24 border-4 border-black flex items-center justify-center bg-amber-50">
-              <span className="text-4xl font-black tabular-nums">{ceramicCount}</span>
+            <div className="w-24 h-24 rounded-2xl border border-ink/20 flex items-center justify-center bg-amber-50/80 shadow-[0_2px_12px_rgba(44,40,37,0.08)]">
+              <span className="text-4xl font-bold tabular-nums text-ink">{ceramicCount}</span>
             </div>
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleCeramicAddOne}
-                className="min-h-[44px] bg-black text-white px-6 py-3 text-sm font-black uppercase hover:bg-amber-600 active:bg-amber-700 transition-colors border-2 border-black"
-              >
-                +1
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCeramicCount(0); setCurrentSessionPieces([]); setCeramicGeoError(''); }}
-                className="min-h-[44px] border-2 border-black px-4 py-3 text-[10px] font-black uppercase hover:bg-gray-100 active:bg-gray-200 transition-colors"
-              >
-                Reset
-              </button>
+              <button type="button" onClick={handleCeramicAddOne} className="min-h-[44px] rounded-xl bg-ink text-white px-6 py-3 text-sm font-medium hover:opacity-90">+1</button>
+              <button type="button" onClick={() => { setCeramicCount(0); setCurrentSessionPieces([]); setCeramicGeoError(''); }} className="min-h-[44px] rounded-xl border border-ink/20 text-ink px-4 py-3 text-sm font-medium hover:bg-ink/5">Reset</button>
             </div>
-            {currentSessionPieces.length > 0 && (
-              <p className="text-[9px] font-black uppercase text-amber-700">
-                {currentSessionPieces.filter(p => p.lat != null).length}/{currentSessionPieces.length} with location
-              </p>
-            )}
-            {ceramicGeoError && <p className="text-[9px] font-black uppercase text-red-600">{ceramicGeoError}</p>}
+            {currentSessionPieces.length > 0 && <p className="text-xs text-amber-700">{currentSessionPieces.filter(p => p.lat != null).length}/{currentSessionPieces.length} with location</p>}
+            {ceramicGeoError && <p className="text-xs text-rose-600">{ceramicGeoError}</p>}
           </div>
           <div className="space-y-2 mb-3">
-            <label className="text-[9px] font-black uppercase text-gray-500 block">Site dimensions (optional)</label>
+            <label className="text-xs font-medium text-ink/70 block">Site dimensions (optional)</label>
             <div className="flex gap-2">
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={ceramicDimensionLength}
-                onChange={(e) => setCeramicDimensionLength(e.target.value)}
-                placeholder="Length (m)"
-                className="flex-1 min-w-0 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-amber-50"
-              />
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={ceramicDimensionWidth}
-                onChange={(e) => setCeramicDimensionWidth(e.target.value)}
-                placeholder="Width (m)"
-                className="flex-1 min-w-0 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-amber-50"
-              />
+              <input type="number" min="0" step="0.1" value={ceramicDimensionLength} onChange={(e) => setCeramicDimensionLength(e.target.value)} placeholder="Length (m)" className="flex-1 min-w-0 rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
+              <input type="number" min="0" step="0.1" value={ceramicDimensionWidth} onChange={(e) => setCeramicDimensionWidth(e.target.value)} placeholder="Width (m)" className="flex-1 min-w-0 rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
             </div>
           </div>
           <div className="space-y-2 mb-4">
-            <label className="text-[9px] font-black uppercase text-gray-500 block">Field / area (optional)</label>
-            <input
-              type="text"
-              value={ceramicSessionLabel}
-              onChange={(e) => setCeramicSessionLabel(e.target.value)}
-              placeholder="e.g. Grid A1, Trench 2"
-              className="w-full border-2 border-black p-2 text-[10px] font-bold uppercase outline-none focus:bg-amber-50"
-            />
-            <button
-              type="button"
-              onClick={handleSaveCeramicSession}
-              disabled={ceramicCount === 0}
-              className="w-full bg-amber-500 text-black py-2 text-[10px] font-black uppercase border-2 border-black hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Save session ({ceramicCount})
-            </button>
+            <label className="text-xs font-medium text-ink/70 block">Field / area (optional)</label>
+            <input type="text" value={ceramicSessionLabel} onChange={(e) => setCeramicSessionLabel(e.target.value)} placeholder="e.g. Grid A1, Trench 2" className="w-full rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
+            <button type="button" onClick={handleSaveCeramicSession} disabled={ceramicCount === 0} className="w-full rounded-xl bg-amber-500 text-ink py-3 text-sm font-medium border border-ink/20 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed">Save session ({ceramicCount})</button>
           </div>
-          <div className="border-t-2 border-black pt-3 flex-1 min-h-0 flex flex-col">
-            <p className="text-[9px] font-black uppercase text-gray-500 mb-2">Saved sessions</p>
+          <div className="border-t border-ink/20 pt-3 flex-1 min-h-0 flex flex-col">
+            <p className="text-xs font-medium text-ink/70 mb-2">Saved sessions</p>
             {ceramicSessions.length === 0 ? (
-              <p className="text-[9px] font-bold text-gray-400 uppercase">No sessions yet. Count and save above.</p>
+              <p className="text-xs text-ink/50">No sessions yet. Count and save above.</p>
             ) : (
               <ul className="space-y-2 overflow-y-auto max-h-48">
                 {ceramicSessions.map(s => (
-                  <li key={s.id} className="border-2 border-black p-2 bg-gray-50 flex justify-between items-center gap-2">
+                  <li key={s.id} className="rounded-xl border border-ink/20 p-3 bg-white shadow-[0_2px_8px_rgba(44,40,37,0.06)] flex justify-between items-center gap-2">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-black uppercase truncate">{s.label}</p>
-                      <p className="text-[9px] text-gray-500">
-                        {s.count} pcs
-                        {(s.lengthM != null || s.widthM != null) && ` · ${s.lengthM ?? '?'}×${s.widthM ?? '?'} m`}
-                        {s.pieces?.length > 0 && ` · ${s.pieces.filter(p => p.lat != null).length} locations`}
-                        {' · '}{new Date(s.createdAt).toLocaleString()}
-                      </p>
+                      <p className="text-sm font-medium text-ink truncate">{s.label}</p>
+                      <p className="text-xs text-ink/50">{s.count} pcs{(s.lengthM != null || s.widthM != null) && ` · ${s.lengthM ?? '?'}×${s.widthM ?? '?'} m`}{s.pieces?.length > 0 && ` · ${s.pieces.filter(p => p.lat != null).length} locations`} · {new Date(s.createdAt).toLocaleString()}</p>
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleUseCeramicSessionCount(s.count)}
-                        className="text-[8px] font-black uppercase border border-black px-2 py-1 hover:bg-black hover:text-white"
-                      >
-                        Use
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCeramicSession(s.id)}
-                        className="text-[8px] font-black uppercase border border-red-600 text-red-600 px-2 py-1 hover:bg-red-600 hover:text-white"
-                      >
-                        Del
-                      </button>
+                    <div className="flex gap-1.5 shrink-0">
+                      <button type="button" onClick={() => handleUseCeramicSessionCount(s.count)} className="text-xs font-medium rounded-lg border border-ink/20 px-2.5 py-1 text-ink hover:bg-ink/5">Use</button>
+                      <button type="button" onClick={() => handleDeleteCeramicSession(s.id)} className="text-xs font-medium rounded-lg border border-rose-500 text-rose-600 px-2.5 py-1 hover:bg-rose-50">Del</button>
                     </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-          <p className="text-[9px] font-black text-gray-400 uppercase mt-3 text-center">Use → opens Register New Expedition with this count.</p>
+          <p className="text-xs text-ink/50 mt-3 text-center">Use → opens Register New Expedition with this count.</p>
         </div>
       )}
 
       {/* Compass UI */}
       {isCompassOpen && (
-        <div className="fixed z-[100] bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] p-6 sm:p-8 flex flex-col items-center w-[calc(100%-2rem)] max-w-[90vw] sm:max-w-none sm:w-80 sm:top-24 sm:left-8 top-[max(5rem,env(safe-area-inset-top))] left-4 right-4" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-          <div className="flex justify-between items-center w-full mb-6 sm:mb-8 border-b-2 border-black pb-2">
-            <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 bg-red-600 animate-pulse"></span>
-              Field Compass // v1.0
+        <div className="fixed z-[100] bg-white rounded-2xl border border-ink/20 shadow-[0_8px_32px_rgba(44,40,37,0.15)] p-6 sm:p-8 flex flex-col items-center w-[calc(100%-2rem)] max-w-[90vw] sm:max-w-none sm:w-80 sm:top-24 sm:left-8 top-[max(5rem,env(safe-area-inset-top))] left-4 right-4" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="flex justify-between items-center w-full mb-6 border-b border-ink/20 pb-3">
+            <h4 className="text-sm font-semibold text-ink flex items-center gap-2">
+              <span className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+              Field Compass
             </h4>
-            <button 
-              type="button"
-              onClick={handleCompassToggle} 
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-black hover:bg-black hover:text-white px-3 py-2 border border-black transition-colors"
-            >
-              CLOSE [X]
-            </button>
+            <button type="button" onClick={handleCompassToggle} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm text-ink/60 hover:text-ink rounded-xl hover:bg-ink/5" aria-label="Close">Close</button>
           </div>
-
-          <div className="relative w-48 h-48 border-4 border-black rounded-full flex items-center justify-center bg-gray-50 shadow-inner">
-            {/* Compass Rose */}
-            <div 
-              className="absolute inset-0 transition-transform duration-100 ease-linear"
-              style={{ transform: `rotate(${-heading}deg)` }}
-            >
-              <span className="absolute top-2 left-1/2 -translate-x-1/2 font-black text-red-600">N</span>
-              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-black">S</span>
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 font-black">W</span>
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 font-black">E</span>
-              
-              {/* Dial Marks */}
+          <div className="relative w-48 h-48 rounded-full flex items-center justify-center bg-white border border-ink/20 shadow-[0_2px_12px_rgba(44,40,37,0.08)]">
+            <div className="absolute inset-0 transition-transform duration-100 ease-linear" style={{ transform: `rotate(${-heading}deg)` }}>
+              <span className="absolute top-2 left-1/2 -translate-x-1/2 font-semibold text-rose-500 text-sm">N</span>
+              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-semibold text-ink/70 text-sm">S</span>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 font-semibold text-ink/70 text-sm">W</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 font-semibold text-ink/70 text-sm">E</span>
               {[...Array(12)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className="absolute top-0 left-1/2 w-0.5 h-3 bg-black -translate-x-1/2 origin-[0_96px]"
-                  style={{ transform: `rotate(${i * 30}deg)` }}
-                />
+                <div key={i} className="absolute top-0 left-1/2 w-0.5 h-3 bg-ink/30 rounded -translate-x-1/2 origin-[0_96px]" style={{ transform: `rotate(${i * 30}deg)` }} />
               ))}
             </div>
-
-            {/* Fixed Needle */}
-            <div className="relative w-1 h-32 bg-red-600 z-10 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:border-l-[6px] before:border-l-transparent before:border-r-[6px] before:border-r-transparent before:border-b-[12px] before:border-b-red-600 shadow-lg"></div>
-            <div className="absolute w-4 h-4 bg-black rounded-full border-2 border-white z-20"></div>
+            <div className="relative w-1 h-32 bg-rose-500 z-10 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:border-l-[6px] before:border-l-transparent before:border-r-[6px] before:border-r-transparent before:border-b-[12px] before:border-b-rose-500 shadow-lg rounded-full"></div>
+            <div className="absolute w-4 h-4 bg-ink rounded-full border-2 border-white z-20 shadow"></div>
           </div>
-
           <div className="mt-8 text-center">
-            <div className="text-3xl font-black italic">{Math.round(heading)}°</div>
-            <div className="text-[10px] font-black text-gray-400 mt-1 uppercase tracking-[0.2em]">
-              {hasOrientation ? 'SATELLITE_SYNC_ACTIVE' : 'CALIBRATING_SENSORS...'}
-            </div>
+            <div className="text-3xl font-bold text-ink">{Math.round(heading)}°</div>
+            <div className="text-xs text-ink/60 mt-1">{hasOrientation ? 'Calibrated' : 'Calibrating…'}</div>
           </div>
-
-          <div className="mt-6 w-full p-3 bg-gray-50 border-2 border-black border-dashed text-[9px] font-bold text-center leading-tight uppercase">
-            {compassError ? (
-              <span className="text-red-600">{compassError}</span>
-            ) : hasOrientation 
-              ? 'Compass calibrated. Align device flat for maximum geospatial accuracy.' 
-              : 'Waiting for device orientation data. (Requires mobile device with magnetometer)'}
+          <div className="mt-6 w-full p-4 rounded-xl bg-ink/5 border border-ink/20 text-xs text-ink/80 text-center">
+            {compassError ? <span className="text-rose-600">{compassError}</span> : hasOrientation ? 'Compass calibrated. Align device flat for best accuracy.' : 'Waiting for device orientation. (Requires mobile with magnetometer)'}
           </div>
-          {!window.isSecureContext && !compassError && (
-            <div className="mt-2 text-[8px] font-black text-red-600 uppercase text-center">
-              ⚠️ Note: Sensors require HTTPS or Localhost
-            </div>
+          {typeof window !== 'undefined' && !window.isSecureContext && !compassError && (
+            <div className="mt-2 text-xs text-rose-600 text-center">Sensors require HTTPS or localhost</div>
           )}
         </div>
       )}
 
       {/* Notepad UI - Saved notes + editor */}
       {isNotepadOpen && (
-        <div className="fixed z-[100] flex flex-col bg-white border-4 border-black shadow-[16px_16px_0px_rgba(0,0,0,1)] max-h-[85vh] w-[calc(100%-1rem)] max-w-[95vw] sm:max-w-2xl sm:top-24 sm:right-8 top-[max(5rem,env(safe-area-inset-top))] left-2 right-2 sm:left-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div className="flex justify-between items-center p-4 border-b-2 border-black min-h-[52px]">
-            <h4 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 bg-red-600 animate-pulse"></span>
-              Field Notepad // Saved notes
+        <div className="fixed z-[100] flex flex-col bg-white rounded-2xl border border-ink/20 shadow-[0_8px_32px_rgba(44,40,37,0.15)] max-h-[85vh] w-[calc(100%-1rem)] max-w-[95vw] sm:max-w-2xl sm:top-24 sm:right-8 top-[max(5rem,env(safe-area-inset-top))] left-2 right-2 sm:left-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="flex justify-between items-center p-4 border-b border-ink/20 min-h-[52px]">
+            <h4 className="text-sm font-semibold text-ink flex items-center gap-2">
+              <span className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+              Field Notepad
             </h4>
-            <button
-              type="button"
-              onClick={handleNotepadToggle}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-black hover:bg-black hover:text-white px-3 py-2 border border-black transition-colors"
-            >
-              CLOSE [X]
-            </button>
+            <button type="button" onClick={handleNotepadToggle} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm text-ink/60 hover:text-ink rounded-xl hover:bg-ink/5" aria-label="Close">Close</button>
           </div>
           <div className="flex flex-1 min-h-0 flex-col sm:flex-row">
-            <div className="w-full sm:w-44 shrink-0 border-b-2 sm:border-b-0 sm:border-r-2 border-black flex flex-row sm:flex-col bg-gray-50 overflow-x-auto sm:overflow-x-visible">
-              <button
-                type="button"
-                onClick={handleNewNote}
-                className="min-h-[44px] shrink-0 p-3 sm:p-2 border-b-0 sm:border-b-2 border-r-2 sm:border-r-0 border-black text-[10px] font-black uppercase bg-black text-white hover:bg-red-600 active:bg-red-700 transition-colors"
-              >
+            <div className="w-full sm:w-44 shrink-0 border-b sm:border-b-0 sm:border-r border-ink/20 flex flex-row sm:flex-col bg-ink/5 overflow-x-auto sm:overflow-x-visible">
+              <button type="button" onClick={handleNewNote} className="min-h-[44px] shrink-0 p-3 sm:p-2 border-b-0 sm:border-b sm:border-r sm:border-r-0 border-ink/20 text-sm font-medium text-white bg-ink hover:opacity-90 rounded-none sm:rounded-none">
                 + New note
               </button>
               <div className="flex-1 overflow-y-auto overflow-x-auto sm:overflow-x-visible p-2 flex sm:block gap-2 sm:gap-0 flex-row sm:flex-col">
                 {savedNotes.length === 0 ? (
-                  <p className="text-[9px] font-bold text-gray-400 uppercase p-2">No saved notes</p>
+                  <p className="text-xs text-ink/50 p-2">No saved notes</p>
                 ) : (
                   savedNotes.map((n) => (
                     <button
                       key={n.id}
                       type="button"
                       onClick={() => handleSelectNote(n)}
-                      className={`shrink-0 sm:shrink min-h-[44px] w-full min-w-[120px] sm:min-w-0 text-left p-3 sm:p-2 mb-0 sm:mb-1 border-2 text-[9px] font-black uppercase transition-colors ${
-                        activeNoteId === n.id ? 'border-black bg-red-600 text-white' : 'border-black bg-white hover:bg-red-50 active:bg-red-100'
-                      }`}
+                      className={`shrink-0 sm:shrink min-h-[44px] w-full min-w-[120px] sm:min-w-0 text-left p-3 sm:p-2 mb-0 sm:mb-1 rounded-lg text-xs font-medium transition-colors ${activeNoteId === n.id ? 'bg-ink text-white border border-ink' : 'border border-ink/20 bg-white text-ink hover:bg-ink/5'}`}
                     >
                       <span className="block truncate">{n.title || 'Untitled'}</span>
-                      <span className="block text-[7px] opacity-70 mt-0.5">
-                        {new Date(n.updatedAt).toLocaleDateString()}
-                      </span>
+                      <span className="block text-[10px] opacity-70 mt-0.5">{new Date(n.updatedAt).toLocaleDateString()}</span>
                     </button>
                   ))
                 )}
@@ -1438,35 +1317,27 @@ const ArchZone = ({ profile, onNavigateToMap }) => {
                 type="text"
                 value={noteTitle}
                 onChange={handleNoteTitleChange}
-                placeholder="Note title..."
-                className="w-full min-h-[44px] border-2 border-black p-3 mb-2 text-base font-black uppercase outline-none focus:bg-gray-50"
+                placeholder="Note title…"
+                className="w-full min-h-[44px] rounded-xl border border-ink/20 p-3 mb-2 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20"
               />
               <textarea
                 value={note}
                 onChange={handleNoteChange}
-                placeholder="ENTER FIELD OBSERVATIONS..."
-                className="flex-1 min-h-[200px] w-full bg-gray-50 border-2 border-black p-4 text-xs font-bold uppercase tracking-wider outline-none focus:bg-white transition-colors resize-none"
+                placeholder="Enter field observations…"
+                className="flex-1 min-h-[200px] w-full rounded-xl border border-ink/20 p-4 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20 resize-none"
               />
               <div className="flex justify-between items-center gap-2 mt-3 flex-wrap">
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSaveNote}
-                    className="min-h-[44px] bg-black text-white px-4 py-3 text-[10px] font-black uppercase hover:bg-red-600 active:bg-red-700 transition-colors"
-                  >
+                  <button type="button" onClick={handleSaveNote} className="min-h-[44px] rounded-xl bg-ink text-white px-4 py-3 text-sm font-medium hover:opacity-90">
                     Save note
                   </button>
                   {activeNoteId && (
-                    <button
-                      type="button"
-                      onClick={handleDeleteNote}
-                      className="min-h-[44px] border-2 border-red-600 text-red-600 px-4 py-3 text-[10px] font-black uppercase hover:bg-red-600 hover:text-white active:bg-red-700 transition-colors"
-                    >
+                    <button type="button" onClick={handleDeleteNote} className="min-h-[44px] rounded-xl border border-rose-500 text-rose-600 px-4 py-3 text-sm font-medium hover:bg-rose-50">
                       Delete
                     </button>
                   )}
                 </div>
-                <span className="text-[10px] font-black text-gray-400">CHARS: {note.length}</span>
+                <span className="text-xs text-ink/50">{note.length} chars</span>
               </div>
             </div>
           </div>
