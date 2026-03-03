@@ -605,12 +605,14 @@ export default function SitesMap({ searchQuery, profile }) {
     return true
   }
   const regionMatch = (lat, lng) => inRegion(lat, lng, filterRegion)
-  const filteredSites = sitesWithCoords.filter(site =>
-    searchMatch(site) && sourceMatch(site) && statusMatch(site) && tourMatch(site) && regionMatch(site.lat, site.lng)
-  )
+  const filteredSites = sitesWithCoords.filter(site => {
+    if (mapMode === 'public' && siteVisibility(site) !== 'public') return false
+    return searchMatch(site) && sourceMatch(site) && statusMatch(site) && tourMatch(site) && regionMatch(site.lat, site.lng)
+  })
   const filteredArtifacts = artifacts.filter(art => {
     if (filterType === 'sites') return false
     const vis = journalVisibility(art)
+    if (mapMode === 'public' && vis !== 'public') return false
     if (filterSource === 'public' && vis !== 'public') return false
     if (filterSource === 'students' && vis !== 'public' && vis !== 'student') return false
     if (filterSource === 'student_only' && vis !== 'student') return false
@@ -713,7 +715,6 @@ export default function SitesMap({ searchQuery, profile }) {
                     className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
                   >
                     <option value="all">All sources</option>
-                    <option value="public">Public only</option>
                     <option value="students">Students (public + student)</option>
                     <option value="student_only">Student only</option>
                     <option value="team">Team only</option>
