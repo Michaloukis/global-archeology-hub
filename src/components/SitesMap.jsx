@@ -196,6 +196,7 @@ export default function SitesMap({ searchQuery, profile }) {
   const [filterStatus, setFilterStatus] = useState('all') // all | In Progress | Finished
   const [filterTour, setFilterTour] = useState('all') // all | with_tour | no_tour (sites)
   const [filterRegion, setFilterRegion] = useState('all') // all | europe | americas | asia_pacific | africa | middle_east
+  const [showFilters, setShowFilters] = useState(false)
 
   const [approvedSiteIds, setApprovedSiteIds] = useState([])
   const isChief = profile?.role === 'Chief Archeologist'
@@ -210,6 +211,28 @@ export default function SitesMap({ searchQuery, profile }) {
     if (isStudent && mapMode === 'student') fetchStudentArtifacts()
     else if (isStudent) setArtifacts([])
   }, [profile, mapMode])
+
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      ({ coords: { latitude: lat, longitude: lng } }) => {
+        const bounds = {
+          europe: { south: 35, north: 72, west: -11, east: 48 },
+          americas: { south: -56, north: 72, west: -170, east: -30 },
+          asia_pacific: { south: -52, north: 72, west: 60, east: 180 },
+          africa: { south: -35, north: 38, west: -18, east: 52 },
+          middle_east: { south: 12, north: 43, west: 26, east: 75 },
+        }
+        for (const [region, b] of Object.entries(bounds)) {
+          if (lat >= b.south && lat <= b.north && lng >= b.west && lng <= b.east) {
+            setFilterRegion(region)
+            break
+          }
+        }
+      },
+      () => {}
+    )
+  }, [])
 
   /** Public + student visibility artifact finds (for Public Map and Student Map). */
   async function fetchPublicArtifacts() {
@@ -631,7 +654,7 @@ export default function SitesMap({ searchQuery, profile }) {
               <div className="flex rounded-xl overflow-hidden border border-ink/20">
                 <button
                   type="button"
-                  onClick={() => setMapMode('public')}
+                  onClick={() => { setMapMode('public'); setFilterSource('all') }}
                   className={`px-4 py-2.5 text-sm font-medium transition-colors ${mapMode === 'public' ? 'bg-ink text-white' : 'bg-white text-ink hover:bg-ink/5'}`}
                 >
                   Public Map
@@ -648,7 +671,7 @@ export default function SitesMap({ searchQuery, profile }) {
               <div className="flex rounded-xl overflow-hidden border border-ink/20">
                 <button
                   type="button"
-                  onClick={() => setMapMode('public')}
+                  onClick={() => { setMapMode('public'); setFilterSource('all') }}
                   className={`px-4 py-2.5 text-sm font-medium transition-colors ${mapMode === 'public' ? 'bg-ink text-white' : 'bg-white text-ink hover:bg-ink/5'}`}
                 >
                   Public Map
@@ -666,59 +689,79 @@ export default function SitesMap({ searchQuery, profile }) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-ink/70">Filters:</span>
-            <select
-              value={filterSource}
-              onChange={(e) => setFilterSource(e.target.value)}
-              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
+            <button
+              type="button"
+              onClick={() => setShowFilters(v => !v)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${showFilters ? 'bg-ink text-white border-ink' : 'border-ink/20 text-ink hover:bg-ink/5'}`}
             >
-              <option value="all">All sources</option>
-              <option value="public">Public only</option>
-              <option value="students">Students (public + student)</option>
-              <option value="student_only">Student only</option>
-              <option value="team">Team only</option>
-              {isChief && <option value="chief">Chief only</option>}
-              {isFieldArch && <option value="my_expeditions">My expeditions</option>}
-            </select>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
-            >
-              <option value="both">Sites & Artifacts</option>
-              <option value="sites">Sites only</option>
-              <option value="artifacts">Artifacts only</option>
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
-            >
-              <option value="all">All statuses</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Finished">Finished</option>
-            </select>
-            <select
-              value={filterTour}
-              onChange={(e) => setFilterTour(e.target.value)}
-              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
-            >
-              <option value="all">All sites</option>
-              <option value="with_tour">With 360° tour</option>
-              <option value="no_tour">Without 360° tour</option>
-            </select>
-            <select
-              value={filterRegion}
-              onChange={(e) => setFilterRegion(e.target.value)}
-              className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
-            >
-              <option value="all">All regions</option>
-              <option value="europe">Europe</option>
-              <option value="americas">Americas</option>
-              <option value="asia_pacific">Asia & Pacific</option>
-              <option value="africa">Africa</option>
-              <option value="middle_east">Middle East</option>
-            </select>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+              </svg>
+              Filters
+              {((mapMode !== 'public' && filterSource !== 'all') || filterType !== 'both' || filterStatus !== 'all' || filterTour !== 'all' || filterRegion !== 'all') && (
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/30 text-xs font-bold leading-none">
+                  {[(mapMode !== 'public' && filterSource !== 'all'), filterType !== 'both', filterStatus !== 'all', filterTour !== 'all', filterRegion !== 'all'].filter(Boolean).length}
+                </span>
+              )}
+            </button>
+            {showFilters && (
+              <>
+                {mapMode !== 'public' && (
+                  <select
+                    value={filterSource}
+                    onChange={(e) => setFilterSource(e.target.value)}
+                    className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
+                  >
+                    <option value="all">All sources</option>
+                    <option value="public">Public only</option>
+                    <option value="students">Students (public + student)</option>
+                    <option value="student_only">Student only</option>
+                    <option value="team">Team only</option>
+                    {isChief && <option value="chief">Chief only</option>}
+                    {isFieldArch && <option value="my_expeditions">My expeditions</option>}
+                  </select>
+                )}
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
+                >
+                  <option value="both">Sites & Artifacts</option>
+                  <option value="sites">Sites only</option>
+                  <option value="artifacts">Artifacts only</option>
+                </select>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Finished">Finished</option>
+                </select>
+                <select
+                  value={filterTour}
+                  onChange={(e) => setFilterTour(e.target.value)}
+                  className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
+                >
+                  <option value="all">All sites</option>
+                  <option value="with_tour">With 360° tour</option>
+                  <option value="no_tour">Without 360° tour</option>
+                </select>
+                <select
+                  value={filterRegion}
+                  onChange={(e) => setFilterRegion(e.target.value)}
+                  className="rounded-xl border border-ink/20 px-3 py-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
+                >
+                  <option value="all">All regions</option>
+                  <option value="europe">Europe</option>
+                  <option value="americas">Americas</option>
+                  <option value="asia_pacific">Asia & Pacific</option>
+                  <option value="africa">Africa</option>
+                  <option value="middle_east">Middle East</option>
+                </select>
+              </>
+            )}
           </div>
         </div>
       </div>
