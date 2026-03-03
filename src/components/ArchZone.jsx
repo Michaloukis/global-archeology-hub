@@ -873,91 +873,94 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false }) => {
       {/* Inbox Modal */}
       {isInboxOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-start justify-center p-4 sm:p-6 overflow-y-auto" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-          <div className="bg-white border-4 border-black w-full max-w-4xl shadow-[16px_16px_0px_rgba(0,0,0,1)] p-6 sm:p-10 relative my-4 sm:my-10">
-            <button 
+          <div className="bg-white rounded-2xl border border-ink/10 w-full max-w-4xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] p-6 sm:p-8 relative my-4 sm:my-10">
+            <button
               type="button"
               onClick={() => setIsInboxOpen(false)}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 min-h-[44px] min-w-[44px] flex items-center justify-center font-black text-xs hover:text-red-600 active:bg-gray-100 rounded"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 text-sm font-medium text-ink/60 hover:text-ink rounded-xl hover:bg-ink/5 px-2 py-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Close"
             >
-              CLOSE [X]
+              Close
             </button>
-            
-            <div className="mb-8 flex justify-between items-center">
+
+            <div className="mb-6 flex justify-between items-center flex-wrap gap-2 pr-14 sm:pr-16">
               <div>
-                <h3 className="text-2xl font-black uppercase tracking-tighter">Expedition Inbox</h3>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Reviewing Field Personnel Requests</p>
+                <h3 className="text-xl font-bold text-ink">Expedition Inbox</h3>
+                <p className="text-xs text-ink/60 mt-0.5">Reviewing field personnel requests</p>
               </div>
-              <button onClick={fetchRequests} className="text-[10px] font-black uppercase underline hover:text-red-600">Refresh Feed</button>
+              <button onClick={fetchRequests} className="text-sm font-medium text-ink/70 hover:text-ink rounded-lg border border-ink/20 px-3 py-1.5 hover:bg-ink/5">
+                Refresh
+              </button>
             </div>
 
             <div className="space-y-4">
               {requestsLoading ? (
-                <div className="p-12 text-center font-black uppercase text-xs tracking-widest animate-pulse">Syncing encrypted requests...</div>
+                <div className="p-12 text-center text-sm text-ink/60 animate-pulse">Loading requests…</div>
               ) : requests.length === 0 ? (
-                <div className="p-12 border-2 border-black border-dashed text-center font-black uppercase text-xs text-gray-400 tracking-widest">No pending requests in the queue.</div>
+                <div className="p-12 rounded-xl border border-ink/20 border-dashed text-center text-sm text-ink/50 bg-ink/5">
+                  No pending requests in the queue.
+                </div>
               ) : (
                 requests.map(req => (
-                  <div key={req.id} className="border-2 border-black p-6 bg-gray-50 flex flex-col md:flex-row justify-between gap-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 border border-black ${req.status === 'Pending' ? 'bg-amber-100' : req.status === 'Approved' ? 'bg-green-100' : 'bg-red-100'}`}>
+                  <div key={req.id} className="rounded-xl border border-ink/20 p-5 sm:p-6 bg-white shadow-[0_2px_12px_rgba(44,40,37,0.06)] flex flex-col md:flex-row justify-between gap-6">
+                    <div className="space-y-2 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded border ${req.status === 'Pending' ? 'bg-amber-50 text-amber-800 border-amber-200' : req.status === 'Approved' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'}`}>
                           {req.status}
                         </span>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        <span className="text-xs text-ink/50">
                           {new Date(req.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                      <h4 className="font-black text-lg uppercase leading-tight">
-                        <span className="text-red-600">REQUEST FROM:</span> {req.profiles?.full_name} (@{req.profiles?.username})
+                      <h4 className="font-bold text-ink text-base leading-tight">
+                        <span className="text-ink/60 font-medium">From:</span> {req.profiles?.full_name} (@{req.profiles?.username})
                       </h4>
-                      <p className="text-xs font-bold uppercase">
-                        <span className="text-gray-400">ASSIGNMENT:</span> {req.sites?.name}
+                      <p className="text-sm text-ink/70">
+                        <span className="text-ink/50">Assignment:</span> {req.sites?.name}
                       </p>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 py-4 border-y border-gray-200">
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 py-4 border-t border-b border-ink/10">
                         <div>
-                          <span className="text-[8px] font-black text-gray-400 uppercase block">Experience</span>
-                          <span className="text-xs font-bold uppercase">{req.experience_years} Years</span>
+                          <span className="text-[10px] font-medium text-ink/50 uppercase block mb-0.5">Experience</span>
+                          <span className="text-sm font-medium text-ink">{req.experience_years} years</span>
                         </div>
                         <div>
-                          <span className="text-[8px] font-black text-gray-400 uppercase block">Specialization</span>
-                          <span className="text-xs font-bold uppercase">{req.specialization}</span>
+                          <span className="text-[10px] font-medium text-ink/50 uppercase block mb-0.5">Specialization</span>
+                          <span className="text-sm font-medium text-ink">{req.specialization}</span>
                         </div>
                         <div>
-                          <span className="text-[8px] font-black text-gray-400 uppercase block">Availability</span>
-                          <span className="text-xs font-bold uppercase">{req.availability}</span>
+                          <span className="text-[10px] font-medium text-ink/50 uppercase block mb-0.5">Availability</span>
+                          <span className="text-sm font-medium text-ink">{req.availability}</span>
                         </div>
                       </div>
 
-                          {req.message && (
-                            <div className="mt-4 p-3 bg-white border border-black italic text-xs font-bold uppercase text-gray-600">
-                              "{req.message}"
-                            </div>
-                          )}
-
-                          {req.status === 'Approved' && (
-                            <button 
-                              onClick={() => {
-                                window.open(`/?view=journal&siteId=${req.site_id}`, '_blank');
-                              }}
-                              className="mt-4 text-[10px] font-black uppercase underline hover:text-red-600"
-                            >
-                              Open Field Terminal → [↗]
-                            </button>
-                          )}
+                      {req.message && (
+                        <div className="mt-4 p-3 rounded-lg bg-ink/5 border border-ink/20 text-sm text-ink/80 italic">
+                          "{req.message}"
                         </div>
+                      )}
+
+                      {req.status === 'Approved' && (
+                        <button
+                          onClick={() => window.open(`/?view=journal&siteId=${req.site_id}`, '_blank')}
+                          className="mt-4 text-sm font-medium text-ink hover:underline"
+                        >
+                          Open Field Terminal →
+                        </button>
+                      )}
+                    </div>
 
                     {req.status === 'Pending' && (
-                      <div className="flex md:flex-col gap-2 justify-end">
-                        <button 
+                      <div className="flex flex-row md:flex-col gap-2 justify-end shrink-0">
+                        <button
                           onClick={() => handleRequestAction(req.id, 'Approved')}
-                          className="bg-green-600 text-white px-4 py-2 text-[10px] font-black uppercase hover:bg-black transition-all"
+                          className="rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-emerald-700 transition-colors"
                         >
                           Approve
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleRequestAction(req.id, 'Rejected')}
-                          className="bg-red-600 text-white px-4 py-2 text-[10px] font-black uppercase hover:bg-black transition-all"
+                          className="rounded-xl border border-red-300 bg-red-50 text-red-700 px-4 py-2.5 text-sm font-medium hover:bg-red-100 transition-colors"
                         >
                           Reject
                         </button>

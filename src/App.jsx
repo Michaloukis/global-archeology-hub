@@ -12,6 +12,8 @@ import MiniMapWidget from './components/MiniMapWidget'
 import Illustrator2DPage from './pages/Illustrator2DPage.jsx'
 import Viewer3DPage from './pages/Viewer3DPage.jsx'
 import AccountPage from './pages/AccountPage.jsx'
+import TeamPage from './pages/TeamPage.jsx'
+import SocialPage from './pages/SocialPage.jsx'
 
 // #region agent log
 const logData = (msg, data, hypothesisId) => {
@@ -991,13 +993,8 @@ function App() {
                 <div className="p-1.5 border-b border-ink/10 shrink-0 flex flex-col items-center">
                   <button type="button" onClick={() => { navigate('/'); setView('account'); }} className="w-8 h-8 rounded-full border border-ink/20 flex items-center justify-center mb-1 overflow-hidden bg-parchment-300 focus:outline-none focus:ring-2 focus:ring-ink/30">
                     {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
-                  </button>
-                  <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || profile?.username || 'User'}</p>
-                </div>
-                <div className="p-1 border-b border-ink/10 shrink-0 flex justify-center">
-                  <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-ink/30 bg-white/80">
-                    <svg className="w-4 h-4 text-ink/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </div>
+</button>
+                <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || profile?.username || 'User'}</p>
                 </div>
                 <nav className="flex-1 min-h-0 overflow-hidden py-1 flex flex-col items-center gap-0.5">
                   {pcNavItems.map(({ viewKey, label, icon }) => (
@@ -1017,11 +1014,6 @@ function App() {
                   {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
                 </button>
                 <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || profile?.username || 'User'}</p>
-              </div>
-              <div className="p-1 border-b border-ink/10 shrink-0 flex justify-center">
-                <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-ink/30 bg-white/80">
-                  <svg className="w-4 h-4 text-ink/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                </div>
               </div>
               <nav className="flex-1 min-h-0 overflow-hidden py-1 flex flex-col items-center gap-0.5">
                 {pcNavItems.map(({ viewKey, label, icon }) => (
@@ -1047,7 +1039,9 @@ function App() {
               {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop /></div></div>}
               {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} /></div></div>}
               {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
-              {!isToolRoute && (view === 'objects' || view === 'team' || view === 'social') && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
+              {!isToolRoute && view === 'team' && <TeamPage profile={profile} />}
+              {!isToolRoute && view === 'social' && <SocialPage profile={profile} />}
+              {!isToolRoute && view === 'objects' && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
             </main>
           </div>
         </div>
@@ -1100,8 +1094,8 @@ function App() {
           {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} /></div>}
           {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
           {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
-          {!isToolRoute && view === 'team' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
-          {!isToolRoute && view === 'social' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
+          {!isToolRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} /></div>}
+          {!isToolRoute && view === 'social' && <div className="p-4 min-h-[60vh]"><SocialPage profile={profile} /></div>}
         </main>
         <nav
           className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-sm border-t border-ink/10 rounded-t-3xl shadow-[0_-4px_20px_rgba(44,40,37,0.06)] transition-transform duration-300 ease-out ${
