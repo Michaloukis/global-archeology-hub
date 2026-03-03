@@ -11,6 +11,7 @@ import QuickStatsWidget from './components/QuickStatsWidget'
 import MiniMapWidget from './components/MiniMapWidget'
 import Illustrator2DPage from './pages/Illustrator2DPage.jsx'
 import Viewer3DPage from './pages/Viewer3DPage.jsx'
+import AccountPage from './pages/AccountPage.jsx'
 
 // #region agent log
 const logData = (msg, data, hypothesisId) => {
@@ -856,30 +857,21 @@ function App() {
   const [activeSiteId, setActiveSiteId] = useState(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [widgetPreferences, setWidgetPreferences] = useState(() => loadWidgetPreferences())
-  const [isPullRefreshing, setIsPullRefreshing] = useState(false)
+  const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true)
   const mobileMainRef = useRef(null)
-  const touchStartY = useRef(0)
   const location = useLocation()
   const navigate = useNavigate()
   const isToolRoute = location.pathname === '/illustrator-2d' || location.pathname === '/viewer-3d'
 
-  const pullTriggered = useRef(false)
-  const handleMobileTouchStart = (e) => {
-    if (mobileMainRef.current?.scrollTop === 0) {
-      touchStartY.current = e.touches[0].clientY
-      pullTriggered.current = false
-    }
-  }
-  const handleMobileTouchMove = (e) => {
-    if (isPullRefreshing || !mobileMainRef.current || mobileMainRef.current.scrollTop > 0) return
-    const y = e.touches[0].clientY
-    if (y - touchStartY.current > 60) pullTriggered.current = true
-  }
-  const handleMobileTouchEnd = () => {
-    if (!pullTriggered.current) return
-    pullTriggered.current = false
-    setIsPullRefreshing(true)
-    setTimeout(() => setIsPullRefreshing(false), 800)
+  useEffect(() => {
+    if (view === 'home') setMobileHeaderVisible(true)
+  }, [view])
+
+  const handleMobileScroll = (e) => {
+    const el = e.currentTarget
+    const top = el.scrollTop
+    if (top <= 15) setMobileHeaderVisible(true)
+    else if (top > 40) setMobileHeaderVisible(false)
   }
 
   // Auto-hide sidebar when entering a tool route
@@ -997,10 +989,10 @@ function App() {
                 style={{ transform: sidebarCollapsed ? 'translateX(calc(-100% + 12px))' : 'translateX(0)' }}
               >
                 <div className="p-1.5 border-b border-ink/10 shrink-0 flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-parchment-300 border border-ink/20 flex items-center justify-center mb-1">
-                    <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                  </div>
-                  <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || 'User'}</p>
+                  <button type="button" onClick={() => { navigate('/'); setView('account'); }} className="w-8 h-8 rounded-full border border-ink/20 flex items-center justify-center mb-1 overflow-hidden bg-parchment-300 focus:outline-none focus:ring-2 focus:ring-ink/30">
+                    {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+                  </button>
+                  <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || profile?.username || 'User'}</p>
                 </div>
                 <div className="p-1 border-b border-ink/10 shrink-0 flex justify-center">
                   <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-ink/30 bg-white/80">
@@ -1015,22 +1007,16 @@ function App() {
                     </button>
                   ))}
                 </nav>
-                <div className="border-t border-ink/20 p-1 shrink-0">
-                  <button className="group w-full flex flex-col items-center justify-center py-1.5 gap-0.5 text-ink hover:bg-parchment-100 rounded-lg" title="Settings">
-                    <NavIcon name="cog" className="w-5 h-5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
-                    <span className="text-[9px] font-medium leading-tight">Settings</span>
-                  </button>
-                </div>
               </aside>
             </div>
           ) : (
             /* Normal hub: always-visible sidebar */
             <aside className="w-[72px] shrink-0 h-screen flex flex-col rounded-[2rem] overflow-hidden sticky top-0 bg-white/80 backdrop-blur-xl border-r border-t border-b border-ink/20">
               <div className="p-1.5 border-b border-ink/10 shrink-0 flex flex-col items-center">
-                <div className="w-8 h-8 rounded-full bg-parchment-300 border border-ink/20 flex items-center justify-center mb-1">
-                  <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                </div>
-                <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || 'User'}</p>
+                <button type="button" onClick={() => { navigate('/'); setView('account'); }} className="w-8 h-8 rounded-full border border-ink/20 flex items-center justify-center mb-1 overflow-hidden bg-parchment-300 focus:outline-none focus:ring-2 focus:ring-ink/30">
+                  {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+                </button>
+                <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || profile?.username || 'User'}</p>
               </div>
               <div className="p-1 border-b border-ink/10 shrink-0 flex justify-center">
                 <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-ink/30 bg-white/80">
@@ -1045,12 +1031,6 @@ function App() {
                   </button>
                 ))}
               </nav>
-              <div className="border-t border-ink/20 p-1 shrink-0">
-                <button className="group w-full flex flex-col items-center justify-center py-1.5 gap-0.5 text-ink hover:bg-parchment-100 rounded-lg" title="Settings">
-                  <NavIcon name="cog" className="w-5 h-5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
-                  <span className="text-[9px] font-medium leading-tight">Settings</span>
-                </button>
-              </div>
             </aside>
           )}
           <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-transparent overflow-hidden ${isToolRoute ? 'pl-0' : 'pl-4'} h-full`}>
@@ -1066,23 +1046,29 @@ function App() {
               {!isToolRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
               {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop /></div></div>}
               {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} /></div></div>}
+              {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
               {!isToolRoute && (view === 'objects' || view === 'team' || view === 'social') && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
             </main>
           </div>
         </div>
       </div>
 
-      {/* Mobile: header + main + curved bottom nav (< 768px) */}
-      <div className="md:hidden flex flex-col min-h-screen bg-[#f8f3e8]">
+      {/* Mobile: header + main + curved bottom nav (< 768px). h-screen overflow-hidden so main is the scroll container and scroll events fire. */}
+      <div className="md:hidden flex flex-col h-screen overflow-hidden bg-[#f8f3e8]">
         <header
-          className={`fixed top-0 left-0 right-0 z-[1000] bg-[#f8f3e8]/95 backdrop-blur-sm border-b border-ink/10 transition-transform duration-300 ease-out ${
-            view !== 'home' || isToolRoute ? '-translate-y-full' : 'translate-y-0'
-          }`}
-          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+          className="fixed top-0 left-0 right-0 z-[1000] overflow-hidden border-b border-ink/10 transition-transform duration-300 ease-out"
+          style={{
+            background: '#f8f3e8',
+            transform: view !== 'home' || isToolRoute ? 'translate3d(0, -100%, 0)' : mobileHeaderVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, -100%, 0)',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden'
+          }}
         >
-          <div className="px-4 pb-3">
-            <h1 className="text-center text-lg font-bold text-ink">Archeology Hub</h1>
-            <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/80 border border-ink/20 px-3 py-2.5 shadow-sm">
+          {/* Opaque cap over status bar so no content can ever paint there */}
+          <div style={{ height: 'env(safe-area-inset-top)', minHeight: 0, background: '#f8f3e8' }} aria-hidden />
+          <div className="px-3 pb-2 pt-0.5" style={{ paddingTop: '0.75rem' }}>
+            <h1 className="text-center text-base font-bold text-ink leading-tight">Archeology Hub</h1>
+            <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-white/80 border border-ink/20 px-2.5 py-2 shadow-sm">
               <input
                 type="text"
                 placeholder="Input field"
@@ -1092,21 +1078,19 @@ function App() {
               />
               <NavIcon name="search" className="w-4 h-4 text-ink/50 shrink-0" />
             </div>
-            {isPullRefreshing && (
-              <div className="flex justify-center mt-2">
-                <div className="w-5 h-5 rounded-full border-2 border-ink/30 border-t-ink animate-spin" aria-hidden />
-              </div>
-            )}
           </div>
         </header>
         <main
           ref={mobileMainRef}
-          className={`flex-1 overflow-y-auto transition-[padding] duration-300 ease-out ${
-            isToolRoute ? 'pt-0' : view === 'home' ? 'pt-[7.5rem]' : 'pt-4'
-          }`}
-          onTouchStart={handleMobileTouchStart}
-          onTouchMove={handleMobileTouchMove}
-          onTouchEnd={handleMobileTouchEnd}
+          onScroll={handleMobileScroll}
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden transition-[padding] duration-300 ease-out"
+          style={
+            isToolRoute
+              ? { paddingTop: 0 }
+              : view === 'home'
+                ? { paddingTop: mobileHeaderVisible ? '5.25rem' : 'max(1rem, env(safe-area-inset-top))' }
+                : { paddingTop: '1rem' }
+          }
         >
           {location.pathname === '/viewer-3d' && <Viewer3DPage />}
           {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
@@ -1115,6 +1099,7 @@ function App() {
           {!isToolRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
           {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} /></div>}
           {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
+          {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
           {!isToolRoute && view === 'team' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
           {!isToolRoute && view === 'social' && <div className="p-8 text-center text-ink/60 text-sm">Coming soon</div>}
         </main>
@@ -1136,9 +1121,9 @@ function App() {
             <NavIcon name="grid" className={`w-6 h-6 ${view === 'arch' ? 'text-ink' : 'text-ink/50'}`} />
             <span className="text-[10px] font-medium">Arch Zone</span>
           </button>
-          <button type="button" className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Profile">
-            <NavIcon name="user" className="w-6 h-6 text-ink/50" />
-            <span className="text-[10px] font-medium">Profile</span>
+          <button type="button" onClick={() => setView('account')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'account' ? 'text-ink' : 'text-ink/50'}`} aria-label="Account">
+            <NavIcon name="user" className={`w-6 h-6 ${view === 'account' ? 'text-ink' : 'text-ink/50'}`} />
+            <span className="text-[10px] font-medium">Account</span>
           </button>
         </nav>
       </div>
