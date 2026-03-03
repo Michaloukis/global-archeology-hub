@@ -895,75 +895,85 @@ export default function SitesMap({ searchQuery, profile }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 gap-4">
         {filteredSites.length === 0 ? (
           <div className="col-span-full rounded-2xl border border-ink/20 border-dashed bg-white/60 p-12 text-center">
             <p className="text-sm text-ink/60">No sites match the current filters.</p>
           </div>
         ) : (
           filteredSites.map(site => (
-            <div key={site.id} className="rounded-2xl border border-ink/10 bg-white p-5 shadow-[0_2px_12px_rgba(44,40,37,0.08)] hover:shadow-[0_4px_20px_rgba(44,40,37,0.12)] transition-shadow flex flex-col justify-between">
-              <div>
-                <div className="flex flex-wrap justify-between items-start gap-2 mb-3">
-                  <span className="text-xs font-medium text-ink/50">Site {site.id.toString().padStart(3, '0')}</span>
-                  <div className="flex gap-1.5">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-ink/20 ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-800' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-800' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-800' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-rose-50 text-rose-800' : 'bg-ink/10 text-ink'}`}>
-                      {getSiteSourceLabel(site)}
-                    </span>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-ink/20 ${site.status === 'Finished' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
-                      {site.status}
-                    </span>
+            <div key={site.id} className={`aspect-square rounded-2xl border bg-white shadow-[0_2px_10px_rgba(44,40,37,0.07)] hover:shadow-[0_4px_18px_rgba(44,40,37,0.12)] transition-shadow flex flex-col overflow-hidden ${site.status === 'Finished' ? 'border-emerald-200' : 'border-amber-200'}`}>
+              {/* Status accent bar */}
+              <div className={`h-1 w-full shrink-0 ${site.status === 'Finished' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              <div className="flex flex-col flex-1 p-4 gap-2 min-h-0 overflow-hidden">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium text-ink/40 mb-0.5 tracking-wide uppercase">Site #{site.id.toString().padStart(3, '0')}</p>
+                    <h4 className="font-bold text-sm text-ink leading-snug line-clamp-1">{site.name}</h4>
                   </div>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${site.status === 'Finished' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                    {site.status}
+                  </span>
                 </div>
-                <h4 className="font-bold text-lg text-ink mb-3">{site.name}</h4>
-                {journals[site.id] && journals[site.id].length > 0 ? (
-                  <div className="mb-4 p-3 rounded-xl bg-[#f8f3e8] border border-ink/10">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
-                      <span className="text-[10px] font-semibold text-ink/70">Latest dispatch</span>
+
+                {/* Source + coordinates */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-700 border-amber-200' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-ink/10 text-ink border-ink/20'}`}>
+                    {getSiteSourceLabel(site)}
+                  </span>
+                  <span className="text-[10px] text-ink/35 font-mono">{site.lat.toFixed(3)}°, {site.lng.toFixed(3)}°</span>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  {journals[site.id]?.length > 0 ? (
+                    <div className="h-full flex flex-col gap-1.5 p-2.5 rounded-xl bg-[#f8f3e8] border border-ink/10 overflow-hidden">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse shrink-0" />
+                        <span className="text-[10px] font-semibold text-ink/60">Latest dispatch</span>
+                      </div>
+                      {journals[site.id][0].image_url && (
+                        <img src={journals[site.id][0].image_url} className="w-full h-16 object-cover rounded-lg border border-ink/10 shrink-0 grayscale hover:grayscale-0 transition-all" alt="Latest finding" />
+                      )}
+                      <p className="text-[11px] text-ink leading-snug line-clamp-3">
+                        {journals[site.id][0].findings || 'Site observation recorded'}
+                      </p>
                     </div>
-                    {journals[site.id][0].image_url && (
-                      <img src={journals[site.id][0].image_url} className="w-full h-24 object-cover rounded-lg border border-ink/10 mb-2 grayscale hover:grayscale-0 transition-all" alt="Latest finding" />
-                    )}
-                    <p className="text-xs font-medium text-ink leading-tight">
-                      {journals[site.id][0].findings || 'Site observation recorded'}
+                  ) : (
+                    <p className="text-xs text-ink/55 leading-relaxed line-clamp-4">
+                      {site.description || 'No description available.'}
                     </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-ink/60 leading-relaxed mb-4 line-clamp-3">
-                    {site.description}
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-2 mt-auto">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (site.tourUrl) window.open(site.tourUrl, '_blank');
-                  }}
-                  className="flex-1 rounded-xl border border-ink/20 bg-white text-ink text-sm font-medium py-3 hover:bg-ink/5 transition-colors flex items-center justify-center gap-2"
-                >
-                  <span>Explore in 360°</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </button>
-                {isFieldArch && site.status !== 'Finished' && !userRequests.includes(site.id) && (
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveSiteForRequest(site);
-                    }}
-                    className="flex-1 rounded-xl bg-rose-500 text-white text-sm font-medium py-3 hover:opacity-90 transition-opacity flex items-center justify-center"
+                    onClick={(e) => { e.stopPropagation(); if (site.tourUrl) window.open(site.tourUrl, '_blank') }}
+                    className="flex-1 rounded-xl border border-ink/20 bg-white text-ink text-[11px] font-medium py-2 hover:bg-ink/5 transition-colors flex items-center justify-center gap-1"
                   >
-                    Request to Join
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    360° Tour
                   </button>
-                )}
+                  {isFieldArch && site.status !== 'Finished' && !userRequests.includes(site.id) && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveSiteForRequest(site) }}
+                      className="flex-1 rounded-xl bg-rose-500 text-white text-[11px] font-medium py-2 hover:opacity-90 transition-opacity flex items-center justify-center"
+                    >
+                      Join
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          )))}
+          ))
+        )}
       </div>
 
       {/* Request Modal */}
