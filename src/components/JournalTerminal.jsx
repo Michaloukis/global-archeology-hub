@@ -191,102 +191,115 @@ const JournalTerminal = ({ siteId, profile }) => {
   };
 
   if (!site || !profile) return (
-    <div className="p-20 text-center space-y-6">
-      <div className="font-black uppercase tracking-[0.5em] animate-pulse text-2xl">Establishing Geospatial Connection...</div>
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-        {!site ? 'Linking with Satellite Registry...' : 'Verifying Personnel Credentials...'}
+    <div className="p-12 text-center space-y-3">
+      <p className="text-sm font-medium text-ink animate-pulse">Loading field terminal…</p>
+      <p className="text-xs text-ink/50">
+        {!site ? 'Loading site…' : 'Verifying credentials…'}
       </p>
     </div>
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-12">
-      <div className="border-b-4 border-black pb-6 flex justify-between items-end">
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div className="flex flex-wrap justify-between items-start gap-4 border-b border-ink/20 pb-6">
         <div>
-          <h2 className="text-4xl font-black uppercase tracking-tighter italic text-red-600">FIELD TERMINAL // {site.name}</h2>
-          <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-widest">Global Site ID: {site.id} // Personnel: {profile?.full_name || 'AUTHENTICATING...'}</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-ink">Field Terminal — {site.name}</h2>
+          <p className="text-xs text-ink/60 mt-1">Site ID: {site.id} · {profile?.full_name || 'Loading…'}</p>
         </div>
-        <button onClick={() => window.close()} className="bg-black text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-[4px_4px_0px_rgba(220,38,38,1)]">
-          DISCONNECT [X]
+        <button
+          type="button"
+          onClick={() => window.close()}
+          className="rounded-xl border border-ink/20 text-ink px-4 py-2.5 text-sm font-medium hover:bg-ink/5 min-h-[44px]"
+        >
+          Close
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <div className="space-y-6">
-          <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Add Field Record</h3>
-          <form onSubmit={handleAddJournalEntry} className="space-y-4 bg-gray-50 p-6 border-2 border-black">
-            <textarea
-              value={newJournalNotes}
-              onChange={(e) => setNewJournalNotes(e.target.value)}
-              placeholder="STRATIGRAPHY / OBSERVATIONS..."
-              className="w-full h-32 border-2 border-black p-3 text-xs font-bold uppercase outline-none focus:bg-white resize-none"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
-                value={newJournalFindings}
-                onChange={(e) => setNewJournalFindings(e.target.value)}
-                placeholder="FINDINGS..."
-                className="w-full border-2 border-black p-2 text-xs font-bold uppercase outline-none focus:bg-white"
-              />
-              <input
-                type="text"
-                value={newJournalMapping}
-                onChange={(e) => setNewJournalMapping(e.target.value)}
-                placeholder="MAPPING URL..."
-                className="w-full border-2 border-black p-2 text-xs font-bold outline-none focus:bg-white"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h3 className="text-base font-bold text-ink">Add Field Record</h3>
+          <form onSubmit={handleAddJournalEntry} className="space-y-4 bg-white rounded-2xl border border-ink/10 shadow-[0_2px_12px_rgba(44,40,37,0.08)] p-5 sm:p-6">
+            <div>
+              <label className="text-xs font-medium text-ink/70 block mb-1">Stratigraphy / observations</label>
+              <textarea
+                value={newJournalNotes}
+                onChange={(e) => setNewJournalNotes(e.target.value)}
+                placeholder="Notes and observations…"
+                className="w-full h-32 rounded-xl border border-ink/20 p-3 text-sm text-ink placeholder-ink/50 outline-none focus:ring-2 focus:ring-ink/20 resize-none"
               />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-ink/70 block mb-1">Findings</label>
+                <input
+                  type="text"
+                  value={newJournalFindings}
+                  onChange={(e) => setNewJournalFindings(e.target.value)}
+                  placeholder="Findings…"
+                  className="w-full rounded-xl border border-ink/20 p-2.5 text-sm text-ink placeholder-ink/50 outline-none focus:ring-2 focus:ring-ink/20"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-ink/70 block mb-1">Mapping URL</label>
+                <input
+                  type="text"
+                  value={newJournalMapping}
+                  onChange={(e) => setNewJournalMapping(e.target.value)}
+                  placeholder="Mapping URL…"
+                  className="w-full rounded-xl border border-ink/20 p-2.5 text-sm text-ink placeholder-ink/50 outline-none focus:ring-2 focus:ring-ink/20"
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase text-gray-500 block">Find location — Lat</label>
+              <div>
+                <label className="text-xs font-medium text-ink/70 block mb-1">Latitude</label>
                 <input
                   type="number"
                   step="any"
                   value={newJournalLat}
                   onChange={(e) => setNewJournalLat(e.target.value)}
                   placeholder="e.g. 29.9792"
-                  className="w-full border-2 border-black p-2 text-[10px] font-bold outline-none focus:bg-white"
+                  className="w-full rounded-xl border border-ink/20 p-2.5 text-sm text-ink placeholder-ink/50 outline-none focus:ring-2 focus:ring-ink/20"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase text-gray-500 block">Find location — Lng</label>
+              <div>
+                <label className="text-xs font-medium text-ink/70 block mb-1">Longitude</label>
                 <input
                   type="number"
                   step="any"
                   value={newJournalLng}
                   onChange={(e) => setNewJournalLng(e.target.value)}
                   placeholder="e.g. 31.1342"
-                  className="w-full border-2 border-black p-2 text-[10px] font-bold outline-none focus:bg-white"
+                  className="w-full rounded-xl border border-ink/20 p-2.5 text-sm text-ink placeholder-ink/50 outline-none focus:ring-2 focus:ring-ink/20"
                 />
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-gray-500 block">Photo / image</label>
+            <div>
+              <label className="text-xs font-medium text-ink/70 block mb-1">Photo / image</label>
               <input
                 type="file"
                 accept={IMAGE_ACCEPT}
                 onChange={(e) => setNewJournalImageFile(e.target.files?.[0] || null)}
-                className="w-full border-2 border-black p-2 text-[10px] file:mr-2 file:border-0 file:bg-black file:text-white file:text-[9px] file:uppercase file:font-black file:px-3 file:py-1 file:cursor-pointer"
+                className="w-full rounded-xl border border-ink/20 p-2 text-sm text-ink file:mr-2 file:rounded-lg file:border-0 file:bg-ink file:text-white file:text-xs file:font-medium file:px-3 file:py-1.5 file:cursor-pointer"
               />
-              {newJournalImageFile && <span className="text-[9px] font-bold text-gray-500 uppercase">{newJournalImageFile.name}</span>}
+              {newJournalImageFile && <span className="text-xs text-ink/60 mt-1 block">{newJournalImageFile.name}</span>}
             </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-gray-500 block">3D model (GLB, GLTF, OBJ, FBX, STL, etc.)</label>
+            <div>
+              <label className="text-xs font-medium text-ink/70 block mb-1">3D model (GLB, GLTF, OBJ, etc.)</label>
               <input
                 type="file"
                 accept={MODEL_3D_ACCEPT}
                 onChange={(e) => setNewJournalModelFile(e.target.files?.[0] || null)}
-                className="w-full border-2 border-black p-2 text-[10px] file:mr-2 file:border-0 file:bg-black file:text-white file:text-[9px] file:uppercase file:font-black file:px-3 file:py-1 file:cursor-pointer"
+                className="w-full rounded-xl border border-ink/20 p-2 text-sm text-ink file:mr-2 file:rounded-lg file:border-0 file:bg-ink file:text-white file:text-xs file:font-medium file:px-3 file:py-1.5 file:cursor-pointer"
               />
-              {newJournalModelFile && <span className="text-[9px] font-bold text-gray-500 uppercase">{newJournalModelFile.name}</span>}
+              {newJournalModelFile && <span className="text-xs text-ink/60 mt-1 block">{newJournalModelFile.name}</span>}
             </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-gray-500 block">Visibility</label>
+            <div>
+              <label className="text-xs font-medium text-ink/70 block mb-1">Visibility</label>
               <select
                 value={newJournalVisibility}
                 onChange={(e) => setNewJournalVisibility(e.target.value)}
-                className="w-full border-2 border-black p-2 text-[10px] font-bold uppercase bg-white"
+                className="w-full rounded-xl border border-ink/20 p-2.5 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
               >
                 <option value="private">Private (Exclusive Map only)</option>
                 <option value="team">Team (Students & personnel)</option>
@@ -294,106 +307,112 @@ const JournalTerminal = ({ siteId, profile }) => {
                 <option value="public">Public (everyone)</option>
               </select>
             </div>
-            {submitError && <p className="text-[10px] font-black uppercase text-red-600">{submitError}</p>}
+            {submitError && <p className="text-xs font-medium text-rose-600">{submitError}</p>}
             <button
+              type="submit"
               disabled={isSubmitting}
-              className="w-full bg-red-600 text-white py-3 text-xs font-black uppercase hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-ink text-white py-3 text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             >
-              {isSubmitting ? 'UPLOADING & REGISTERING...' : 'Register Entry'}
+              {isSubmitting ? 'Uploading…' : 'Register entry'}
             </button>
           </form>
         </div>
 
-        <div className="space-y-6">
-          <h3 className="text-xl font-black uppercase border-l-4 border-black pl-4">Site Archive</h3>
-          <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
-            {journals.length === 0 ? (
-              <div className="p-8 border-2 border-black border-dashed text-center font-black uppercase text-xs text-gray-400">No logs on record.</div>
+        <div className="space-y-4">
+          <h3 className="text-base font-bold text-ink">Site archive</h3>
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+            {isJournalLoading ? (
+              <div className="p-8 rounded-2xl border border-ink/20 border-dashed text-center text-sm text-ink/50 animate-pulse">Loading records…</div>
+            ) : journals.length === 0 ? (
+              <div className="p-8 rounded-2xl border border-ink/20 border-dashed text-center text-sm text-ink/50 bg-ink/5">No logs on record yet.</div>
             ) : (
               journals.map(entry => (
-                <div key={entry.id} className="bg-white border-2 border-black p-5 space-y-4">
+                <div key={entry.id} className="bg-white rounded-2xl border border-ink/10 shadow-[0_2px_12px_rgba(44,40,37,0.08)] p-4 sm:p-5 space-y-4">
                   {editingEntryId === entry.id ? (
                     <form onSubmit={handleUpdateJournalEntry} className="space-y-4">
-                      <textarea
-                        value={editNotes}
-                        onChange={(e) => setEditNotes(e.target.value)}
-                        className="w-full h-24 border-2 border-black p-2 text-[10px] font-bold uppercase outline-none"
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input value={editFindings} onChange={(e) => setEditFindings(e.target.value)} className="border-2 border-black p-2 text-[10px] uppercase" />
-                        <input value={editMapping} onChange={(e) => setEditMapping(e.target.value)} className="border-2 border-black p-2 text-[10px]" />
+                      <div>
+                        <label className="text-xs font-medium text-ink/70 block mb-1">Notes</label>
+                        <textarea
+                          value={editNotes}
+                          onChange={(e) => setEditNotes(e.target.value)}
+                          className="w-full h-24 rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20 resize-none"
+                        />
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input value={editFindings} onChange={(e) => setEditFindings(e.target.value)} placeholder="Findings" className="rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
+                        <input value={editMapping} onChange={(e) => setEditMapping(e.target.value)} placeholder="Mapping URL" className="rounded-xl border border-ink/20 p-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <span className="text-[8px] font-black uppercase text-gray-500 block">Lat</span>
-                          <input type="number" step="any" value={editLat} onChange={(e) => setEditLat(e.target.value)} className="w-full border-2 border-black p-2 text-[10px]" placeholder="29.9792" />
+                          <label className="text-[10px] font-medium text-ink/60 block mb-0.5">Lat</label>
+                          <input type="number" step="any" value={editLat} onChange={(e) => setEditLat(e.target.value)} placeholder="29.9792" className="w-full rounded-xl border border-ink/20 p-2 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
                         </div>
                         <div>
-                          <span className="text-[8px] font-black uppercase text-gray-500 block">Lng</span>
-                          <input type="number" step="any" value={editLng} onChange={(e) => setEditLng(e.target.value)} className="w-full border-2 border-black p-2 text-[10px]" placeholder="31.1342" />
+                          <label className="text-[10px] font-medium text-ink/60 block mb-0.5">Lng</label>
+                          <input type="number" step="any" value={editLng} onChange={(e) => setEditLng(e.target.value)} placeholder="31.1342" className="w-full rounded-xl border border-ink/20 p-2 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
                         </div>
                       </div>
-                      <div className="space-y-1">
-                        <span className="text-[8px] font-black uppercase text-gray-500">Replace image</span>
+                      <div>
+                        <label className="text-[10px] font-medium text-ink/60 block mb-0.5">Replace image</label>
                         <input
                           type="file"
                           accept={IMAGE_ACCEPT}
                           onChange={(e) => { setEditImageFile(e.target.files?.[0] || null); }}
-                          className="w-full border-2 border-black p-2 text-[10px] file:mr-2 file:border-0 file:bg-black file:text-white file:text-[9px] file:uppercase file:font-black file:px-2 file:py-1"
+                          className="w-full rounded-xl border border-ink/20 p-2 text-sm text-ink file:mr-2 file:rounded-lg file:border-0 file:bg-ink file:text-white file:text-xs file:font-medium file:px-2 file:py-1 file:cursor-pointer"
                         />
-                        {editImageUrl && !editImageFile && <span className="text-[8px] text-gray-500 uppercase">Current image attached</span>}
+                        {editImageUrl && !editImageFile && <span className="text-[10px] text-ink/50 mt-0.5 block">Current image attached</span>}
                       </div>
-                      <div className="space-y-1">
-                        <span className="text-[8px] font-black uppercase text-gray-500">Replace 3D model</span>
+                      <div>
+                        <label className="text-[10px] font-medium text-ink/60 block mb-0.5">Replace 3D model</label>
                         <input
                           type="file"
                           accept={MODEL_3D_ACCEPT}
                           onChange={(e) => { setEditModelFile(e.target.files?.[0] || null); }}
-                          className="w-full border-2 border-black p-2 text-[10px] file:mr-2 file:border-0 file:bg-black file:text-white file:text-[9px] file:uppercase file:font-black file:px-2 file:py-1"
+                          className="w-full rounded-xl border border-ink/20 p-2 text-sm text-ink file:mr-2 file:rounded-lg file:border-0 file:bg-ink file:text-white file:text-xs file:font-medium file:px-2 file:py-1 file:cursor-pointer"
                         />
-                        {editModelUrl && !editModelFile && <span className="text-[8px] text-gray-500 uppercase">Current model attached</span>}
+                        {editModelUrl && !editModelFile && <span className="text-[10px] text-ink/50 mt-0.5 block">Current model attached</span>}
                       </div>
-                      <div className="space-y-1">
-                        <span className="text-[8px] font-black uppercase text-gray-500 block">Visibility</span>
+                      <div>
+                        <label className="text-[10px] font-medium text-ink/60 block mb-0.5">Visibility</label>
                         <select
                           value={editVisibility}
                           onChange={(e) => setEditVisibility(e.target.value)}
-                          className="w-full border-2 border-black p-2 text-[10px] font-bold uppercase bg-white"
+                          className="w-full rounded-xl border border-ink/20 p-2 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20"
                         >
-                          <option value="private">Private (Exclusive Map only)</option>
-                          <option value="team">Team (Students & personnel)</option>
-                          <option value="student">Student (students & archeologists)</option>
-                          <option value="public">Public (everyone)</option>
+                          <option value="private">Private</option>
+                          <option value="team">Team</option>
+                          <option value="student">Student</option>
+                          <option value="public">Public</option>
                         </select>
                       </div>
-                      {submitError && <p className="text-[10px] font-black uppercase text-red-600">{submitError}</p>}
+                      {submitError && <p className="text-xs font-medium text-rose-600">{submitError}</p>}
                       <div className="flex gap-2">
-                        <button type="submit" disabled={isUpdating} className="flex-1 bg-black text-white py-2 text-[10px] uppercase font-black disabled:opacity-50">{isUpdating ? '...' : 'Save'}</button>
-                        <button type="button" onClick={() => setEditingEntryId(null)} className="flex-1 border-2 border-black py-2 text-[10px] uppercase font-black">Cancel</button>
+                        <button type="submit" disabled={isUpdating} className="flex-1 rounded-xl bg-ink text-white py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50 min-h-[44px]">{isUpdating ? 'Saving…' : 'Save'}</button>
+                        <button type="button" onClick={() => setEditingEntryId(null)} className="flex-1 rounded-xl border border-ink/20 text-ink py-2.5 text-sm font-medium hover:bg-ink/5 min-h-[44px]">Cancel</button>
                       </div>
                     </form>
                   ) : (
                     <>
-                      <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[8px] font-black text-gray-400 uppercase">{new Date(entry.created_at).toLocaleString()}</span>
+                      <div className="flex flex-wrap justify-between items-center gap-2 border-b border-ink/10 pb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] text-ink/60">{new Date(entry.created_at).toLocaleString()}</span>
                           {entry.user_id === profile?.id && (
-                            <button onClick={() => startEditing(entry)} className="text-[8px] font-black text-red-600 hover:underline uppercase">[Modify]</button>
+                            <button type="button" onClick={() => startEditing(entry)} className="text-xs font-medium text-ink/80 hover:text-ink hover:underline">Edit</button>
                           )}
                           {!entry.is_public && (
-                            <span className="text-[7px] font-black bg-gray-200 px-1 text-gray-500 uppercase">INTERNAL_ONLY</span>
+                            <span className="text-[10px] font-medium text-ink/60 bg-ink/10 px-1.5 py-0.5 rounded">Internal only</span>
                           )}
                         </div>
-                        <span className="bg-black text-white text-[7px] px-1.5 py-0.5 uppercase">ID_{entry.id}</span>
+                        <span className="text-[10px] text-ink/50">#{String(entry.id).slice(-6)}</span>
                       </div>
-                      {entry.image_url && <img src={entry.image_url} alt="Field evidence" className="w-full h-32 object-cover border border-black grayscale hover:grayscale-0 transition-all" />}
+                      {entry.image_url && <img src={entry.image_url} alt="Field evidence" className="w-full h-32 object-cover rounded-xl border border-ink/10 grayscale hover:grayscale-0 transition-all" />}
                       {entry.model_url && (
-                        <a href={entry.model_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border-2 border-black px-3 py-1.5 text-[9px] font-black uppercase hover:bg-black hover:text-white transition-all">
+                        <a href={entry.model_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-ink/20 px-3 py-2 text-xs font-medium text-ink hover:bg-ink/5 transition-colors">
                           View 3D model ↗
                         </a>
                       )}
-                      <p className="text-[11px] font-bold uppercase leading-relaxed">{entry.notes}</p>
-                      {entry.findings && <div className="text-[9px] font-black text-red-600 uppercase">Recovered: {entry.findings}</div>}
+                      <p className="text-sm text-ink leading-relaxed">{entry.notes || '—'}</p>
+                      {entry.findings && <p className="text-xs font-medium text-ink/80">Findings: {entry.findings}</p>}
                     </>
                   )}
                 </div>
