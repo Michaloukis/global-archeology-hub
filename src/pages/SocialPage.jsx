@@ -1,34 +1,604 @@
-const SOCIAL_POSTS = [
-  { user: 'User3', time: '2h ago', likes: 16, text: 'Excited to be starting a new dig site in Jordan! Hoping to uncover some interesting artifacts.', likesBottom: 24, comments: 8 },
-  { user: 'User3', time: '2h ago', likes: 16, text: 'Excited to be starting a new dig site in Jordan! Hoping to uncover some interesting artifacts.', likesBottom: 24, comments: 8 },
-]
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '../supabaseClient';
+
+const isArcheologist = (profile) =>
+  profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist';
 
 export default function SocialPage({ profile }) {
-  return (
-    <div className="relative parchment-main min-h-full p-6 md:p-8 flex flex-col items-center justify-start">
-      <div className="w-full max-w-2xl">
-        <h1 className="text-xl font-bold text-ink border-b border-ink/20 pb-2 mb-6">Social Activity</h1>
-        <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-6">
-          <div className="space-y-4">
-            {SOCIAL_POSTS.map((post, i) => (
-              <div key={i} className="w-full text-left rounded-xl border border-ink/10 p-4 hover:bg-ink/5 transition-colors">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-ink/10 shrink-0" />
-                    <span className="text-sm font-medium text-ink">{post.user}</span>
-                  </div>
-                  <span className="text-xs text-ink/50">{post.time}</span>
-                </div>
-                <p className="text-sm text-ink/70 mt-3 leading-snug">{post.text}</p>
-                <div className="flex items-center gap-4 mt-3 text-sm text-ink/50">
-                  <span>❤️ {post.likesBottom}</span>
-                  <span>💬 {post.comments}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+  const [chatrooms, setChatrooms] = useState([]);
+  const [selectedChatroomId, setSelectedChatroomId] = useState(null);
+  const [tab, setTab] = useState('posts'); // 'posts' | 'chat'
+  const [chatroomsLoading, setChatroomsLoading] = useState(true);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postLikesMap, setPostLikesMap] = useState({}); // post_id -> { count, liked }
+  const [commentsMap, setCommentsMap] = useState({}); // post_id -> [{ id, content, author, created_at }]
+  const [commentsOpen, setCommentsOpen] = useState({}); // post_id -> bool
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [newMessageContent, setNewMessageContent] = useState('');
+  const [sendingPost, setSendingPost] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const messagesEndRef = useRef(null);
+  const channelRef = useRef(null);
+  const [startChatOpen, setStartChatOpen] = useState(false);
+  const [sitesWithoutRoom, setSitesWithoutRoom] = useState([]);
+  const [startChatLoading, setStartChatLoading] = useState(false);
+  const [creatingRoomForSiteId, setCreatingRoomForSiteId] = useState(null);
+  const [startChatError, setStartChatError] = useState(null);
+
+  const selectedChatroom = chatrooms.find((c) => c.id === selectedChatroomId);
+
+  const fetchChatrooms = async () => {
+    if (!supabase || !profile?.id) return;
+    setChatroomsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('chatroom_members')
+        .select('chatroom_id, chatrooms(id, name, site_id)')
+        .eq('user_id', profile.id);
+      if (error) throw error;
+      const list = (data || [])
+        .map((r) => r.chatrooms)
+        .filter(Boolean)
+        .reduce((acc, c) => {
+          if (c && !acc.find((x) => x.id === c.id)) acc.push(c);
+          return acc;
+        }, []);
+      setChatrooms(list);
+      if (list.length > 0 && !selectedChatroomId) setSelectedChatroomId(list[0].id);
+    } catch (e) {
+      setChatrooms([]);
+      console.error('Fetch chatrooms error:', e);
+    } finally {
+      setChatroomsLoading(false);
+    }
+  };
+
+  // Fetch chatrooms for current user (Field / Chief)
+  useEffect(() => {
+    if (!supabase || !profile?.id || !isArcheologist(profile)) return;
+    fetchChatrooms();
+  }, [profile?.id, profile?.role]);
+
+  // When "Start a chat" modal opens, load sites that don't have a chatroom yet
+  useEffect(() => {
+    if (!startChatOpen || !supabase || !profile?.id || !isArcheologist(profile)) return;
+    (async () => {
+      try {
+        const isChief = profile.role === 'Chief Archeologist';
+        let siteIds = [];
+        if (isChief) {
+          const { data: reg } = await supabase.from('Registry').select('site_id').eq('chief_arch_id', profile.id);
+          siteIds = [...new Set((reg || []).map((r) => r.site_id).filter(Boolean))];
+          const { data: created } = await supabase.from('sites').select('id').eq('created_by', profile.id);
+          siteIds = [...new Set([...siteIds, ...(created || []).map((s) => s.id)])];
+        } else {
+          const { data: reg } = await supabase.from('Registry').select('site_id').eq('field_arch_id', profile.id).eq('status', 'Approved');
+          siteIds = [...new Set((reg || []).map((r) => r.site_id).filter(Boolean))];
+        }
+        if (siteIds.length === 0) {
+          setSitesWithoutRoom([]);
+          return;
+        }
+        const { data: existingRooms } = await supabase.from('chatrooms').select('site_id');
+        const roomSiteIds = new Set((existingRooms || []).map((r) => r.site_id));
+        const withoutRoom = siteIds.filter((id) => !roomSiteIds.has(id));
+        if (withoutRoom.length === 0) {
+          setSitesWithoutRoom([]);
+          return;
+        }
+        const { data: sites } = await supabase.from('sites').select('id, name').in('id', withoutRoom);
+        setSitesWithoutRoom(sites || []);
+      } catch (e) {
+        setSitesWithoutRoom([]);
+        console.error('Fetch sites without room error:', e);
+      }
+    })();
+  }, [startChatOpen, profile?.id, profile?.role]);
+
+  const handleStartChat = async (siteId, siteName) => {
+    if (!supabase || !profile?.id || creatingRoomForSiteId) return;
+    setCreatingRoomForSiteId(siteId);
+    setStartChatError(null);
+    try {
+      const { data: room, error: roomErr } = await supabase.from('chatrooms').insert({ site_id: siteId, name: siteName || 'Chatroom' }).select('id').single();
+      let chatroomId = room?.id;
+      if (roomErr) {
+        if (roomErr.code === '23505') {
+          const { data: existing } = await supabase.from('chatrooms').select('id').eq('site_id', siteId).maybeSingle();
+          if (existing) chatroomId = existing.id;
+        }
+        if (!chatroomId) throw roomErr;
+      }
+      if (chatroomId) {
+        const { error: memberErr } = await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: profile.id });
+        if (memberErr && memberErr.code !== '23505') throw memberErr;
+        setStartChatOpen(false);
+        setSitesWithoutRoom([]);
+        setStartChatError(null);
+        await fetchChatrooms();
+        setSelectedChatroomId(chatroomId);
+      }
+    } catch (e) {
+      console.error('Start chat error:', e);
+      setStartChatError(e?.message || 'Could not create or join chatroom.');
+    } finally {
+      setCreatingRoomForSiteId(null);
+    }
+  };
+
+  // Fetch posts for selected chatroom
+  useEffect(() => {
+    if (!supabase || !selectedChatroomId || !profile?.id) {
+      setPosts([]);
+      setPostLikesMap({});
+      return;
+    }
+    let cancelled = false;
+    setPostsLoading(true);
+    (async () => {
+      try {
+        const { data: postsData, error: postsErr } = await supabase
+          .from('social_posts')
+          .select('id, content, image_url, created_at, author_id, profiles:author_id(full_name, username, avatar_url)')
+          .eq('chatroom_id', selectedChatroomId)
+          .order('created_at', { ascending: false });
+        if (postsErr) throw postsErr;
+        if (!cancelled) setPosts(postsData || []);
+
+        const postIds = (postsData || []).map((p) => p.id);
+        if (postIds.length === 0) {
+          if (!cancelled) setPostLikesMap({});
+          return;
+        }
+        const { data: likesData } = await supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds);
+        const countByPost = {};
+        const likedByMe = {};
+        (likesData || []).forEach((l) => {
+          countByPost[l.post_id] = (countByPost[l.post_id] || 0) + 1;
+          if (l.user_id === profile.id) likedByMe[l.post_id] = true;
+        });
+        const likesMap = {};
+        postIds.forEach((id) => { likesMap[id] = { count: countByPost[id] || 0, liked: !!likedByMe[id] }; });
+        if (!cancelled) setPostLikesMap(likesMap);
+      } catch (e) {
+        if (!cancelled) setPosts([]);
+        console.error('Fetch posts error:', e);
+      } finally {
+        if (!cancelled) setPostsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedChatroomId, profile?.id]);
+
+  // Fetch comments for a post when opened
+  const loadComments = async (postId) => {
+    if (!supabase || commentsMap[postId]) return;
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select('id, content, created_at, author_id, profiles:author_id(full_name, username)')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setCommentsMap((prev) => ({ ...prev, [postId]: data || [] }));
+    } catch (e) {
+      console.error('Fetch comments error:', e);
+    }
+  };
+
+  const toggleComments = (postId) => {
+    setCommentsOpen((prev) => ({ ...prev, [postId]: !prev[postId] }));
+    if (!commentsMap[postId]) loadComments(postId);
+  };
+
+  // Fetch chat messages and subscribe to Realtime
+  useEffect(() => {
+    if (!supabase || !selectedChatroomId || !profile?.id) {
+      setMessages([]);
+      return;
+    }
+    let cancelled = false;
+    setMessagesLoading(true);
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('id, content, created_at, sender_id, profiles:sender_id(full_name, username, avatar_url)')
+          .eq('chatroom_id', selectedChatroomId)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        if (!cancelled) setMessages(data || []);
+      } catch (e) {
+        if (!cancelled) setMessages([]);
+        console.error('Fetch messages error:', e);
+      } finally {
+        if (!cancelled) setMessagesLoading(false);
+      }
+    })();
+
+    const channel = supabase
+      .channel(`chat:${selectedChatroomId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chatroom_id=eq.${selectedChatroomId}` },
+        async (payload) => {
+          const row = payload.new;
+          const { data: author } = await supabase.from('profiles').select('full_name, username, avatar_url').eq('id', row.sender_id).single();
+          setMessages((prev) => [...prev, { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, profiles: author }]);
+        }
+      )
+      .subscribe();
+    channelRef.current = channel;
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [selectedChatroomId, profile?.id]);
+
+  const scrollToMessagesEnd = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() => { if (messages.length) scrollToMessagesEnd(); }, [messages.length]);
+
+  const handleCreatePost = async (e) => {
+    e.preventDefault();
+    if (!supabase || !selectedChatroomId || !profile?.id || !newPostContent.trim() || sendingPost) return;
+    setSendingPost(true);
+    try {
+      const { error } = await supabase.from('social_posts').insert({
+        chatroom_id: selectedChatroomId,
+        author_id: profile.id,
+        content: newPostContent.trim(),
+      });
+      if (error) throw error;
+      setNewPostContent('');
+      const { data: fresh } = await supabase
+        .from('social_posts')
+        .select('id, content, image_url, created_at, author_id, profiles:author_id(full_name, username, avatar_url)')
+        .eq('chatroom_id', selectedChatroomId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (fresh) setPosts((prev) => [fresh, ...prev]);
+    } catch (e) {
+      console.error('Create post error:', e);
+    } finally {
+      setSendingPost(false);
+    }
+  };
+
+  const handleLike = async (postId) => {
+    if (!supabase || !profile?.id) return;
+    const { liked } = postLikesMap[postId] || {};
+    try {
+      if (liked) {
+        await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', profile.id);
+        setPostLikesMap((prev) => ({ ...prev, [postId]: { count: Math.max(0, (prev[postId]?.count || 0) - 1), liked: false } }));
+      } else {
+        await supabase.from('post_likes').insert({ post_id: postId, user_id: profile.id });
+        setPostLikesMap((prev) => ({ ...prev, [postId]: { count: (prev[postId]?.count || 0) + 1, liked: true } }));
+      }
+    } catch (e) {
+      console.error('Like error:', e);
+    }
+  };
+
+  const handleAddComment = async (postId, content) => {
+    if (!supabase || !profile?.id || !content?.trim()) return;
+    try {
+      const { data, error } = await supabase.from('post_comments').insert({ post_id: postId, author_id: profile.id, content: content.trim() }).select('id, content, created_at, author_id').single();
+      if (error) throw error;
+      const author = { full_name: profile.full_name, username: profile.username };
+      setCommentsMap((prev) => ({ ...prev, [postId]: [...(prev[postId] || []), { ...data, profiles: author }] }));
+    } catch (e) {
+      console.error('Add comment error:', e);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!supabase || !selectedChatroomId || !profile?.id || !newMessageContent.trim() || sendingMessage) return;
+    setSendingMessage(true);
+    try {
+      const { error } = await supabase.from('chat_messages').insert({
+        chatroom_id: selectedChatroomId,
+        sender_id: profile.id,
+        content: newMessageContent.trim(),
+      });
+      if (error) throw error;
+      setNewMessageContent('');
+    } catch (e) {
+      console.error('Send message error:', e);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  if (!profile) {
+    return (
+      <div className="relative parchment-main min-h-full p-6 md:p-8 flex flex-col items-center justify-center">
+        <p className="text-sm text-ink/60">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!isArcheologist(profile)) {
+    return (
+      <div className="relative parchment-main min-h-full p-6 md:p-8 flex flex-col items-center justify-center">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-8 text-center">
+          <h2 className="text-xl font-bold text-ink border-b border-ink/20 pb-2 mb-4">Chatrooms</h2>
+          <p className="text-sm text-ink/70">
+            Chatrooms and posts are for Field and Chief Archaeologists. Join a dig site from the Map and get approved to access mission-specific discussions and chat.
+          </p>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="relative parchment-main min-h-full flex flex-col md:flex-row overflow-hidden">
+      {/* Left sidebar: chatroom list */}
+      <aside className="w-full md:w-56 lg:w-64 shrink-0 border-b md:border-b-0 md:border-r border-ink/20 bg-white/80 flex flex-col">
+        <div className="p-3 border-b border-ink/20">
+          <h2 className="text-sm font-bold text-ink uppercase tracking-wider">Chatrooms</h2>
+          <p className="text-[10px] text-ink/50 mt-0.5">Select or start a chat</p>
+          <button
+            type="button"
+            onClick={() => { setStartChatOpen(true); setStartChatError(null); }}
+            className="mt-3 w-full rounded-xl border-2 border-ink/30 bg-ink text-white py-2 px-3 text-xs font-bold uppercase tracking-wider hover:bg-ink/90 hover:border-ink/50 transition-colors"
+          >
+            Start a chat
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {chatroomsLoading ? (
+            <div className="p-4 text-center text-xs text-ink/50 animate-pulse">Loading…</div>
+          ) : chatrooms.length === 0 ? (
+            <div className="p-4 text-center text-xs text-ink/50">No chatrooms yet. Start a chat for a dig site you’re on, or get approved from the Map.</div>
+          ) : (
+            <ul className="p-2 space-y-0.5">
+              {chatrooms.map((room) => (
+                <li key={room.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedChatroomId(room.id)}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${selectedChatroomId === room.id ? 'bg-ink/10 text-ink' : 'text-ink/70 hover:bg-ink/5 hover:text-ink'}`}
+                  >
+                    <span className="block truncate">{room.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </aside>
+
+      {/* Start a chat modal */}
+      {startChatOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={() => setStartChatOpen(false)}>
+          <div className="bg-white rounded-2xl border border-ink/20 shadow-[0_8px_32px_rgba(44,40,37,0.15)] w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-ink/20 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-ink uppercase tracking-tight">Start a chat</h3>
+              <button type="button" onClick={() => setStartChatOpen(false)} className="text-ink/60 hover:text-ink p-1 rounded-lg hover:bg-ink/10 text-sm font-medium" aria-label="Close">×</button>
+            </div>
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              <p className="text-xs text-ink/60 mb-3">Choose a dig site to create a chatroom. Only sites you’re assigned to (or manage) appear.</p>
+              {startChatError && (
+                <div className="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs">{startChatError}</div>
+              )}
+              {sitesWithoutRoom.length === 0 ? (
+                <p className="text-sm text-ink/50 py-4 text-center">No sites without a chatroom. Every site you’re on already has one.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {sitesWithoutRoom.map((site) => (
+                    <li key={site.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleStartChat(site.id, site.name)}
+                        disabled={creatingRoomForSiteId === site.id}
+                        className="w-full text-left rounded-xl border border-ink/20 px-4 py-3 text-sm font-medium text-ink hover:bg-ink/5 hover:border-ink/30 transition-colors disabled:opacity-50"
+                      >
+                        {creatingRoomForSiteId === site.id ? 'Creating…' : site.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main: selected chatroom — Posts | Chat tabs */}
+      <main className="flex-1 flex flex-col min-w-0 min-h-0">
+        {!selectedChatroomId ? (
+          <div className="flex-1 flex items-center justify-center p-8 text-ink/50 text-sm">Select a chatroom from the list or start a chat</div>
+        ) : (
+          <>
+            <div className="shrink-0 border-b-2 border-ink/20 bg-white/70 md:rounded-t-2xl md:border-t md:border-x md:border-ink/20">
+              <div className="px-4 pt-3 pb-0 flex flex-wrap items-end gap-4 sm:gap-6 min-h-[52px]">
+                <h3 className="font-bold text-ink truncate pb-2 border-b-2 border-transparent -mb-0.5 min-w-0">{selectedChatroom?.name ?? 'Chatroom'}</h3>
+                <div className="flex gap-1 ml-0 sm:ml-2">
+                  <button
+                    type="button"
+                    onClick={() => setTab('posts')}
+                    className={`px-3 sm:px-4 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider border-b-2 -mb-0.5 transition-colors ${tab === 'posts' ? 'border-ink text-ink' : 'border-transparent text-ink/50 hover:text-ink/70 hover:border-ink/20'}`}
+                  >
+                    Posts
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTab('chat')}
+                    className={`px-3 sm:px-4 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider border-b-2 -mb-0.5 transition-colors ${tab === 'chat' ? 'border-ink text-ink' : 'border-transparent text-ink/50 hover:text-ink/70 hover:border-ink/20'}`}
+                  >
+                    Chat
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {tab === 'posts' && (
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div className="shrink-0 p-3 border-b border-ink/10 bg-white/40">
+                  <form onSubmit={handleCreatePost} className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Share an update with the team…"
+                      value={newPostContent}
+                      onChange={(e) => setNewPostContent(e.target.value)}
+                      className="flex-1 min-w-0 rounded-lg border border-ink/20 px-3 py-2 text-sm text-ink placeholder-ink/40 outline-none focus:border-ink/50"
+                    />
+                    <button type="submit" disabled={sendingPost || !newPostContent.trim()} className="shrink-0 rounded-lg bg-ink text-white px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                      {sendingPost ? 'Posting…' : 'Post'}
+                    </button>
+                  </form>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {postsLoading ? (
+                    <div className="py-8 text-center text-sm text-ink/50 animate-pulse">Loading posts…</div>
+                  ) : posts.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-ink/50 rounded-xl border border-ink/10 border-dashed bg-ink/5">No posts yet. Be the first to share.</div>
+                  ) : (
+                    posts.map((post) => (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        likes={postLikesMap[post.id]}
+                        onLike={() => handleLike(post.id)}
+                        currentUserId={profile.id}
+                        comments={commentsMap[post.id]}
+                        commentsOpen={commentsOpen[post.id]}
+                        onToggleComments={() => toggleComments(post.id)}
+                        onAddComment={(content) => handleAddComment(post.id, content)}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {tab === 'chat' && (
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {messagesLoading ? (
+                    <div className="py-8 text-center text-sm text-ink/50 animate-pulse">Loading messages…</div>
+                  ) : messages.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-ink/50">No messages yet. Say hello!</div>
+                  ) : (
+                    messages.map((msg) => (
+                      <div key={msg.id} className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-ink/10 shrink-0 overflow-hidden flex items-center justify-center">
+                          {msg.profiles?.avatar_url ? (
+                            <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-medium text-ink/60">{(msg.profiles?.full_name || msg.profiles?.username || '?')[0]}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xs font-semibold text-ink">{msg.profiles?.full_name || msg.profiles?.username || 'Unknown'}</span>
+                            <span className="text-[10px] text-ink/40">{formatTime(msg.created_at)}</span>
+                          </div>
+                          <p className="text-sm text-ink/80 mt-0.5 break-words">{msg.content}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+                <form onSubmit={handleSendMessage} className="shrink-0 p-3 border-t border-ink/20 bg-white/60">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Type a message…"
+                      value={newMessageContent}
+                      onChange={(e) => setNewMessageContent(e.target.value)}
+                      className="flex-1 min-w-0 rounded-lg border border-ink/20 px-3 py-2 text-sm text-ink placeholder-ink/40 outline-none focus:border-ink/50"
+                    />
+                    <button type="submit" disabled={sendingMessage || !newMessageContent.trim()} className="shrink-0 rounded-lg bg-ink text-white px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                      Send
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </>
+        )}
+      </main>
     </div>
-  )
+  );
+}
+
+function PostCard({ post, likes, onLike, currentUserId, comments, commentsOpen, onToggleComments, onAddComment }) {
+  const [commentText, setCommentText] = useState('');
+  const author = post.profiles || {};
+  const likeCount = likes?.count ?? 0;
+  const liked = likes?.liked ?? false;
+  const commentList = comments || [];
+
+  return (
+    <article className="rounded-xl border border-ink/10 bg-white shadow-[0_2px_8px_rgba(44,40,37,0.06)] overflow-hidden">
+      <div className="p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-ink/10 shrink-0 overflow-hidden flex items-center justify-center">
+              {author.avatar_url ? <img src={author.avatar_url} alt="" className="w-full h-full object-cover" /> : <span className="text-sm font-medium text-ink/60">{(author.full_name || author.username || '?')[0]}</span>}
+            </div>
+            <div>
+              <span className="text-sm font-semibold text-ink">{author.full_name || author.username || 'Unknown'}</span>
+              <span className="text-[10px] text-ink/50 block">{formatTime(post.created_at)}</span>
+            </div>
+          </div>
+        </div>
+        <p className="text-sm text-ink/80 mt-3 whitespace-pre-wrap break-words">{post.content}</p>
+        {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-full h-auto max-h-64 object-cover" />}
+        <div className="flex items-center gap-4 mt-3 text-sm">
+          <button type="button" onClick={onLike} className={`flex items-center gap-1 ${liked ? 'text-red-600' : 'text-ink/50 hover:text-ink/70'}`}>
+            <span aria-hidden>{liked ? '❤️' : '🤍'}</span>
+            <span>{likeCount}</span>
+          </button>
+          <button type="button" onClick={onToggleComments} className="text-ink/50 hover:text-ink/70 flex items-center gap-1">
+            <span aria-hidden>💬</span>
+            <span>{commentList.length}</span>
+          </button>
+        </div>
+      </div>
+      {commentsOpen && (
+        <div className="border-t border-ink/10 bg-ink/5 p-4 space-y-3">
+          {commentList.map((c) => (
+            <div key={c.id} className="flex gap-2">
+              <span className="text-xs font-medium text-ink shrink-0">{c.profiles?.full_name || c.profiles?.username || '?'}:</span>
+              <span className="text-xs text-ink/80">{c.content}</span>
+              <span className="text-[10px] text-ink/40 ml-auto shrink-0">{formatTime(c.created_at)}</span>
+            </div>
+          ))}
+          <form onSubmit={(e) => { e.preventDefault(); onAddComment(commentText); setCommentText(''); }} className="flex gap-2 mt-2">
+            <input
+              type="text"
+              placeholder="Write a comment…"
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              className="flex-1 min-w-0 rounded-lg border border-ink/20 px-2 py-1.5 text-xs outline-none focus:border-ink/40"
+            />
+            <button type="submit" className="shrink-0 rounded bg-ink text-white px-2 py-1.5 text-xs font-medium">Reply</button>
+          </form>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function formatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+  return d.toLocaleDateString();
 }

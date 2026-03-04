@@ -207,7 +207,33 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives 
     }
   }
 
+  /** When Chief approves a request, ensure a chatroom exists for that site and add field arch + chief as members. */
+  async function ensureChatroomAndMembers(siteId, siteName, chiefArchId, fieldArchId) {
+    if (!supabase || !siteId) return;
+    try {
+      const { data: existing } = await supabase.from('chatrooms').select('id').eq('site_id', siteId).maybeSingle();
+      let chatroomId = existing?.id;
+      if (!chatroomId) {
+        const name = siteName || 'Dig site';
+        const { data: inserted, error: insertErr } = await supabase.from('chatrooms').insert({ site_id: siteId, name }).select('id').single();
+        if (insertErr) {
+          console.error('Chatroom insert error:', insertErr);
+          return;
+        }
+        chatroomId = inserted.id;
+      }
+      const userIds = [fieldArchId, chiefArchId].filter(Boolean);
+      for (const uid of userIds) {
+        const { error: memberErr } = await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: uid });
+        if (memberErr && memberErr.code !== '23505') console.error('chatroom_members insert error', memberErr); // 23505 = unique violation, already member
+      }
+    } catch (e) {
+      console.error('ensureChatroomAndMembers error:', e);
+    }
+  }
+
   async function handleRequestAction(requestId, newStatus) {
+    const req = requests.find(r => r.id === requestId);
     try {
       const { error } = await supabase
         .from('Registry')
@@ -215,6 +241,10 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives 
         .eq('id', requestId);
 
       if (error) throw error;
+
+      if (newStatus === 'Approved' && req?.site_id) {
+        await ensureChatroomAndMembers(req.site_id, req.sites?.name, req.chief_arch_id, req.field_arch_id);
+      }
       
       // Update local state
       setRequests(requests.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
