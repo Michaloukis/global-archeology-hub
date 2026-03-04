@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import MiniMapWidget from './MiniMapWidget';
 import AIAssistant from './AIAssistant';
+import Scanner3D from './Scanner3D';
 
 const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives }) => {
   const navigate = useNavigate();
@@ -528,7 +529,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives 
     { id: 'upload', label: 'Data Upload', icon: 'upload' },
     { id: 'report', label: 'Report Syntax', icon: 'document' },
     { id: '2d', label: '2D Illustration', icon: 'canvas', action: () => navigate('/illustrator-2d') },
-    { id: '3d-ill', label: '3D Illustration', icon: 'cube' },
+    { id: '3d-ill', label: '3D Illustration', icon: 'cube', action: isDesktop ? undefined : () => setActiveTool('3d-scanner') },
     { id: '3d-view', label: '3D Viewer', icon: 'cube', action: () => navigate('/viewer-3d') },
     { id: 'sitelog', label: 'Site Log', icon: 'clipboard' },
     { id: 'sync', label: 'Field Sync', icon: 'sync' },
@@ -636,6 +637,9 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives 
               </div>
             </div>
           )}
+          {activeTool === '3d-scanner' && (
+            <Scanner3D onBack={() => setActiveTool(null)} />
+          )}
           {activeTool === 'ceramic' && (
             <div className="flex-1 overflow-y-auto p-6">
               <p className="text-xs text-ink/60 mb-3">+1 records a piece and your current GPS location.</p>
@@ -701,7 +705,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives 
         <h1 className="text-xl sm:text-2xl font-bold text-ink text-center">Professional Tools</h1>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {professionalTools.filter((tool) => !(tool.id === 'ceramic' && isDesktop) && !(tool.id === 'compass' && isDesktop)).map((tool) => {
-            const active = (tool.id === 'notepad' && activeTool === 'notepad') || (tool.id === 'compass' && activeTool === 'compass') || (tool.id === 'ceramic' && activeTool === 'ceramic');
+            const active = (tool.id === 'notepad' && activeTool === 'notepad') || (tool.id === 'compass' && activeTool === 'compass') || (tool.id === 'ceramic' && activeTool === 'ceramic') || (tool.id === '3d-ill' && activeTool === '3d-scanner');
             const hasAction = typeof tool.action === 'function';
             return (
               <button

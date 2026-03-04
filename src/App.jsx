@@ -1063,7 +1063,7 @@ function App() {
           {/* Opaque cap over status bar so no content can ever paint there */}
           <div style={{ height: 'env(safe-area-inset-top)', minHeight: 0, background: '#f8f3e8' }} aria-hidden />
           <div className="px-3 pb-2 pt-0.5" style={{ paddingTop: '0.75rem' }}>
-            <h1 className="text-center text-base font-bold text-ink leading-tight">Archeology Hub</h1>
+            <h1 className="text-center text-base font-bold text-ink leading-tight">Archaeology Hub</h1>
             <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-white/80 border border-ink/20 px-2.5 py-2 shadow-sm">
               <input
                 type="text"

@@ -102,7 +102,7 @@ export default function Auth() {
       <div className="w-full max-w-md bg-white/80 backdrop-blur-xl border border-ink/20 rounded-[2rem] shadow-[4px_4px_16px_rgba(44,40,37,0.12)] p-6 sm:p-10">
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-black text-yellow-400 tracking-tighter uppercase leading-none">
-            Global Archeology Hub
+            Global Archaeology Hub
           </h1>
           <p className="text-[10px] text-ink/60 tracking-widest mt-2 font-bold uppercase">
             Authentication · v2.0
