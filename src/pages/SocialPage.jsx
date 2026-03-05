@@ -4,10 +4,33 @@ import { supabase } from '../supabaseClient';
 const isArcheologist = (profile) =>
   profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist';
 
+const STORAGE_KEY_CHATROOM = 'global-arch-social-selected-chatroom';
+const STORAGE_KEY_TAB = 'global-arch-social-tab';
+
 export default function SocialPage({ profile }) {
   const [chatrooms, setChatrooms] = useState([]);
-  const [selectedChatroomId, setSelectedChatroomId] = useState(null);
-  const [tab, setTab] = useState('posts'); // 'posts' | 'chat'
+  const [selectedChatroomId, setSelectedChatroomIdState] = useState(null);
+  const [tab, setTabState] = useState(() => {
+    try {
+      const t = localStorage.getItem(STORAGE_KEY_TAB);
+      return t === 'chat' || t === 'posts' ? t : 'posts';
+    } catch (_) {
+      return 'posts';
+    }
+  });
+  const setSelectedChatroomId = (id) => {
+    setSelectedChatroomIdState(id);
+    try {
+      if (id) localStorage.setItem(STORAGE_KEY_CHATROOM, id);
+      else localStorage.removeItem(STORAGE_KEY_CHATROOM);
+    } catch (_) {}
+  };
+  const setTab = (t) => {
+    setTabState(t);
+    try {
+      localStorage.setItem(STORAGE_KEY_TAB, t);
+    } catch (_) {}
+  };
   const [chatroomsLoading, setChatroomsLoading] = useState(true);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -47,7 +70,15 @@ export default function SocialPage({ profile }) {
           return acc;
         }, []);
       setChatrooms(list);
-      if (list.length > 0 && !selectedChatroomId) setSelectedChatroomId(list[0].id);
+      if (list.length > 0) {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY_CHATROOM);
+          const inList = saved && list.some((c) => c.id === saved);
+          setSelectedChatroomId(inList ? saved : list[0].id);
+        } catch (_) {
+          setSelectedChatroomId(list[0].id);
+        }
+      }
     } catch (e) {
       setChatrooms([]);
       console.error('Fetch chatrooms error:', e);
@@ -194,7 +225,7 @@ export default function SocialPage({ profile }) {
     if (!commentsMap[postId]) loadComments(postId);
   };
 
-  // Fetch chat messages and subscribe to Realtime
+  // Fetch chat messages and subscribe to Realtime (fetch messages first, then profiles separately to avoid RLS/join issues)
   useEffect(() => {
     if (!supabase || !selectedChatroomId || !profile?.id) {
       setMessages([]);
@@ -204,13 +235,26 @@ export default function SocialPage({ profile }) {
     setMessagesLoading(true);
     (async () => {
       try {
-        const { data, error } = await supabase
+        const { data: rows, error } = await supabase
           .from('chat_messages')
-          .select('id, content, created_at, sender_id, profiles:sender_id(full_name, username, avatar_url)')
+          .select('id, content, created_at, sender_id')
           .eq('chatroom_id', selectedChatroomId)
           .order('created_at', { ascending: true });
         if (error) throw error;
-        if (!cancelled) setMessages(data || []);
+        if (cancelled) return;
+        const list = rows || [];
+        const senderIds = [...new Set(list.map((m) => m.sender_id).filter(Boolean))];
+        let profileMap = {};
+        if (senderIds.length > 0) {
+          const { data: profilesData } = await supabase.from('profiles').select('id, full_name, username, avatar_url, role').in('id', senderIds);
+          if (profilesData) profileMap = Object.fromEntries(profilesData.map((p) => [String(p.id), p]));
+        }
+        const currentUserProfile = profile ? { full_name: profile.full_name, username: profile.username, avatar_url: profile.avatar_url, role: profile.role } : null;
+        const messagesWithProfiles = list.map((m) => {
+          const p = profileMap[String(m.sender_id)] ?? (m.sender_id === profile?.id ? currentUserProfile : null);
+          return { ...m, profiles: p };
+        });
+        if (!cancelled) setMessages(messagesWithProfiles);
       } catch (e) {
         if (!cancelled) setMessages([]);
         console.error('Fetch messages error:', e);
@@ -226,8 +270,12 @@ export default function SocialPage({ profile }) {
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chatroom_id=eq.${selectedChatroomId}` },
         async (payload) => {
           const row = payload.new;
-          const { data: author } = await supabase.from('profiles').select('full_name, username, avatar_url').eq('id', row.sender_id).single();
-          setMessages((prev) => [...prev, { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, profiles: author }]);
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === row.id)) return prev;
+            return [...prev, { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, profiles: null }];
+          });
+          const { data: author } = await supabase.from('profiles').select('full_name, username, avatar_url, role').eq('id', row.sender_id).single();
+          setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, profiles: author } : m)));
         }
       )
       .subscribe();
@@ -301,17 +349,25 @@ export default function SocialPage({ profile }) {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!supabase || !selectedChatroomId || !profile?.id || !newMessageContent.trim() || sendingMessage) return;
+    const content = newMessageContent.trim();
+    setNewMessageContent('');
     setSendingMessage(true);
     try {
-      const { error } = await supabase.from('chat_messages').insert({
-        chatroom_id: selectedChatroomId,
-        sender_id: profile.id,
-        content: newMessageContent.trim(),
-      });
+      const { data: row, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          chatroom_id: selectedChatroomId,
+          sender_id: profile.id,
+          content,
+        })
+        .select('id, content, created_at, sender_id')
+        .single();
       if (error) throw error;
-      setNewMessageContent('');
+      const author = { full_name: profile.full_name, username: profile.username, avatar_url: profile.avatar_url, role: profile.role };
+      setMessages((prev) => [...prev, { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, profiles: author }]);
     } catch (e) {
       console.error('Send message error:', e);
+      setNewMessageContent(content);
     } finally {
       setSendingMessage(false);
     }
@@ -488,24 +544,34 @@ export default function SocialPage({ profile }) {
                   ) : messages.length === 0 ? (
                     <div className="py-12 text-center text-sm text-ink/50">No messages yet. Say hello!</div>
                   ) : (
-                    messages.map((msg) => (
-                      <div key={msg.id} className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-ink/10 shrink-0 overflow-hidden flex items-center justify-center">
-                          {msg.profiles?.avatar_url ? (
-                            <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                    messages.map((msg) => {
+                      const isMe = profile && msg.sender_id === profile.id;
+                      const displayProfile = msg.profiles ?? (isMe ? { full_name: profile.full_name, username: profile.username, avatar_url: profile.avatar_url, role: profile.role } : null);
+                      const displayName = displayProfile?.full_name || displayProfile?.username || (isMe ? (profile?.full_name || profile?.username) : null) || 'Member';
+                      const displayRole = displayProfile?.role || (isMe ? profile?.role : null);
+                      return (
+                      <div key={msg.id} className="flex gap-3 items-start">
+                        <div className="w-10 h-10 rounded-full bg-ink/10 shrink-0 overflow-hidden flex items-center justify-center ring-2 ring-white">
+                          {(displayProfile?.avatar_url ?? (isMe && profile?.avatar_url)) ? (
+                            <img src={displayProfile?.avatar_url || profile?.avatar_url} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-xs font-medium text-ink/60">{(msg.profiles?.full_name || msg.profiles?.username || '?')[0]}</span>
+                            <span className="text-sm font-semibold text-ink/60">{(displayName)[0]}</span>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-xs font-semibold text-ink">{msg.profiles?.full_name || msg.profiles?.username || 'Unknown'}</span>
-                            <span className="text-[10px] text-ink/40">{formatTime(msg.created_at)}</span>
+                          <div className="rounded-2xl rounded-tl-md bg-ink/10 border border-ink/10 px-4 py-2.5 shadow-sm">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-ink">{displayName}</span>
+                              {displayRole && (
+                                <span className="text-[10px] text-ink/50 font-medium">· {displayRole}</span>
+                              )}
+                              <span className="text-[10px] text-ink/40">{formatTime(msg.created_at)}</span>
+                            </div>
+                            <p className="text-sm text-ink/90 mt-1 break-words leading-snug">{msg.content}</p>
                           </div>
-                          <p className="text-sm text-ink/80 mt-0.5 break-words">{msg.content}</p>
                         </div>
                       </div>
-                    ))
+                    ); })
                   )}
                   <div ref={messagesEndRef} />
                 </div>

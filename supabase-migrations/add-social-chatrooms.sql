@@ -5,7 +5,7 @@
 -- 1) Chatrooms (one per site)
 CREATE TABLE IF NOT EXISTS chatrooms (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id uuid NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+  site_id bigint NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
   name text NOT NULL,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
@@ -83,10 +83,10 @@ CREATE POLICY "chatrooms_select_member" ON chatrooms FOR SELECT
 DROP POLICY IF EXISTS "chatrooms_insert_auth" ON chatrooms;
 CREATE POLICY "chatrooms_insert_auth" ON chatrooms FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
--- Chatroom members: members can read; authenticated can insert
+-- Chatroom members: users can read their own membership rows (avoids recursion)
 DROP POLICY IF EXISTS "chatroom_members_select" ON chatroom_members;
 CREATE POLICY "chatroom_members_select" ON chatroom_members FOR SELECT
-  USING (EXISTS (SELECT 1 FROM chatroom_members m WHERE m.chatroom_id = chatroom_members.chatroom_id AND m.user_id = auth.uid()));
+  USING (user_id = auth.uid());
 
 DROP POLICY IF EXISTS "chatroom_members_insert" ON chatroom_members;
 CREATE POLICY "chatroom_members_insert" ON chatroom_members FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
