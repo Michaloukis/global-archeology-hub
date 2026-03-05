@@ -12,6 +12,17 @@ A modern web application built with React, Vite, and Tailwind CSS.
 
 ## Getting Started
 
+### Environment
+
+Copy `.env.example` to `.env` and set:
+
+- **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`** — required (from Supabase project settings). Without these, the app shows "Database connection lost."
+- **`VITE_GROQ_API_KEY`** — optional; used for the in-app AI Assistant (ArchBot). Get a key at [Groq Console](https://console.groq.com).
+
+Do not commit `.env` or real keys.
+
+For a **demo presentation**, see [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md) for pre-flight, step-by-step flow, and fallbacks.
+
 ### Install Dependencies
 
 ```bash
