@@ -15,6 +15,7 @@ import AccountPage from './pages/AccountPage.jsx'
 import TeamPage from './pages/TeamPage.jsx'
 import SocialPage from './pages/SocialPage.jsx'
 import ArchivesPage from './pages/ArchivesPage.jsx'
+import SocialActivityWidget from './components/SocialActivityWidget'
 
 // #region agent log
 const logData = (msg, data, hypothesisId) => {
@@ -115,7 +116,12 @@ const MOBILE_ACTIVITY = [
   { id: 3, type: 'person', name: 'Prof. James Morrison', time: '1 day ago', description: 'Completed preliminary analysis of ceramic fragments from the Indus Valley site. The glazing techniques show remarkable sophistication for the period.' },
 ];
 
-const MobileDashboard = ({ searchQuery, setSearchQuery, profile, onOpenMap }) => (
+const openSocialFromMobile = (setView, chatroomId) => {
+  try { if (chatroomId) localStorage.setItem('global-arch-social-selected-chatroom', chatroomId); } catch (_) {}
+  setView('social');
+};
+
+const MobileDashboard = ({ searchQuery, setSearchQuery, profile, onOpenMap, onOpenSocial }) => (
   <div className="p-4 pb-28 space-y-6 parchment-main min-h-full">
     <div>
       <h2 className="text-lg font-bold text-ink">The Global Archaeology Hub</h2>
@@ -139,6 +145,12 @@ const MobileDashboard = ({ searchQuery, setSearchQuery, profile, onOpenMap }) =>
           </p>
           <p className="text-[11px] text-ink/60">Public-safe data only.</p>
         </div>
+      </div>
+    </div>
+
+    <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 overflow-hidden min-h-[100px]">
+      <div className="p-4 h-full min-h-[120px]">
+        <SocialActivityWidget profile={profile} onOpenSocial={onOpenSocial} />
       </div>
     </div>
 
@@ -249,8 +261,8 @@ const NavIcon = ({ name, className = 'w-5 h-5' }) => {
   return <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">{icons[name] || icons.document}</svg>;
 };
 
-const WIDGET_IDS = ['minimap', 'quickstats', 'archbot', 'global-events']
-const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', archbot: 'ArchBot', 'global-events': 'Global Events' }
+const WIDGET_IDS = ['minimap', 'quickstats', 'archbot', 'global-events', 'social-activity']
+const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', archbot: 'ArchBot', 'global-events': 'Global Events', 'social-activity': 'Social Activity' }
 const WIDGET_SIZES = ['small', 'medium', 'large']
 const SIZE_CLASS = { small: 'h-[100px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
 const SIZE_CLASS_CONTENT = { small: 'min-h-[120px]', medium: 'min-h-[180px]', large: 'min-h-[260px]' }
@@ -268,10 +280,10 @@ function snapToGrid(value, step, min, max) {
   return Math.max(min, Math.min(max, n))
 }
 
-const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'archbot'], ['global-events']]
+const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'archbot'], ['global-events', 'social-activity']]
 
 function getDefaultWidgetPreferences() {
-  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot'].includes(id) ? 'large' : 'medium')
+  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity'].includes(id) ? 'large' : 'medium')
   return {
     visible: Object.fromEntries(WIDGET_IDS.map(id => [id, true])),
     size: Object.fromEntries(WIDGET_IDS.map(id => [id, defaultSize(id)])),
@@ -324,7 +336,8 @@ const WIDGET_ICONS = {
   minimap: 'map',
   quickstats: 'chart',
   archbot: 'user',
-  'global-events': 'bell'
+  'global-events': 'bell',
+  'social-activity': 'social'
 }
 
 function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, onResize, onResizeWidth, onRemove, onDragHandleStart, onDragHandleEnd, sizeKey, sizeClassMap, contentClassMap, noPadding, children }) {
@@ -440,7 +453,7 @@ function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, 
   )
 }
 
-const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, setWidgetPreferences }) => {
+const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPreferences, setWidgetPreferences }) => {
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [galleryDragId, setGalleryDragId] = useState(null)
   const [saveFeedback, setSaveFeedback] = useState(false)
@@ -706,7 +719,7 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, set
                           editMode={customizeOpen}
                           height={customHeight[id]}
                           width={customWidth[id]}
-                          minH={id === 'archbot' ? 120 : id === 'global-events' ? 100 : undefined}
+                          minH={id === 'archbot' ? 120 : id === 'global-events' || id === 'social-activity' ? 100 : undefined}
                           onResize={setCustomHeight}
                           onResizeWidth={customizeOpen ? setCustomWidth : undefined}
                           onRemove={customizeOpen ? (widgetId) => setVisible(widgetId, false) : undefined}
@@ -742,6 +755,9 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, widgetPreferences, set
                                 ))}
                               </div>
                             </div>
+                          )}
+                          {id === 'social-activity' && (
+                            <SocialActivityWidget profile={profile} onOpenSocial={onOpenSocial} />
                           )}
                         </ResizableWidgetBox>
                       </div>
@@ -860,22 +876,10 @@ function App() {
   const [activeSiteId, setActiveSiteId] = useState(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [widgetPreferences, setWidgetPreferences] = useState(() => loadWidgetPreferences())
-  const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true)
   const mobileMainRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
   const isToolRoute = location.pathname === '/illustrator-2d' || location.pathname === '/viewer-3d'
-
-  useEffect(() => {
-    if (view === 'home') setMobileHeaderVisible(true)
-  }, [view])
-
-  const handleMobileScroll = (e) => {
-    const el = e.currentTarget
-    const top = el.scrollTop
-    if (top <= 15) setMobileHeaderVisible(true)
-    else if (top > 40) setMobileHeaderVisible(false)
-  }
 
   // Auto-hide sidebar when entering a tool route
   useEffect(() => {
@@ -1032,7 +1036,7 @@ function App() {
               {location.pathname === '/viewer-3d' && <Viewer3DPage />}
               {!isToolRoute && view === 'home' && (
                 <div className="h-full min-h-0 overflow-hidden flex flex-col">
-                  <DashboardPage searchQuery={searchQuery} profile={profile} onOpenMap={() => setView('map')} widgetPreferences={widgetPreferences} setWidgetPreferences={setWidgetPreferences} />
+                  <DashboardPage searchQuery={searchQuery} profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => { try { if (chatroomId) localStorage.setItem('global-arch-social-selected-chatroom', chatroomId); } catch (_) {} setView('social'); }} widgetPreferences={widgetPreferences} setWidgetPreferences={setWidgetPreferences} />
                 </div>
               )}
               {!isToolRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}
@@ -1049,13 +1053,13 @@ function App() {
         </div>
       </div>
 
-      {/* Mobile: header + main + curved bottom nav (< 768px). h-screen overflow-hidden so main is the scroll container and scroll events fire. */}
-      <div className="md:hidden flex flex-col h-screen overflow-hidden bg-[#f8f3e8]">
+      {/* Mobile: header (search locked at top) + main + curved bottom nav (< 768px). Full-screen background. */}
+      <div className="md:hidden flex flex-col min-h-screen h-screen overflow-hidden bg-[#f8f3e8]" style={{ minHeight: '100dvh' }}>
         <header
-          className="fixed top-0 left-0 right-0 z-[1000] overflow-hidden border-b border-ink/10 transition-transform duration-300 ease-out"
+          className="fixed top-0 left-0 right-0 z-[1000] overflow-hidden border-b border-ink/10 shrink-0"
           style={{
             background: '#f8f3e8',
-            transform: view !== 'home' || isToolRoute ? 'translate3d(0, -100%, 0)' : mobileHeaderVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, -100%, 0)',
+            transform: isToolRoute ? 'translate3d(0, -100%, 0)' : 'translate3d(0, 0, 0)',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden'
           }}
@@ -1078,27 +1082,23 @@ function App() {
         </header>
         <main
           ref={mobileMainRef}
-          onScroll={handleMobileScroll}
-          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden transition-[padding] duration-300 ease-out"
-          style={
-            isToolRoute
-              ? { paddingTop: 0 }
-              : view === 'home'
-                ? { paddingTop: mobileHeaderVisible ? '5.25rem' : 'max(1rem, env(safe-area-inset-top))' }
-                : { paddingTop: '1rem' }
-          }
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+          style={{
+            paddingTop: isToolRoute ? 0 : '5.25rem',
+            paddingBottom: 'max(5rem, env(safe-area-inset-bottom))'
+          }}
         >
           {location.pathname === '/viewer-3d' && <Viewer3DPage />}
           {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
-          {!isToolRoute && view === 'home' && <MobileDashboard searchQuery={searchQuery} setSearchQuery={setSearchQuery} profile={profile} onOpenMap={() => setView('map')} />}
+          {!isToolRoute && view === 'home' && <MobileDashboard searchQuery={searchQuery} setSearchQuery={setSearchQuery} profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
           {!isToolRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
           {!isToolRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
-          {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} /></div>}
+          {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} /></div>}
           {!isToolRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} /></div>}
           {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
           {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
           {!isToolRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} /></div>}
-          {!isToolRoute && view === 'social' && <div className="p-4 min-h-[60vh]"><SocialPage profile={profile} /></div>}
+          {!isToolRoute && view === 'social' && <div className="min-h-[60vh]"><SocialPage profile={profile} /></div>}
         </main>
         <nav
           className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-sm border-t border-ink/10 rounded-t-3xl shadow-[0_-4px_20px_rgba(44,40,37,0.06)] transition-transform duration-300 ease-out ${

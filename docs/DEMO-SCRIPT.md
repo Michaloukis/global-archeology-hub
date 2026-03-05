@@ -81,7 +81,7 @@ Use this overview at the start of the demo so the audience knows *why* the proje
 - **No sites on map** — Run `add-coordinates.sql` and `seed-public-student-exclusive.sql` in Supabase; skip to “pre-seeded sites” talking point.
 - **Journal upload fails** — Ensure `field-records` bucket is Public and `site_journals.model_url` exists; skip upload and describe the flow.
 - **ArchBot not answering** — Expected without Groq key; show the UI and say “AI can be connected via API key.”
-- **Exclusive site not visible** — Set that site’s `created_by` to the logged-in Chief’s user ID in Supabase.
+- **Exclusive site not visible** — In Supabase, set the site “Valley of the Kings (Chief)” so `created_by` = your logged-in Chief user ID (see `supabase-migrations/README.md`).
 - **Offline / Supabase down** — Use a short pre-recorded screen capture (Home → Map → Arch Zone → Journal) or present UI/flow with “simulated data.”
 
 **Quick fallbacks:** Switch to backup account (e.g. Student) or skip to Map and show pre-seeded sites.

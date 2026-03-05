@@ -10,6 +10,11 @@ const STORAGE_KEY_TAB = 'global-arch-social-tab';
 export default function SocialPage({ profile }) {
   const [chatrooms, setChatrooms] = useState([]);
   const [selectedChatroomId, setSelectedChatroomIdState] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia?.('(max-width: 767px)')?.matches ?? window.innerWidth < 768;
+  });
+  const [mobilePanel, setMobilePanel] = useState('list'); // 'list' | 'room'
   const [tab, setTabState] = useState(() => {
     try {
       const t = localStorage.getItem(STORAGE_KEY_TAB);
@@ -53,6 +58,22 @@ export default function SocialPage({ profile }) {
 
   const selectedChatroom = chatrooms.find((c) => c.id === selectedChatroomId);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 767px)');
+    const onChange = (e) => setIsMobile(!!e.matches);
+    try {
+      mql.addEventListener('change', onChange);
+      setIsMobile(!!mql.matches);
+      return () => mql.removeEventListener('change', onChange);
+    } catch (_) {
+      // Safari fallback
+      mql.addListener?.(onChange);
+      setIsMobile(!!mql.matches);
+      return () => mql.removeListener?.(onChange);
+    }
+  }, []);
+
   const fetchChatrooms = async () => {
     if (!supabase || !profile?.id) return;
     setChatroomsLoading(true);
@@ -74,10 +95,25 @@ export default function SocialPage({ profile }) {
         try {
           const saved = localStorage.getItem(STORAGE_KEY_CHATROOM);
           const inList = saved && list.some((c) => c.id === saved);
-          setSelectedChatroomId(inList ? saved : list[0].id);
+          if (inList) {
+            setSelectedChatroomId(saved);
+            setMobilePanel('room');
+          } else if (!isMobile) {
+            setSelectedChatroomId(list[0].id);
+          } else {
+            setSelectedChatroomId(null);
+            setMobilePanel('list');
+          }
         } catch (_) {
-          setSelectedChatroomId(list[0].id);
+          if (!isMobile) setSelectedChatroomId(list[0].id);
+          else {
+            setSelectedChatroomId(null);
+            setMobilePanel('list');
+          }
         }
+      } else {
+        setSelectedChatroomId(null);
+        setMobilePanel('list');
       }
     } catch (e) {
       setChatrooms([]);
@@ -151,6 +187,7 @@ export default function SocialPage({ profile }) {
         setStartChatError(null);
         await fetchChatrooms();
         setSelectedChatroomId(chatroomId);
+        if (isMobile) setMobilePanel('room');
       }
     } catch (e) {
       console.error('Start chat error:', e);
@@ -158,6 +195,15 @@ export default function SocialPage({ profile }) {
     } finally {
       setCreatingRoomForSiteId(null);
     }
+  };
+
+  const handleSelectRoom = (roomId) => {
+    setSelectedChatroomId(roomId);
+    if (isMobile) setMobilePanel('room');
+  };
+
+  const handleBackToList = () => {
+    setMobilePanel('list');
   };
 
   // Fetch posts for selected chatroom
@@ -397,7 +443,11 @@ export default function SocialPage({ profile }) {
   return (
     <div className="relative parchment-main min-h-full flex flex-col md:flex-row overflow-hidden">
       {/* Left sidebar: chatroom list */}
-      <aside className="w-full md:w-56 lg:w-64 shrink-0 border-b md:border-b-0 md:border-r border-ink/20 bg-white/80 flex flex-col">
+      <aside
+        className={`w-full md:w-56 lg:w-64 shrink-0 border-b md:border-b-0 md:border-r border-ink/20 bg-white/80 flex-col ${
+          isMobile ? (mobilePanel === 'list' ? 'flex' : 'hidden') : 'flex'
+        }`}
+      >
         <div className="p-3 border-b border-ink/20">
           <h2 className="text-sm font-bold text-ink uppercase tracking-wider">Chatrooms</h2>
           <p className="text-[10px] text-ink/50 mt-0.5">Select or start a chat</p>
@@ -420,7 +470,7 @@ export default function SocialPage({ profile }) {
                 <li key={room.id}>
                   <button
                     type="button"
-                    onClick={() => setSelectedChatroomId(room.id)}
+                    onClick={() => handleSelectRoom(room.id)}
                     className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${selectedChatroomId === room.id ? 'bg-ink/10 text-ink' : 'text-ink/70 hover:bg-ink/5 hover:text-ink'}`}
                   >
                     <span className="block truncate">{room.name}</span>
@@ -469,13 +519,26 @@ export default function SocialPage({ profile }) {
       )}
 
       {/* Main: selected chatroom — Posts | Chat tabs */}
-      <main className="flex-1 flex flex-col min-w-0 min-h-0">
+      <main
+        className={`flex-1 flex flex-col min-w-0 min-h-0 ${
+          isMobile ? (mobilePanel === 'room' ? 'flex' : 'hidden') : 'flex'
+        }`}
+      >
         {!selectedChatroomId ? (
           <div className="flex-1 flex items-center justify-center p-8 text-ink/50 text-sm">Select a chatroom from the list or start a chat</div>
         ) : (
           <>
             <div className="shrink-0 border-b-2 border-ink/20 bg-white/70 md:rounded-t-2xl md:border-t md:border-x md:border-ink/20">
               <div className="px-4 pt-3 pb-0 flex flex-wrap items-end gap-4 sm:gap-6 min-h-[52px]">
+                <button
+                  type="button"
+                  onClick={handleBackToList}
+                  className="md:hidden min-h-[44px] -ml-2 px-2 text-ink/70 hover:text-ink flex items-center gap-1.5"
+                  aria-label="Back to chatrooms"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  <span className="text-xs font-bold uppercase tracking-wider">Chatrooms</span>
+                </button>
                 <h3 className="font-bold text-ink truncate pb-2 border-b-2 border-transparent -mb-0.5 min-w-0">{selectedChatroom?.name ?? 'Chatroom'}</h3>
                 <div className="flex gap-1 ml-0 sm:ml-2">
                   <button
