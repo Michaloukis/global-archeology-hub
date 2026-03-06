@@ -937,10 +937,16 @@ function App() {
     if (supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         setSession(session)
+        try {
+          supabase.realtime?.setAuth?.(session?.access_token || '')
+        } catch (_) {}
         if (session) fetchProfile(session.user.id)
       })
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         setSession(session)
+        try {
+          supabase.realtime?.setAuth?.(session?.access_token || '')
+        } catch (_) {}
         if (session) fetchProfile(session.user.id)
         else setProfile(null)
       })

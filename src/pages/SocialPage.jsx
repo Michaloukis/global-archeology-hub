@@ -51,10 +51,18 @@ export default function SocialPage({ profile }) {
   const messagesEndRef = useRef(null);
   const channelRef = useRef(null);
   const [startChatOpen, setStartChatOpen] = useState(false);
+  const [startChatMode, setStartChatMode] = useState('site'); // 'site' | 'dm' | 'group'
   const [sitesWithoutRoom, setSitesWithoutRoom] = useState([]);
   const [startChatLoading, setStartChatLoading] = useState(false);
   const [creatingRoomForSiteId, setCreatingRoomForSiteId] = useState(null);
   const [startChatError, setStartChatError] = useState(null);
+  const [peopleQuery, setPeopleQuery] = useState('');
+  const [peopleResults, setPeopleResults] = useState([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [creatingDmForUserId, setCreatingDmForUserId] = useState(null);
+  const [groupName, setGroupName] = useState('');
+  const [groupMembers, setGroupMembers] = useState([]); // [{id, full_name, username, role}]
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   const selectedChatroom = chatrooms.find((c) => c.id === selectedChatroomId);
 
@@ -80,7 +88,7 @@ export default function SocialPage({ profile }) {
     try {
       const { data, error } = await supabase
         .from('chatroom_members')
-        .select('chatroom_id, chatrooms(id, name, site_id)')
+        .select('chatroom_id, chatrooms(id, name, site_id, room_type, dm_key, created_by)')
         .eq('user_id', profile.id);
       if (error) throw error;
       const list = (data || [])
@@ -131,7 +139,7 @@ export default function SocialPage({ profile }) {
 
   // When "Start a chat" modal opens, load sites that don't have a chatroom yet
   useEffect(() => {
-    if (!startChatOpen || !supabase || !profile?.id || !isArcheologist(profile)) return;
+    if (!startChatOpen || startChatMode !== 'site' || !supabase || !profile?.id || !isArcheologist(profile)) return;
     (async () => {
       try {
         const isChief = profile.role === 'Director';
@@ -163,14 +171,45 @@ export default function SocialPage({ profile }) {
         console.error('Fetch sites without room error:', e);
       }
     })();
-  }, [startChatOpen, profile?.id, profile?.role]);
+  }, [startChatOpen, startChatMode, profile?.id, profile?.role]);
+
+  const searchPeople = async (q) => {
+    if (!supabase || !profile?.id) return;
+    const query = (q || '').trim();
+    if (query.length < 2) {
+      setPeopleResults([]);
+      return;
+    }
+    setPeopleLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, username, avatar_url, role')
+        .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+        .limit(20);
+      if (error) throw error;
+      const filtered = (data || []).filter((p) => p.id && p.id !== profile.id);
+      setPeopleResults(filtered);
+    } catch (e) {
+      console.error('Search people error:', e);
+      setPeopleResults([]);
+    } finally {
+      setPeopleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!startChatOpen || (startChatMode !== 'dm' && startChatMode !== 'group')) return;
+    const t = setTimeout(() => { searchPeople(peopleQuery); }, 250);
+    return () => clearTimeout(t);
+  }, [startChatOpen, startChatMode, peopleQuery]);
 
   const handleStartChat = async (siteId, siteName) => {
     if (!supabase || !profile?.id || creatingRoomForSiteId) return;
     setCreatingRoomForSiteId(siteId);
     setStartChatError(null);
     try {
-      const { data: room, error: roomErr } = await supabase.from('chatrooms').insert({ site_id: siteId, name: siteName || 'Chatroom' }).select('id').single();
+      const { data: room, error: roomErr } = await supabase.from('chatrooms').insert({ site_id: siteId, name: siteName || 'Dig site room', room_type: 'site' }).select('id').single();
       let chatroomId = room?.id;
       if (roomErr) {
         if (roomErr.code === '23505') {
@@ -194,6 +233,103 @@ export default function SocialPage({ profile }) {
       setStartChatError(e?.message || 'Could not create or join chatroom.');
     } finally {
       setCreatingRoomForSiteId(null);
+    }
+  };
+
+  const getDisplayName = (p) => p?.full_name || p?.username || 'Member';
+  const getFirstName = (p) => (getDisplayName(p).split(' ')[0] || getDisplayName(p)).trim();
+
+  const handleStartDm = async (targetProfile) => {
+    if (!supabase || !profile?.id || !targetProfile?.id || creatingDmForUserId) return;
+    setCreatingDmForUserId(targetProfile.id);
+    setStartChatError(null);
+    try {
+      const a = String(profile.id);
+      const b = String(targetProfile.id);
+      const dmKey = [a, b].sort().join(':');
+      const dmName = `DM: ${getFirstName(profile)} & ${getFirstName(targetProfile)}`;
+      const { data: room, error: roomErr } = await supabase
+        .from('chatrooms')
+        .insert({ room_type: 'dm', dm_key: dmKey, name: dmName, created_by: profile.id })
+        .select('id')
+        .single();
+      let chatroomId = room?.id;
+      if (roomErr) {
+        if (roomErr.code === '23505') {
+          const { data: existing } = await supabase.from('chatrooms').select('id').eq('dm_key', dmKey).maybeSingle();
+          if (existing) chatroomId = existing.id;
+        }
+        if (!chatroomId) throw roomErr;
+      }
+      if (chatroomId) {
+        const ids = [profile.id, targetProfile.id];
+        for (const uid of ids) {
+          const { error: memberErr } = await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: uid });
+          if (memberErr && memberErr.code !== '23505') throw memberErr;
+        }
+        setStartChatOpen(false);
+        setPeopleQuery('');
+        setPeopleResults([]);
+        await fetchChatrooms();
+        setSelectedChatroomId(chatroomId);
+        if (isMobile) setMobilePanel('room');
+      }
+    } catch (e) {
+      console.error('Start DM error:', e);
+      setStartChatError(e?.message || 'Could not create or open direct message.');
+    } finally {
+      setCreatingDmForUserId(null);
+    }
+  };
+
+  const addGroupMember = (p) => {
+    if (!p?.id || p.id === profile?.id) return;
+    setGroupMembers((prev) => (prev.some((x) => x.id === p.id) ? prev : [...prev, p]));
+  };
+  const removeGroupMember = (id) => setGroupMembers((prev) => prev.filter((p) => p.id !== id));
+
+  const handleCreateGroup = async () => {
+    if (!supabase || !profile?.id || creatingGroup) return;
+    if (groupMembers.length === 0) {
+      setStartChatError('Pick at least one person for the group.');
+      return;
+    }
+    setCreatingGroup(true);
+    setStartChatError(null);
+    try {
+      const memberNames = [profile, ...groupMembers].map(getFirstName);
+      const fallbackName = (() => {
+        const shown = memberNames.slice(0, 3).join(', ');
+        const more = memberNames.length - 3;
+        return `Group: ${shown}${more > 0 ? ` +${more}` : ''}`;
+      })();
+      const name = (groupName || '').trim() || fallbackName;
+      const { data: room, error: roomErr } = await supabase
+        .from('chatrooms')
+        .insert({ room_type: 'group', name, created_by: profile.id })
+        .select('id')
+        .single();
+      if (roomErr) throw roomErr;
+      const chatroomId = room?.id;
+      if (!chatroomId) throw new Error('No chatroom id returned.');
+      const ids = [profile.id, ...groupMembers.map((p) => p.id)];
+      for (const uid of ids) {
+        const { error: memberErr } = await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: uid });
+        if (memberErr && memberErr.code !== '23505') throw memberErr;
+      }
+      setStartChatOpen(false);
+      setPeopleQuery('');
+      setPeopleResults([]);
+      setGroupName('');
+      setGroupMembers([]);
+      await fetchChatrooms();
+      setSelectedChatroomId(chatroomId);
+      if (isMobile) setMobilePanel('room');
+    } catch (e) {
+      console.error('Create group error:', e);
+      setStartChatError(e?.message || 'Could not create group chat.');
+    } finally {
+      setCreatingGroup(false);
     }
   };
 
@@ -311,6 +447,14 @@ export default function SocialPage({ profile }) {
 
     const channel = supabase
       .channel(`chat:${selectedChatroomId}`)
+      .on('broadcast', { event: 'chat_message' }, (payload) => {
+        const row = payload?.payload;
+        if (!row?.id) return;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === row.id)) return prev;
+          return [...prev, row];
+        });
+      })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chatroom_id=eq.${selectedChatroomId}` },
@@ -410,7 +554,17 @@ export default function SocialPage({ profile }) {
         .single();
       if (error) throw error;
       const author = { full_name: profile.full_name, username: profile.username, avatar_url: profile.avatar_url, role: profile.role };
-      setMessages((prev) => [...prev, { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, profiles: author }]);
+      const msg = { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, profiles: author };
+      setMessages((prev) => [...prev, msg]);
+      try {
+        // Fallback for cases where Postgres changes aren't delivered (replication/RLS):
+        // broadcast the new message to everyone currently in this room.
+        channelRef.current?.send?.({
+          type: 'broadcast',
+          event: 'chat_message',
+          payload: msg,
+        });
+      } catch (_) {}
     } catch (e) {
       console.error('Send message error:', e);
       setNewMessageContent(content);
@@ -490,28 +644,136 @@ export default function SocialPage({ profile }) {
               <h3 className="text-lg font-bold text-ink uppercase tracking-tight">Start a chat</h3>
               <button type="button" onClick={() => setStartChatOpen(false)} className="text-ink/60 hover:text-ink p-1 rounded-lg hover:bg-ink/10 text-sm font-medium" aria-label="Close">×</button>
             </div>
-            <div className="p-4 max-h-[60vh] overflow-y-auto">
-              <p className="text-xs text-ink/60 mb-3">Choose a dig site to create a chatroom. Only sites you’re assigned to (or manage) appear.</p>
+            <div className="p-4 max-h-[70vh] overflow-y-auto">
+              <div className="flex gap-1 bg-ink/5 p-1 rounded-xl border border-ink/10 mb-3">
+                {[
+                  { id: 'site', label: 'Dig site' },
+                  { id: 'dm', label: 'Direct' },
+                  { id: 'group', label: 'Group' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => { setStartChatMode(m.id); setStartChatError(null); }}
+                    className={`flex-1 min-h-[40px] rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${startChatMode === m.id ? 'bg-white border border-ink/20 text-ink shadow-sm' : 'text-ink/60 hover:text-ink'}`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
               {startChatError && (
                 <div className="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs">{startChatError}</div>
               )}
-              {sitesWithoutRoom.length === 0 ? (
-                <p className="text-sm text-ink/50 py-4 text-center">No sites without a chatroom. Every site you’re on already has one.</p>
-              ) : (
-                <ul className="space-y-1">
-                  {sitesWithoutRoom.map((site) => (
-                    <li key={site.id}>
+
+              {startChatMode === 'site' && (
+                <>
+                  <p className="text-xs text-ink/60 mb-3">Create or open the dig site room for a site you’re assigned to.</p>
+                  {startChatLoading ? (
+                    <p className="text-sm text-ink/50 py-4 text-center">Loading…</p>
+                  ) : sitesWithoutRoom.length === 0 ? (
+                    <p className="text-sm text-ink/50 py-4 text-center">No sites without a room. Every site you’re on already has one.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {sitesWithoutRoom.map((site) => (
+                        <li key={site.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleStartChat(site.id, site.name)}
+                            disabled={creatingRoomForSiteId === site.id}
+                            className="w-full text-left rounded-xl border border-ink/20 px-4 py-3 text-sm font-medium text-ink hover:bg-ink/5 hover:border-ink/30 transition-colors disabled:opacity-50"
+                          >
+                            {creatingRoomForSiteId === site.id ? 'Creating…' : site.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+
+              {(startChatMode === 'dm' || startChatMode === 'group') && (
+                <>
+                  <p className="text-xs text-ink/60 mb-2">
+                    {startChatMode === 'dm' ? 'Search a person to start a direct message.' : 'Build a group chat by adding people.'}
+                  </p>
+                  <input
+                    type="text"
+                    value={peopleQuery}
+                    onChange={(e) => setPeopleQuery(e.target.value)}
+                    placeholder="Search people…"
+                    className="w-full min-h-[44px] rounded-xl border border-ink/20 px-3 py-2 text-sm outline-none focus:border-ink/40"
+                  />
+
+                  {startChatMode === 'group' && (
+                    <div className="mt-3">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-ink/60 mb-1">Group name (optional)</label>
+                      <input
+                        type="text"
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        placeholder="e.g. Survey team"
+                        className="w-full min-h-[44px] rounded-xl border border-ink/20 px-3 py-2 text-sm outline-none focus:border-ink/40"
+                      />
+                      {groupMembers.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {groupMembers.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => removeGroupMember(m.id)}
+                              className="px-2.5 py-1.5 rounded-full border border-ink/20 bg-white text-xs text-ink/80 hover:bg-ink/5"
+                              title="Remove"
+                            >
+                              {getDisplayName(m)} <span className="text-ink/40">×</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleStartChat(site.id, site.name)}
-                        disabled={creatingRoomForSiteId === site.id}
-                        className="w-full text-left rounded-xl border border-ink/20 px-4 py-3 text-sm font-medium text-ink hover:bg-ink/5 hover:border-ink/30 transition-colors disabled:opacity-50"
+                        onClick={handleCreateGroup}
+                        disabled={creatingGroup || groupMembers.length === 0}
+                        className="mt-3 w-full rounded-xl bg-ink text-white py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
                       >
-                        {creatingRoomForSiteId === site.id ? 'Creating…' : site.name}
+                        {creatingGroup ? 'Creating…' : 'Create group chat'}
                       </button>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  )}
+
+                  <div className="mt-3">
+                    {peopleLoading ? (
+                      <p className="text-sm text-ink/50 py-3 text-center">Searching…</p>
+                    ) : peopleQuery.trim().length < 2 ? (
+                      <p className="text-xs text-ink/50 py-2">Type at least 2 letters.</p>
+                    ) : peopleResults.length === 0 ? (
+                      <p className="text-xs text-ink/50 py-2">No matches.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {peopleResults.map((p) => (
+                          <li key={p.id}>
+                            <button
+                              type="button"
+                              onClick={() => (startChatMode === 'dm' ? handleStartDm(p) : addGroupMember(p))}
+                              disabled={startChatMode === 'dm' && creatingDmForUserId === p.id}
+                              className="w-full text-left rounded-xl border border-ink/20 px-4 py-3 hover:bg-ink/5 hover:border-ink/30 transition-colors disabled:opacity-50"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-semibold text-ink truncate">{getDisplayName(p)}</div>
+                                  <div className="text-[11px] text-ink/50 truncate">{p.role || 'Member'}</div>
+                                </div>
+                                <div className="text-xs font-bold text-ink/60">
+                                  {startChatMode === 'dm' ? (creatingDmForUserId === p.id ? 'Opening…' : 'Message') : (groupMembers.some((x) => x.id === p.id) ? 'Added' : 'Add')}
+                                </div>
+                              </div>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>

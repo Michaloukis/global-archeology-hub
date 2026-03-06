@@ -216,7 +216,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
       let chatroomId = existing?.id;
       if (!chatroomId) {
         const name = siteName || 'Dig site';
-        const { data: inserted, error: insertErr } = await supabase.from('chatrooms').insert({ site_id: siteId, name }).select('id').single();
+        const { data: inserted, error: insertErr } = await supabase.from('chatrooms').insert({ site_id: siteId, name, room_type: 'site' }).select('id').single();
         if (insertErr) {
           console.error('Chatroom insert error:', insertErr);
           return;
