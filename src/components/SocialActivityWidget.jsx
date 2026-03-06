@@ -19,7 +19,7 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const isArcheologist = profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist';
+  const isArcheologist = profile?.role === 'Director' || profile?.role === 'Field Archeologist';
 
   useEffect(() => {
     if (!supabase || !profile?.id || !isArcheologist) {
@@ -112,7 +112,7 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
     return (
       <div className="h-full flex flex-col">
         <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1.5 mb-2">Social Activity</h3>
-        <p className="text-[10px] text-ink/60 flex-1">Chatrooms are for Field and Chief Archaeologists.</p>
+        <p className="text-[10px] text-ink/60 flex-1">Chatrooms are for Field Archeologists and Directors.</p>
         <button type="button" onClick={handleOpenChatrooms} className="mt-2 text-xs font-medium text-ink/80 hover:text-ink">Open Social →</button>
       </div>
     );

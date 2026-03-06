@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
 const isArcheologist = (profile) =>
-  profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist';
+  profile?.role === 'Director' || profile?.role === 'Field Archeologist';
 
 const STORAGE_KEY_CHATROOM = 'global-arch-social-selected-chatroom';
 const STORAGE_KEY_TAB = 'global-arch-social-tab';
@@ -134,7 +134,7 @@ export default function SocialPage({ profile }) {
     if (!startChatOpen || !supabase || !profile?.id || !isArcheologist(profile)) return;
     (async () => {
       try {
-        const isChief = profile.role === 'Chief Archeologist';
+        const isChief = profile.role === 'Director';
         let siteIds = [];
         if (isChief) {
           const { data: reg } = await supabase.from('Registry').select('site_id').eq('chief_arch_id', profile.id);
@@ -433,7 +433,7 @@ export default function SocialPage({ profile }) {
         <div className="w-full max-w-md bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-8 text-center">
           <h2 className="text-xl font-bold text-ink border-b border-ink/20 pb-2 mb-4">Chatrooms</h2>
           <p className="text-sm text-ink/70">
-            Chatrooms and posts are for Field and Chief Archaeologists. Join a dig site from the Map and get approved to access mission-specific discussions and chat.
+            Chatrooms and posts are for Field Archeologists and Directors. Join a dig site from the Map and get approved to access mission-specific discussions and chat.
           </p>
         </div>
       </div>

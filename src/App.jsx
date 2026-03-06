@@ -967,7 +967,7 @@ function App() {
 
   if (!session) return <Auth />
 
-  const isArcheologist = profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist'
+  const isArcheologist = profile?.role === 'Director' || profile?.role === 'Field Archeologist'
   const isStudent = profile?.role === 'Student'
   const pcNavItems = [
     { viewKey: 'home', label: 'Home', icon: 'home' },

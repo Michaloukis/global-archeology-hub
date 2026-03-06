@@ -7,6 +7,7 @@ Run these in the **Supabase Dashboard → SQL Editor** in a sensible order.
 1. **Schema / columns**: `add-coordinates.sql`, `add-visibility.sql`, `add-public-sites.sql`, `add-profiles-avatar.sql`, `add-profiles-settings.sql`, `add-social-chatrooms.sql`, `add-ceramic-count.sql`
 2. **Policies**: `add-profiles-select-authenticated.sql`, `add-chatrooms-select-authenticated.sql`
 3. **Seed (presentation-ready data)**: `seed-public-student-exclusive.sql`
+4. **Data migration (roles)**: `migrate-role-chief-to-director.sql` — updates existing `profiles.role` from `'Chief Archeologist'` to `'Director'`. Run once if you have existing users with the old role.
 
 ## Presentation seed (`seed-public-student-exclusive.sql`)
 

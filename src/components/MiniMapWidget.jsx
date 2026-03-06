@@ -44,7 +44,7 @@ export default function MiniMapWidget({ profile, onOpenMap, embedded = false }) 
   const [sites, setSites] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const isChief = profile?.role === 'Chief Archeologist'
+  const isChief = profile?.role === 'Director'
   const isFieldArch = profile?.role === 'Field Archeologist'
   const isArcheologist = isChief || isFieldArch
   const isStudent = profile?.role === 'Student'

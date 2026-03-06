@@ -73,7 +73,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
   // #endregion
 
   useEffect(() => {
-    if (profile?.role === 'Chief Archeologist') {
+    if (profile?.role === 'Director') {
       fetchRequests();
     } else if (profile?.role === 'Field Archeologist') {
       fetchActiveExpeditions();
@@ -116,7 +116,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
     if (!profile?.id) return;
     if (profile?.role === 'Field Archeologist') {
       fetchArchiveEntriesField();
-    } else if (profile?.role === 'Chief Archeologist') {
+    } else if (profile?.role === 'Director') {
       fetchArchiveEntriesChief();
     }
   }, [profile?.id, profile?.role, requests]);
@@ -455,8 +455,8 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
     
     logData('Attempting site creation', { siteName, role: profile?.role }, 'B');
 
-    if (profile?.role !== 'Chief Archeologist') {
-      setMessage('ERROR: UNAUTHORIZED. ONLY CHIEF ARCHEOLOGISTS CAN CREATE SITES.');
+    if (profile?.role !== 'Director') {
+      setMessage('ERROR: UNAUTHORIZED. ONLY DIRECTORS CAN CREATE SITES.');
       setLoading(false);
       return;
     }
@@ -499,7 +499,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
     }
   };
 
-  const isChief = profile?.role === 'Chief Archeologist';
+  const isChief = profile?.role === 'Director';
   const isFieldArch = profile?.role === 'Field Archeologist';
 
   const fromArchives = archiveEntries.slice(0, 2).map(entry => ({

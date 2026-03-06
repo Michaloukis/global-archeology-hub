@@ -8,7 +8,7 @@ const ArchivesPage = ({ profile, onBack }) => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('auto'); // auto | mine | all
 
-  const isChief = profile?.role === 'Chief Archeologist';
+  const isChief = profile?.role === 'Director';
   const isFieldArch = profile?.role === 'Field Archeologist';
 
   useEffect(() => {

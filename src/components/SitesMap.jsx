@@ -199,7 +199,7 @@ export default function SitesMap({ searchQuery, profile }) {
   const [showFilters, setShowFilters] = useState(false)
 
   const [approvedSiteIds, setApprovedSiteIds] = useState([])
-  const isChief = profile?.role === 'Chief Archeologist'
+  const isChief = profile?.role === 'Director'
   const isFieldArch = profile?.role === 'Field Archeologist'
   const isArcheologist = isChief || isFieldArch
   const isStudent = profile?.role === 'Student'
@@ -306,7 +306,7 @@ export default function SitesMap({ searchQuery, profile }) {
 
       if (error) throw error;
 
-      alert('EXPEDITION DOSSIER DISPATCHED. AWAITING CHIEF REVIEW.');
+      alert('EXPEDITION DOSSIER DISPATCHED. AWAITING DIRECTOR REVIEW.');
       fetchUserRequests(); // Refresh the list of sites user has applied for
       setActiveSiteForRequest(null);
       setRequestMessage('');
@@ -326,7 +326,7 @@ export default function SitesMap({ searchQuery, profile }) {
     if (vis === 'public') return 'Public'
     if (vis === 'student') return 'Student'
     if (vis === 'team') return 'Team'
-    if (isChief && site.created_by === profile?.id) return 'Chief only'
+    if (isChief && site.created_by === profile?.id) return 'Director only'
     if (isFieldArch && approvedSiteIds.includes(site.id)) return 'Your expedition'
     return 'Team'
   }
@@ -718,7 +718,7 @@ export default function SitesMap({ searchQuery, profile }) {
                     <option value="students">Students (public + student)</option>
                     <option value="student_only">Student only</option>
                     <option value="team">Team only</option>
-                    {isChief && <option value="chief">Chief only</option>}
+                    {isChief && <option value="chief">Director only</option>}
                     {isFieldArch && <option value="my_expeditions">My expeditions</option>}
                   </select>
                 )}
@@ -829,7 +829,7 @@ export default function SitesMap({ searchQuery, profile }) {
                     <div className="font-sans p-3 min-w-[250px] max-w-[300px] text-[#2c2825]">
                       <h3 className="font-bold text-base border-b border-[#2c2825]/20 pb-2 mb-2 leading-tight">{site.name}</h3>
                       <div className="flex flex-wrap gap-1.5 mb-2">
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-[#2c2825]/20 ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-800' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-800' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-800' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-rose-50 text-rose-800' : 'bg-indigo-50 text-indigo-800'}`}>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-[#2c2825]/20 ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-800' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-800' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-800' : getSiteSourceLabel(site) === 'Director only' ? 'bg-rose-50 text-rose-800' : 'bg-indigo-50 text-indigo-800'}`}>
                           {getSiteSourceLabel(site)}
                         </span>
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded border border-[#2c2825]/20 ${site.status === 'Finished' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
@@ -857,7 +857,7 @@ export default function SitesMap({ searchQuery, profile }) {
                                   <span className="text-rose-600">Latest find:</span> {intel.findings}
                                 </div>
                               )}
-                              {(profile?.role === 'Chief Archeologist' || profile?.role === 'Field Archeologist') && intel.notes && (
+                              {(profile?.role === 'Director' || profile?.role === 'Field Archeologist') && intel.notes && (
                                 <p className="text-[10px] text-[#2c2825]/60 leading-relaxed italic">
                                   "{intel.notes.substring(0, 60)}..."
                                 </p>
@@ -915,7 +915,7 @@ export default function SitesMap({ searchQuery, profile }) {
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className={`text-[9px] md:text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-700 border-amber-200' : getSiteSourceLabel(site) === 'Chief only' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-ink/10 text-ink border-ink/20'}`}>
+                  <span className={`text-[9px] md:text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-700 border-amber-200' : getSiteSourceLabel(site) === 'Director only' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-ink/10 text-ink border-ink/20'}`}>
                     {getSiteSourceLabel(site)}
                   </span>
                   <span className="text-[9px] md:text-[10px] text-ink/35 font-mono">{site.lat.toFixed(3)}°, {site.lng.toFixed(3)}°</span>

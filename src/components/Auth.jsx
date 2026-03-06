@@ -142,7 +142,7 @@ export default function Auth() {
                   className="w-full min-h-[44px] bg-white/80 border border-ink/30 rounded-lg px-4 py-3 text-ink outline-none focus:border-ink transition-colors font-medium cursor-pointer appearance-none"
                   style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%232c2825\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
                 >
-                  <option value="Chief Archeologist">Chief Archeologist</option>
+                  <option value="Director">Director</option>
                   <option value="Field Archeologist">Field Archeologist</option>
                   <option value="Student">Student</option>
                   <option value="Enthusiast">Enthusiast</option>

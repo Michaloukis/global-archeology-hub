@@ -4,7 +4,7 @@ import { chatWithGroq } from '../services/groqApi'
 function buildSystemPrompt(role) {
   const base = `You are ArchBot, the AI assistant for the Global Archaeology Hub. You help users with archaeology-related questions, fieldwork, research, and education. Be concise, professional, and accurate.`
   const roleHint = {
-    'Chief Archeologist': 'The user is a Chief Archeologist: help with site oversight, team coordination, approvals, reports, and high-level strategy.',
+    'Director': 'The user is a Director: help with site oversight, team coordination, approvals, reports, and high-level strategy.',
     'Field Archeologist': 'The user is a Field Archeologist: help with fieldwork, documentation, stratigraphy, finds, journals, and expedition logistics.',
     'Student': 'The user is a Student: help with learning, terminology, methods, and understanding declassified field records and the Student Map.'
   }
