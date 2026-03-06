@@ -431,9 +431,9 @@ export default function SocialPage({ profile }) {
     return (
       <div className="relative parchment-main min-h-full p-6 md:p-8 flex flex-col items-center justify-center">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-8 text-center">
-          <h2 className="text-xl font-bold text-ink border-b border-ink/20 pb-2 mb-4">Chatrooms</h2>
+          <h2 className="text-xl font-bold text-ink border-b border-ink/20 pb-2 mb-4">Social Hub</h2>
           <p className="text-sm text-ink/70">
-            Chatrooms and posts are for Field Archeologists and Directors. Join a dig site from the Map and get approved to access mission-specific discussions and chat.
+            Social Hub is for Field Archeologists and Directors. Join a dig site from the Map and get approved to access mission-specific discussions and chat.
           </p>
         </div>
       </div>
@@ -449,8 +449,8 @@ export default function SocialPage({ profile }) {
         }`}
       >
         <div className="p-3 border-b border-ink/20">
-          <h2 className="text-sm font-bold text-ink uppercase tracking-wider">Chatrooms</h2>
-          <p className="text-[10px] text-ink/50 mt-0.5">Select or start a chat</p>
+          <h2 className="text-sm font-bold text-ink uppercase tracking-wider">Social Hub</h2>
+          <p className="text-[10px] text-ink/50 mt-0.5">Select a room or start a chat</p>
           <button
             type="button"
             onClick={() => { setStartChatOpen(true); setStartChatError(null); }}
@@ -463,7 +463,7 @@ export default function SocialPage({ profile }) {
           {chatroomsLoading ? (
             <div className="p-4 text-center text-xs text-ink/50 animate-pulse">Loading…</div>
           ) : chatrooms.length === 0 ? (
-            <div className="p-4 text-center text-xs text-ink/50">No chatrooms yet. Start a chat for a dig site you’re on, or get approved from the Map.</div>
+            <div className="p-4 text-center text-xs text-ink/50">No rooms yet. Start a chat for a dig site you’re on, or get approved from the Map.</div>
           ) : (
             <ul className="p-2 space-y-0.5">
               {chatrooms.map((room) => (
@@ -534,10 +534,10 @@ export default function SocialPage({ profile }) {
                   type="button"
                   onClick={handleBackToList}
                   className="md:hidden min-h-[44px] -ml-2 px-2 text-ink/70 hover:text-ink flex items-center gap-1.5"
-                  aria-label="Back to chatrooms"
+                  aria-label="Back to Social Hub"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  <span className="text-xs font-bold uppercase tracking-wider">Chatrooms</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">Social Hub</span>
                 </button>
                 <h3 className="font-bold text-ink truncate pb-2 border-b-2 border-transparent -mb-0.5 min-w-0">{selectedChatroom?.name ?? 'Chatroom'}</h3>
                 <div className="flex gap-1 ml-0 sm:ml-2">

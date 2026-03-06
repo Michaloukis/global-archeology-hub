@@ -97,7 +97,7 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
     return () => { cancelled = true; };
   }, [profile?.id, isArcheologist]);
 
-  const handleOpenChatrooms = () => {
+  const handleOpenSocialHub = () => {
     onOpenSocial?.();
   };
 
@@ -112,8 +112,8 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
     return (
       <div className="h-full flex flex-col">
         <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1.5 mb-2">Social Activity</h3>
-        <p className="text-[10px] text-ink/60 flex-1">Chatrooms are for Field Archeologists and Directors.</p>
-        <button type="button" onClick={handleOpenChatrooms} className="mt-2 text-xs font-medium text-ink/80 hover:text-ink">Open Social →</button>
+        <p className="text-[10px] text-ink/60 flex-1">Social Hub is for Field Archeologists and Directors.</p>
+        <button type="button" onClick={handleOpenSocialHub} className="mt-2 text-xs font-medium text-ink/80 hover:text-ink">Open Social Hub →</button>
       </div>
     );
   }
@@ -122,8 +122,8 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
     <div className="h-full flex flex-col min-h-0">
       <div className="flex items-center justify-between border-b border-ink/30 pb-1.5 mb-2 shrink-0">
         <h3 className="text-xs font-bold text-ink">Social Activity</h3>
-        <button type="button" onClick={handleOpenChatrooms} className="text-[10px] font-medium text-ink/70 hover:text-ink">
-          Open Chatrooms →
+        <button type="button" onClick={handleOpenSocialHub} className="text-[10px] font-medium text-ink/70 hover:text-ink">
+          Open Social Hub →
         </button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
