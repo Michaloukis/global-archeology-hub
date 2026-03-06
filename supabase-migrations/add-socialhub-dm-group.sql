@@ -5,7 +5,7 @@
 ALTER TABLE chatrooms
   ADD COLUMN IF NOT EXISTS room_type text NOT NULL DEFAULT 'site',
   ADD COLUMN IF NOT EXISTS dm_key text,
-  ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES profiles(id);
+  ADD COLUMN IF NOT EXISTS created_by uuid;
 
 -- site_id should be nullable for dm/group rooms
 ALTER TABLE chatrooms

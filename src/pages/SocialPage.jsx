@@ -92,7 +92,7 @@ export default function SocialPage({ profile }) {
     try {
       const { data, error } = await supabase
         .from('chatroom_members')
-        .select('chatroom_id, chatrooms(id, name, site_id, room_type, dm_key, created_by)')
+        .select('chatroom_id, chatrooms(id, name, site_id)')
         .eq('user_id', profile.id);
       if (error) throw error;
       const list = (data || [])
@@ -180,16 +180,26 @@ export default function SocialPage({ profile }) {
   const searchPeople = async (q) => {
     if (!supabase || !profile?.id) return;
     const query = (q || '').trim();
-    if (query.length < 2) {
+    if (!query.length) {
       setPeopleResults([]);
       return;
     }
     setPeopleLoading(true);
     try {
+      // Prefer RPC so search works regardless of nulls/encoding (run add-search-profiles-rpc.sql)
+      const { data: rpcData, error: rpcError } = await supabase.rpc('search_profiles', { search_term: query });
+      if (!rpcError && Array.isArray(rpcData)) {
+        const filtered = rpcData.filter((p) => p.id && p.id !== profile.id);
+        setPeopleResults(filtered.map((p) => ({ id: p.id, full_name: p.full_name, username: p.username, email: p.email, avatar_url: p.avatar_url, role: p.role })));
+        setPeopleLoading(false);
+        return;
+      }
+      // Fallback: client filter (can fail with null names or encoding)
+      const pattern = `%${query}%`;
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, username, avatar_url, role')
-        .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+        .or(`full_name.ilike.${pattern},username.ilike.${pattern}`)
         .limit(20);
       if (error) throw error;
       const filtered = (data || []).filter((p) => p.id && p.id !== profile.id);
@@ -248,36 +258,45 @@ export default function SocialPage({ profile }) {
     setCreatingDmForUserId(targetProfile.id);
     setStartChatError(null);
     try {
+      const dmName = `DM: ${getFirstName(profile)} & ${getFirstName(targetProfile)}`;
       const a = String(profile.id);
       const b = String(targetProfile.id);
       const dmKey = [a, b].sort().join(':');
-      const dmName = `DM: ${getFirstName(profile)} & ${getFirstName(targetProfile)}`;
-      const { data: room, error: roomErr } = await supabase
-        .from('chatrooms')
-        .insert({ room_type: 'dm', dm_key: dmKey, name: dmName, created_by: profile.id })
-        .select('id')
-        .single();
-      let chatroomId = room?.id;
-      if (roomErr) {
-        if (roomErr.code === '23505') {
+      let chatroomId = null;
+
+      const { data, error: rpcErr } = await supabase.rpc('create_dm_room', {
+        other_user_id: targetProfile.id,
+        room_name: dmName,
+      });
+      const rpcMissing = rpcErr?.message?.includes('schema cache') || rpcErr?.message?.includes('Could not find the function');
+      if (!rpcErr) {
+        chatroomId = data?.chatroom_id;
+        if (data?.error) throw new Error(data.error);
+      } else if (rpcMissing) {
+        const { data: room, error: roomErr } = await supabase
+          .from('chatrooms')
+          .insert({ room_type: 'dm', dm_key: dmKey, name: dmName })
+          .select('id')
+          .single();
+        if (roomErr?.code === '23505') {
           const { data: existing } = await supabase.from('chatrooms').select('id').eq('dm_key', dmKey).maybeSingle();
-          if (existing) chatroomId = existing.id;
+          chatroomId = existing?.id;
+        } else if (roomErr) throw roomErr;
+        else chatroomId = room?.id;
+        if (chatroomId) {
+          for (const uid of [profile.id, targetProfile.id]) {
+            await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: uid }).then(({ error }) => { if (error && error.code !== '23505') throw error; });
+          }
         }
-        if (!chatroomId) throw roomErr;
-      }
-      if (chatroomId) {
-        const ids = [profile.id, targetProfile.id];
-        for (const uid of ids) {
-          const { error: memberErr } = await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: uid });
-          if (memberErr && memberErr.code !== '23505') throw memberErr;
-        }
-        setStartChatOpen(false);
-        setPeopleQuery('');
-        setPeopleResults([]);
-        await fetchChatrooms();
-        setSelectedChatroomId(chatroomId);
-        if (isMobile) setMobilePanel('room');
-      }
+      } else throw rpcErr;
+
+      if (!chatroomId) throw new Error('Could not create or open DM.');
+      setStartChatOpen(false);
+      setPeopleQuery('');
+      setPeopleResults([]);
+      await fetchChatrooms();
+      setSelectedChatroomId(chatroomId);
+      if (isMobile) setMobilePanel('room');
     } catch (e) {
       console.error('Start DM error:', e);
       setStartChatError(e?.message || 'Could not create or open direct message.');
@@ -308,19 +327,33 @@ export default function SocialPage({ profile }) {
         return `Group: ${shown}${more > 0 ? ` +${more}` : ''}`;
       })();
       const name = (groupName || '').trim() || fallbackName;
-      const { data: room, error: roomErr } = await supabase
-        .from('chatrooms')
-        .insert({ room_type: 'group', name, created_by: profile.id })
-        .select('id')
-        .single();
-      if (roomErr) throw roomErr;
-      const chatroomId = room?.id;
-      if (!chatroomId) throw new Error('No chatroom id returned.');
-      const ids = [profile.id, ...groupMembers.map((p) => p.id)];
-      for (const uid of ids) {
-        const { error: memberErr } = await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: uid });
-        if (memberErr && memberErr.code !== '23505') throw memberErr;
-      }
+      const memberIds = groupMembers.map((p) => p.id).filter(Boolean);
+      let chatroomId = null;
+
+      const { data, error: rpcErr } = await supabase.rpc('create_group_room', {
+        room_name: name,
+        member_ids: memberIds,
+      });
+      const rpcMissing = rpcErr?.message?.includes('schema cache') || rpcErr?.message?.includes('Could not find the function');
+      if (!rpcErr) {
+        chatroomId = data?.chatroom_id;
+        if (data?.error) throw new Error(data.error);
+      } else if (rpcMissing) {
+        const { data: room, error: roomErr } = await supabase
+          .from('chatrooms')
+          .insert({ room_type: 'group', name })
+          .select('id')
+          .single();
+        if (roomErr) throw roomErr;
+        chatroomId = room?.id;
+        if (chatroomId) {
+          for (const uid of [profile.id, ...memberIds]) {
+            await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: uid }).then(({ error }) => { if (error && error.code !== '23505') throw error; });
+          }
+        }
+      } else throw rpcErr;
+
+      if (!chatroomId) throw new Error('Could not create group.');
       setStartChatOpen(false);
       setPeopleQuery('');
       setPeopleResults([]);
@@ -621,34 +654,7 @@ export default function SocialPage({ profile }) {
           {chatroomsLoading ? (
             <div className="p-4 text-center text-xs text-ink/50 animate-pulse">Loading…</div>
           ) : chatrooms.length === 0 ? (
-            <div className="p-4">
-              <div className="text-center text-xs text-ink/50">
-                No rooms yet. Start a direct message or create a group chat.
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  onClick={() => openStartChat('dm')}
-                  className="w-full rounded-xl border border-ink/20 bg-white/80 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-ink/5"
-                >
-                  Message someone
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openStartChat('group')}
-                  className="w-full rounded-xl border border-ink/20 bg-white/80 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-ink/5"
-                >
-                  Create a group
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openStartChat('site')}
-                  className="w-full rounded-xl border border-ink/15 bg-white/60 px-4 py-2.5 text-xs font-semibold text-ink/70 hover:bg-ink/5"
-                >
-                  Dig site room (optional)
-                </button>
-              </div>
-            </div>
+            <div className="p-4 text-center text-xs text-ink/50">No rooms yet. Use Start a chat above.</div>
           ) : (
             <ul className="p-2 space-y-0.5">
               {chatrooms.map((room) => (
@@ -775,8 +781,8 @@ export default function SocialPage({ profile }) {
                   <div className="mt-3">
                     {peopleLoading ? (
                       <p className="text-sm text-ink/50 py-3 text-center">Searching…</p>
-                    ) : peopleQuery.trim().length < 2 ? (
-                      <p className="text-xs text-ink/50 py-2">Type at least 2 letters.</p>
+                    ) : !peopleQuery.trim() ? (
+                      <p className="text-xs text-ink/50 py-2">Type a name or username.</p>
                     ) : peopleResults.length === 0 ? (
                       <p className="text-xs text-ink/50 py-2">No matches.</p>
                     ) : (
@@ -818,22 +824,7 @@ export default function SocialPage({ profile }) {
         }`}
       >
         {!selectedChatroomId ? (
-          <div className="flex-1 flex items-center justify-center p-8 text-ink/60 text-sm">
-            <div className="max-w-md text-center">
-              <div className="text-base font-bold text-ink">Welcome to Social Hub</div>
-              <p className="mt-1 text-sm text-ink/60">
-                Start a direct message, create a group chat, or open a dig site room.
-              </p>
-              <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
-                <button type="button" onClick={() => openStartChat('dm')} className="min-h-[44px] rounded-xl bg-ink text-white px-4 py-2.5 text-sm font-semibold hover:opacity-90">
-                  Message someone
-                </button>
-                <button type="button" onClick={() => openStartChat('group')} className="min-h-[44px] rounded-xl border border-ink/20 bg-white/80 text-ink px-4 py-2.5 text-sm font-semibold hover:bg-ink/5">
-                  Create a group
-                </button>
-              </div>
-            </div>
-          </div>
+          <div className="flex-1 flex items-center justify-center p-8 text-ink/50 text-sm">Select a chatroom from the list or start a chat</div>
         ) : (
           <>
             <div className="shrink-0 border-b-2 border-ink/20 bg-white/70 md:rounded-t-2xl md:border-t md:border-x md:border-ink/20">

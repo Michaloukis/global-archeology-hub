@@ -5,9 +5,11 @@ Run these in the **Supabase Dashboard → SQL Editor** in a sensible order.
 ## Order (schema first, then seed)
 
 1. **Schema / columns**: `add-coordinates.sql`, `add-visibility.sql`, `add-public-sites.sql`, `add-profiles-avatar.sql`, `add-profiles-settings.sql`, `add-social-chatrooms.sql`, `add-ceramic-count.sql`
-2. **Policies**: `add-profiles-select-authenticated.sql`, `add-chatrooms-select-authenticated.sql`
-3. **Seed (presentation-ready data)**: `seed-public-student-exclusive.sql`
-4. **Data migration (roles)**: `migrate-role-chief-to-director.sql` — updates existing `profiles.role` from `'Chief Archeologist'` to `'Director'`. Run once if you have existing users with the old role.
+2. **Social Hub DM/group**: `add-socialhub-dm-group.sql` then `add-chatrooms-dm-group-rpc.sql` (RPCs create DM/group rooms server-side so the app avoids schema cache errors).
+3. **Policies**: `add-profiles-select-authenticated.sql`, `add-chatrooms-select-authenticated.sql`
+4. **Social Hub people search**: `add-search-profiles-rpc.sql` — run this so “Search people” in Direct/Group chat finds users (by name/username; handles nulls).
+5. **Seed (presentation-ready data)**: `seed-public-student-exclusive.sql`
+6. **Data migration (roles)**: `migrate-role-chief-to-director.sql` — updates existing `profiles.role` from `'Chief Archeologist'` to `'Director'`. Run once if you have existing users with the old role.
 
 ## Presentation seed (`seed-public-student-exclusive.sql`)
 
