@@ -16,6 +16,7 @@ import TeamPage from './pages/TeamPage.jsx'
 import SocialPage from './pages/SocialPage.jsx'
 import ArchivesPage from './pages/ArchivesPage.jsx'
 import SocialActivityWidget from './components/SocialActivityWidget'
+import { isArcheologist as isArcheologistRole } from './utils/roles'
 
 // #region agent log
 const logData = (msg, data, hypothesisId) => {
@@ -973,7 +974,7 @@ function App() {
 
   if (!session) return <Auth />
 
-  const isArcheologist = profile?.role === 'Director' || profile?.role === 'Field Archeologist'
+  const isArcheologist = isArcheologistRole(profile)
   const isStudent = profile?.role === 'Student'
   const pcNavItems = [
     { viewKey: 'home', label: 'Home', icon: 'home' },

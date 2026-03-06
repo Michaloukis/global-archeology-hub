@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-
-const isArcheologist = (profile) =>
-  profile?.role === 'Director' || profile?.role === 'Field Archeologist';
+import { isArcheologist as isArcheologistRole, isDirector as isDirectorRole } from '../utils/roles';
 
 const STORAGE_KEY_CHATROOM = 'global-arch-social-selected-chatroom';
 const STORAGE_KEY_TAB = 'global-arch-social-tab';
@@ -65,6 +63,12 @@ export default function SocialPage({ profile }) {
   const [creatingGroup, setCreatingGroup] = useState(false);
 
   const selectedChatroom = chatrooms.find((c) => c.id === selectedChatroomId);
+
+  const openStartChat = (mode = 'site') => {
+    setStartChatMode(mode);
+    setStartChatError(null);
+    setStartChatOpen(true);
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
@@ -133,16 +137,16 @@ export default function SocialPage({ profile }) {
 
   // Fetch chatrooms for current user (Field / Chief)
   useEffect(() => {
-    if (!supabase || !profile?.id || !isArcheologist(profile)) return;
+    if (!supabase || !profile?.id || !isArcheologistRole(profile)) return;
     fetchChatrooms();
   }, [profile?.id, profile?.role]);
 
   // When "Start a chat" modal opens, load sites that don't have a chatroom yet
   useEffect(() => {
-    if (!startChatOpen || startChatMode !== 'site' || !supabase || !profile?.id || !isArcheologist(profile)) return;
+    if (!startChatOpen || startChatMode !== 'site' || !supabase || !profile?.id || !isArcheologistRole(profile)) return;
     (async () => {
       try {
-        const isChief = profile.role === 'Director';
+        const isChief = isDirectorRole(profile);
         let siteIds = [];
         if (isChief) {
           const { data: reg } = await supabase.from('Registry').select('site_id').eq('chief_arch_id', profile.id);
@@ -581,7 +585,7 @@ export default function SocialPage({ profile }) {
     );
   }
 
-  if (!isArcheologist(profile)) {
+  if (!isArcheologistRole(profile)) {
     return (
       <div className="relative parchment-main min-h-full p-6 md:p-8 flex flex-col items-center justify-center">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-8 text-center">
@@ -607,7 +611,7 @@ export default function SocialPage({ profile }) {
           <p className="text-[10px] text-ink/50 mt-0.5">Select a room or start a chat</p>
           <button
             type="button"
-            onClick={() => { setStartChatOpen(true); setStartChatError(null); }}
+            onClick={() => openStartChat(startChatMode)}
             className="mt-3 w-full rounded-xl border-2 border-ink/30 bg-ink text-white py-2 px-3 text-xs font-bold uppercase tracking-wider hover:bg-ink/90 hover:border-ink/50 transition-colors"
           >
             Start a chat
@@ -617,7 +621,34 @@ export default function SocialPage({ profile }) {
           {chatroomsLoading ? (
             <div className="p-4 text-center text-xs text-ink/50 animate-pulse">Loading…</div>
           ) : chatrooms.length === 0 ? (
-            <div className="p-4 text-center text-xs text-ink/50">No rooms yet. Start a chat for a dig site you’re on, or get approved from the Map.</div>
+            <div className="p-4">
+              <div className="text-center text-xs text-ink/50">
+                No rooms yet. Start a direct message or create a group chat.
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => openStartChat('dm')}
+                  className="w-full rounded-xl border border-ink/20 bg-white/80 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-ink/5"
+                >
+                  Message someone
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openStartChat('group')}
+                  className="w-full rounded-xl border border-ink/20 bg-white/80 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-ink/5"
+                >
+                  Create a group
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openStartChat('site')}
+                  className="w-full rounded-xl border border-ink/15 bg-white/60 px-4 py-2.5 text-xs font-semibold text-ink/70 hover:bg-ink/5"
+                >
+                  Dig site room (optional)
+                </button>
+              </div>
+            </div>
           ) : (
             <ul className="p-2 space-y-0.5">
               {chatrooms.map((room) => (
@@ -787,7 +818,22 @@ export default function SocialPage({ profile }) {
         }`}
       >
         {!selectedChatroomId ? (
-          <div className="flex-1 flex items-center justify-center p-8 text-ink/50 text-sm">Select a chatroom from the list or start a chat</div>
+          <div className="flex-1 flex items-center justify-center p-8 text-ink/60 text-sm">
+            <div className="max-w-md text-center">
+              <div className="text-base font-bold text-ink">Welcome to Social Hub</div>
+              <p className="mt-1 text-sm text-ink/60">
+                Start a direct message, create a group chat, or open a dig site room.
+              </p>
+              <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+                <button type="button" onClick={() => openStartChat('dm')} className="min-h-[44px] rounded-xl bg-ink text-white px-4 py-2.5 text-sm font-semibold hover:opacity-90">
+                  Message someone
+                </button>
+                <button type="button" onClick={() => openStartChat('group')} className="min-h-[44px] rounded-xl border border-ink/20 bg-white/80 text-ink px-4 py-2.5 text-sm font-semibold hover:bg-ink/5">
+                  Create a group
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
           <>
             <div className="shrink-0 border-b-2 border-ink/20 bg-white/70 md:rounded-t-2xl md:border-t md:border-x md:border-ink/20">

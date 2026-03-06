@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { supabase } from '../supabaseClient'
+import { isDirector, isFieldArcheologist, isArcheologist as isArcheologistRole } from '../utils/roles'
 
 // Single-world bounds: no zoom out past this, no pan outside
 const WORLD_BOUNDS = L.latLngBounds([-85, -180], [85, 180])
@@ -199,9 +200,9 @@ export default function SitesMap({ searchQuery, profile }) {
   const [showFilters, setShowFilters] = useState(false)
 
   const [approvedSiteIds, setApprovedSiteIds] = useState([])
-  const isChief = profile?.role === 'Director'
-  const isFieldArch = profile?.role === 'Field Archeologist'
-  const isArcheologist = isChief || isFieldArch
+  const isChief = isDirector(profile)
+  const isFieldArch = isFieldArcheologist(profile)
+  const isArcheologist = isArcheologistRole(profile)
   const isStudent = profile?.role === 'Student'
 
   useEffect(() => {

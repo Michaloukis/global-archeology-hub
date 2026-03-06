@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { isArcheologist as isArcheologistRole } from '../utils/roles';
 
 const STORAGE_KEY_CHATROOM = 'global-arch-social-selected-chatroom';
 
@@ -19,7 +20,7 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const isArcheologist = profile?.role === 'Director' || profile?.role === 'Field Archeologist';
+  const isArcheologist = isArcheologistRole(profile);
 
   useEffect(() => {
     if (!supabase || !profile?.id || !isArcheologist) {
