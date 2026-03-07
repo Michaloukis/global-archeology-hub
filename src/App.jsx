@@ -1105,7 +1105,7 @@ function App() {
           {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
           {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
           {!isToolRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} /></div>}
-          {!isToolRoute && view === 'social' && <div className="min-h-[60vh]"><SocialPage profile={profile} /></div>}
+          {!isToolRoute && view === 'social' && <SocialPage profile={profile} />}
         </main>
         <nav
           className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-sm border-t border-ink/10 rounded-t-3xl shadow-[0_-4px_20px_rgba(44,40,37,0.06)] transition-transform duration-300 ease-out ${

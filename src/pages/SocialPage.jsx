@@ -631,8 +631,9 @@ export default function SocialPage({ profile }) {
     );
   }
 
+  const isEmptyPostsOnMobile = isMobile && selectedChatroomId && tab === 'posts' && posts.length === 0;
   return (
-    <div className="relative parchment-main min-h-full flex flex-col md:flex-row overflow-hidden">
+    <div className={`relative parchment-main flex flex-col md:flex-row overflow-hidden ${isEmptyPostsOnMobile ? '' : 'min-h-full'}`}>
       {/* Left sidebar: chatroom list */}
       <aside
         className={`w-full md:w-56 lg:w-64 shrink-0 border-b md:border-b-0 md:border-r border-ink/20 bg-white/80 flex-col ${
@@ -819,9 +820,9 @@ export default function SocialPage({ profile }) {
 
       {/* Main: selected chatroom — Posts | Chat tabs */}
       <main
-        className={`flex-1 flex flex-col min-w-0 min-h-0 ${
+        className={`flex flex-col min-w-0 min-h-0 ${
           isMobile ? (mobilePanel === 'room' ? 'flex' : 'hidden') : 'flex'
-        }`}
+        } ${isMobile && selectedChatroomId && tab === 'posts' && posts.length === 0 ? 'flex-initial' : 'flex-1'}`}
       >
         {!selectedChatroomId ? (
           <div className="flex-1 flex items-center justify-center p-8 text-ink/50 text-sm">Select a chatroom from the list or start a chat</div>
@@ -859,7 +860,7 @@ export default function SocialPage({ profile }) {
             </div>
 
             {tab === 'posts' && (
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className={`flex flex-col min-h-0 overflow-hidden ${posts.length === 0 ? 'flex-initial' : 'flex-1'}`}>
                 <div className="shrink-0 p-3 border-b border-ink/10 bg-white/40">
                   <form onSubmit={handleCreatePost} className="flex gap-2">
                     <input
@@ -874,7 +875,7 @@ export default function SocialPage({ profile }) {
                     </button>
                   </form>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className={`overflow-y-auto p-4 space-y-4 ${posts.length > 0 ? 'flex-1 min-h-0' : ''}`}>
                   {postsLoading ? (
                     <div className="py-8 text-center text-sm text-ink/50 animate-pulse">Loading posts…</div>
                   ) : posts.length === 0 ? (
