@@ -5,7 +5,7 @@ Run these in the **Supabase Dashboard → SQL Editor** in a sensible order.
 ## Order (schema first, then seed)
 
 1. **Schema / columns**: `add-coordinates.sql`, `add-visibility.sql`, `add-public-sites.sql`, `add-profiles-avatar.sql`, `add-profiles-settings.sql`, `add-social-chatrooms.sql`, `add-ceramic-count.sql`
-2. **Social Hub DM/group**: `add-socialhub-dm-group.sql` then `add-chatrooms-dm-group-rpc.sql` (RPCs create DM/group rooms server-side so the app avoids schema cache errors).
+2. **Social Hub DM/group**: `add-socialhub-dm-group.sql` then `add-chatrooms-dm-group-rpc.sql` (RPCs create DM/group rooms server-side so the app avoids schema cache errors). Then `add-get-my-chatrooms-rpc.sql` (DM display names show other person's username).
 3. **Policies**: `add-profiles-select-authenticated.sql`, `add-chatrooms-select-authenticated.sql`
 4. **Social Hub people search**: `add-search-profiles-rpc.sql` — run this so “Search people” in Direct/Group chat finds users (by name/username; handles nulls).
 5. **Seed (presentation-ready data)**: `seed-public-student-exclusive.sql`

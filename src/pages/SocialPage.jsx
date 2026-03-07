@@ -64,6 +64,7 @@ export default function SocialPage({ profile }) {
 
   const selectedChatroom = chatrooms.find((c) => c.id === selectedChatroomId);
 
+
   const openStartChat = (mode = 'site') => {
     setStartChatMode(mode);
     setStartChatError(null);
@@ -90,18 +91,24 @@ export default function SocialPage({ profile }) {
     if (!supabase || !profile?.id) return;
     setChatroomsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('chatroom_members')
-        .select('chatroom_id, chatrooms(id, name, site_id)')
-        .eq('user_id', profile.id);
-      if (error) throw error;
-      const list = (data || [])
-        .map((r) => r.chatrooms)
-        .filter(Boolean)
-        .reduce((acc, c) => {
-          if (c && !acc.find((x) => x.id === c.id)) acc.push(c);
-          return acc;
-        }, []);
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('get_my_chatrooms');
+      let list = [];
+      if (!rpcErr && Array.isArray(rpcData)) {
+        list = rpcData.map((r) => ({ id: r.id, name: r.display_name ?? r.name, site_id: r.site_id }));
+      } else {
+        const { data, error } = await supabase
+          .from('chatroom_members')
+          .select('chatroom_id, chatrooms(id, name, site_id)')
+          .eq('user_id', profile.id);
+        if (error) throw error;
+        list = (data || [])
+          .map((r) => r.chatrooms)
+          .filter(Boolean)
+          .reduce((acc, c) => {
+            if (c && !acc.find((x) => x.id === c.id)) acc.push(c);
+            return acc;
+          }, []);
+      }
       setChatrooms(list);
       if (list.length > 0) {
         try {
