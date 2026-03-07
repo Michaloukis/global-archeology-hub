@@ -5,10 +5,11 @@
 ALTER TABLE chatrooms ADD COLUMN IF NOT EXISTS created_by uuid;
 
 -- 2) RPC: create or get a DM room between current user and other_user_id. Returns { chatroom_id }.
+-- SECURITY DEFINER bypasses RLS so the function can insert chatroom_members for both users.
 CREATE OR REPLACE FUNCTION public.create_dm_room(other_user_id uuid, room_name text DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -43,10 +44,11 @@ END;
 $$;
 
 -- 3) RPC: create a group room. Returns { chatroom_id }.
+-- SECURITY DEFINER bypasses RLS so the function can insert chatroom_members for all group members.
 CREATE OR REPLACE FUNCTION public.create_group_room(room_name text, member_ids uuid[])
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
