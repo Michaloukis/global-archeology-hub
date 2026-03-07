@@ -15,16 +15,16 @@ AS $$
 DECLARE
   me uuid := auth.uid();
   cid uuid;
-  dm_key text;
+  v_dm_key text;
   rname text;
 BEGIN
   IF me IS NULL OR other_user_id IS NULL OR me = other_user_id THEN
     RETURN jsonb_build_object('error', 'invalid');
   END IF;
-  dm_key := array_to_string(ARRAY(SELECT unnest(ARRAY[me::text, other_user_id::text] ORDER BY 1)), ':');
+  v_dm_key := LEAST(me::text, other_user_id::text) || ':' || GREATEST(me::text, other_user_id::text);
   rname := COALESCE(room_name, 'DM');
 
-  SELECT id INTO cid FROM chatrooms WHERE chatrooms.dm_key = create_dm_room.dm_key LIMIT 1;
+  SELECT id INTO cid FROM chatrooms WHERE chatrooms.dm_key = v_dm_key LIMIT 1;
   IF cid IS NOT NULL THEN
     INSERT INTO chatroom_members (chatroom_id, user_id) VALUES (cid, me) ON CONFLICT (chatroom_id, user_id) DO NOTHING;
     INSERT INTO chatroom_members (chatroom_id, user_id) VALUES (cid, other_user_id) ON CONFLICT (chatroom_id, user_id) DO NOTHING;
@@ -32,7 +32,7 @@ BEGIN
   END IF;
 
   INSERT INTO chatrooms (room_type, dm_key, name, created_by)
-  VALUES ('dm', dm_key, rname, me)
+  VALUES ('dm', v_dm_key, rname, me)
   RETURNING id INTO cid;
 
   INSERT INTO chatroom_members (chatroom_id, user_id) VALUES (cid, me), (cid, other_user_id);
