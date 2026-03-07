@@ -61,8 +61,16 @@ export default function SocialPage({ profile }) {
   const [groupName, setGroupName] = useState('');
   const [groupMembers, setGroupMembers] = useState([]); // [{id, full_name, username, role}]
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const pendingRoomsRef = useRef([]);
+  const [, forceListUpdate] = useState(0);
 
-  const selectedChatroom = chatrooms.find((c) => c.id === selectedChatroomId);
+  const displayChatrooms = [...chatrooms];
+  for (const pr of pendingRoomsRef.current) {
+    if (pr?.id && !displayChatrooms.some((c) => c.id === pr.id)) {
+      displayChatrooms.push(pr);
+    }
+  }
+  const selectedChatroom = displayChatrooms.find((c) => c.id === selectedChatroomId) ?? chatrooms.find((c) => c.id === selectedChatroomId);
 
 
   const openStartChat = (mode = 'site') => {
@@ -87,15 +95,16 @@ export default function SocialPage({ profile }) {
     }
   }, []);
 
-  const fetchChatrooms = async () => {
+  const fetchChatrooms = async (showLoading = true) => {
     if (!supabase || !profile?.id) return;
-    setChatroomsLoading(true);
+    if (showLoading) setChatroomsLoading(true);
     try {
       const { data: rpcData, error: rpcErr } = await supabase.rpc('get_my_chatrooms');
       let list = [];
       if (!rpcErr && Array.isArray(rpcData)) {
         list = rpcData.map((r) => ({ id: r.id, name: r.display_name ?? r.name, site_id: r.site_id }));
-      } else {
+      }
+      if (list.length === 0) {
         const { data, error } = await supabase
           .from('chatroom_members')
           .select('chatroom_id, chatrooms(id, name, site_id)')
@@ -109,25 +118,42 @@ export default function SocialPage({ profile }) {
             return acc;
           }, []);
       }
-      setChatrooms(list);
-      if (list.length > 0) {
-        try {
-          const saved = localStorage.getItem(STORAGE_KEY_CHATROOM);
-          const inList = saved && list.some((c) => c.id === saved);
-          if (inList) {
-            setSelectedChatroomId(saved);
-            setMobilePanel('room');
-          } else if (!isMobile) {
-            setSelectedChatroomId(list[0].id);
-          } else {
-            setSelectedChatroomId(null);
-            setMobilePanel('list');
-          }
-        } catch (_) {
-          if (!isMobile) setSelectedChatroomId(list[0].id);
-          else {
-            setSelectedChatroomId(null);
-            setMobilePanel('list');
+      const mergedRef = { current: list };
+      setChatrooms((prev) => {
+        const prevList = prev ?? [];
+        if (list.length === 0) {
+          mergedRef.current = [...prevList, ...pendingRoomsRef.current.filter((c) => !prevList.some((p) => p?.id === c.id))];
+          return prevList;
+        }
+        const serverIds = new Set(list.map((c) => c.id));
+        const stillPending = pendingRoomsRef.current.filter((c) => !serverIds.has(c.id));
+        pendingRoomsRef.current = stillPending;
+        const keepFromPrev = prevList.filter((c) => c?.id && !serverIds.has(c.id));
+        mergedRef.current = [...list, ...keepFromPrev, ...stillPending];
+        return mergedRef.current;
+      });
+      const merged = mergedRef.current;
+      if (merged.length > 0) {
+        const keepSelection = selectedChatroomId && merged.some((c) => c.id === selectedChatroomId);
+        if (!keepSelection) {
+          try {
+            const saved = localStorage.getItem(STORAGE_KEY_CHATROOM);
+            const inList = saved && merged.some((c) => c.id === saved);
+            if (inList) {
+              setSelectedChatroomId(saved);
+              setMobilePanel('room');
+            } else if (!isMobile) {
+              setSelectedChatroomId(merged[0].id);
+            } else {
+              setSelectedChatroomId(null);
+              setMobilePanel('list');
+            }
+          } catch (_) {
+            if (!isMobile) setSelectedChatroomId(merged[0].id);
+            else {
+              setSelectedChatroomId(null);
+              setMobilePanel('list');
+            }
           }
         }
       } else {
@@ -138,7 +164,7 @@ export default function SocialPage({ profile }) {
       setChatrooms([]);
       console.error('Fetch chatrooms error:', e);
     } finally {
-      setChatroomsLoading(false);
+      if (showLoading) setChatroomsLoading(false);
     }
   };
 
@@ -242,12 +268,18 @@ export default function SocialPage({ profile }) {
       if (chatroomId) {
         const { error: memberErr } = await supabase.from('chatroom_members').insert({ chatroom_id: chatroomId, user_id: profile.id });
         if (memberErr && memberErr.code !== '23505') throw memberErr;
+        const newRoom = { id: chatroomId, name: siteName || 'Dig site room', site_id: siteId };
+        if (!pendingRoomsRef.current.some((c) => c.id === chatroomId)) {
+          pendingRoomsRef.current = [...pendingRoomsRef.current, newRoom];
+          forceListUpdate((n) => n + 1);
+        }
+        setChatrooms((prev) => (prev.some((c) => c.id === chatroomId) ? prev : [...prev, newRoom]));
         setStartChatOpen(false);
         setSitesWithoutRoom([]);
         setStartChatError(null);
-        await fetchChatrooms();
         setSelectedChatroomId(chatroomId);
         if (isMobile) setMobilePanel('room');
+        setTimeout(() => fetchChatrooms(false), 800);
       }
     } catch (e) {
       console.error('Start chat error:', e);
@@ -298,12 +330,19 @@ export default function SocialPage({ profile }) {
       } else throw rpcErr;
 
       if (!chatroomId) throw new Error('Could not create or open DM.');
+      const displayName = targetProfile?.username || targetProfile?.full_name || 'Chat';
+      const newRoom = { id: chatroomId, name: displayName, site_id: null };
+      if (!pendingRoomsRef.current.some((c) => c.id === chatroomId)) {
+        pendingRoomsRef.current = [...pendingRoomsRef.current, newRoom];
+        forceListUpdate((n) => n + 1);
+      }
+      setChatrooms((prev) => (prev.some((c) => c.id === chatroomId) ? prev : [...prev, newRoom]));
       setStartChatOpen(false);
       setPeopleQuery('');
       setPeopleResults([]);
-      await fetchChatrooms();
       setSelectedChatroomId(chatroomId);
       if (isMobile) setMobilePanel('room');
+      setTimeout(() => fetchChatrooms(false), 800);
     } catch (e) {
       console.error('Start DM error:', e);
       setStartChatError(e?.message || 'Could not create or open direct message.');
@@ -361,14 +400,21 @@ export default function SocialPage({ profile }) {
       } else throw rpcErr;
 
       if (!chatroomId) throw new Error('Could not create group.');
+      const displayName = (groupName || '').trim() || `Group: ${[profile, ...groupMembers].map(getFirstName).slice(0, 3).join(', ')}`;
+      const newRoom = { id: chatroomId, name: displayName, site_id: null };
+      if (!pendingRoomsRef.current.some((c) => c.id === chatroomId)) {
+        pendingRoomsRef.current = [...pendingRoomsRef.current, newRoom];
+        forceListUpdate((n) => n + 1);
+      }
+      setChatrooms((prev) => (prev.some((c) => c.id === chatroomId) ? prev : [...prev, newRoom]));
       setStartChatOpen(false);
       setPeopleQuery('');
       setPeopleResults([]);
       setGroupName('');
       setGroupMembers([]);
-      await fetchChatrooms();
       setSelectedChatroomId(chatroomId);
       if (isMobile) setMobilePanel('room');
+      setTimeout(() => fetchChatrooms(false), 800);
     } catch (e) {
       console.error('Create group error:', e);
       setStartChatError(e?.message || 'Could not create group chat.');
@@ -661,11 +707,11 @@ export default function SocialPage({ profile }) {
         <div className="flex-1 overflow-y-auto min-h-0">
           {chatroomsLoading ? (
             <div className="p-4 text-center text-xs text-ink/50 animate-pulse">Loading…</div>
-          ) : chatrooms.length === 0 ? (
+          ) : displayChatrooms.length === 0 ? (
             <div className="p-4 text-center text-xs text-ink/50">No rooms yet. Use Start a chat above.</div>
           ) : (
             <ul className="p-2 space-y-0.5">
-              {chatrooms.map((room) => (
+              {displayChatrooms.map((room) => (
                 <li key={room.id}>
                   <button
                     type="button"
