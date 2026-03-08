@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
 import SitesMap from './components/SitesMap'
@@ -122,7 +122,7 @@ const openSocialFromMobile = (setView, chatroomId) => {
   setView('social');
 };
 
-const MobileDashboard = ({ searchQuery, setSearchQuery, profile, onOpenMap, onOpenSocial }) => (
+const MobileDashboard = ({ profile, onOpenMap, onOpenSocial }) => (
   <div className="p-4 pb-28 space-y-6 parchment-main min-h-full">
     <div>
       <h2 className="text-lg font-bold text-ink">The Global Archaeology Hub</h2>
@@ -1039,8 +1039,32 @@ function App() {
           )}
           <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-transparent overflow-hidden ${isToolRoute ? 'pl-0' : 'pl-4'} h-full`}>
             <main className={`flex-1 min-h-0 bg-transparent ${!isToolRoute && view === 'home' ? 'overflow-hidden flex flex-col h-full' : 'overflow-auto'}`}>
-              {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
-              {location.pathname === '/viewer-3d' && <Viewer3DPage />}
+          {location.pathname === '/illustrator-2d' && (
+            <div className="relative w-full h-full">
+              <div className="md:hidden fixed top-0 left-0 right-0 z-[100] flex items-center gap-2 px-4 py-3 bg-black/90 text-white border-b border-white/20">
+                <Link to="/" className="flex items-center gap-2 text-sm font-medium hover:text-white/90">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Hub
+                </Link>
+              </div>
+              <div className={location.pathname === '/illustrator-2d' ? 'pt-14 md:pt-0' : ''}>
+                <Illustrator2DPage />
+              </div>
+            </div>
+          )}
+          {location.pathname === '/viewer-3d' && (
+            <div className="relative w-full h-full">
+              <div className="md:hidden fixed top-0 left-0 right-0 z-[100] flex items-center gap-2 px-4 py-3 bg-black/90 text-white border-b border-white/20">
+                <Link to="/" className="flex items-center gap-2 text-sm font-medium hover:text-white/90">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Hub
+                </Link>
+              </div>
+              <div className="pt-14 md:pt-0 h-full">
+                <Viewer3DPage />
+              </div>
+            </div>
+          )}
               {!isToolRoute && view === 'home' && (
                 <div className="h-full min-h-0 overflow-hidden flex flex-col">
                   <DashboardPage searchQuery={searchQuery} profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => { try { if (chatroomId) localStorage.setItem('global-arch-social-selected-chatroom', chatroomId); } catch (_) {} setView('social'); }} widgetPreferences={widgetPreferences} setWidgetPreferences={setWidgetPreferences} />
@@ -1050,9 +1074,9 @@ function App() {
               {!isToolRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
               {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} /></div></div>}
               {!isToolRoute && view === 'archives' && <div className="relative parchment-main min-h-full"><ArchivesPage profile={profile} onBack={() => setView('arch')} /></div>}
-              {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} /></div></div>}
+              {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => setView('map')} /></div></div>}
               {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
-              {!isToolRoute && view === 'team' && <TeamPage profile={profile} />}
+              {!isToolRoute && view === 'team' && <TeamPage profile={profile} onBack={() => setView('home')} />}
               {!isToolRoute && view === 'social' && <SocialPage profile={profile} />}
               {!isToolRoute && view === 'objects' && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
             </main>
@@ -1073,18 +1097,25 @@ function App() {
         >
           {/* Opaque cap over status bar so no content can ever paint there */}
           <div style={{ height: 'env(safe-area-inset-top)', minHeight: 0, background: '#f8f3e8' }} aria-hidden />
-          <div className="px-3 pb-2 pt-0.5" style={{ paddingTop: '0.75rem' }}>
-            <h1 className="text-center text-base font-bold text-ink leading-tight">Archaeology Hub</h1>
-            <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-white/80 border border-ink/20 px-2.5 py-2 shadow-sm">
-              <input
-                type="text"
-                placeholder="Input field"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 min-w-0 bg-transparent text-sm text-ink placeholder-ink/50 outline-none"
-              />
-              <NavIcon name="search" className="w-4 h-4 text-ink/50 shrink-0" />
-            </div>
+          <div className="px-3 pb-2 pt-0.5 flex items-center gap-3" style={{ paddingTop: '0.75rem' }}>
+            {['archives', 'journal', 'team', 'education', 'social'].includes(view) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (view === 'archives') setView('arch');
+                  else if (view === 'journal') setView('map');
+                  else if (view === 'team' || view === 'education') setView('home');
+                  else if (view === 'social') setView('home');
+                }}
+                className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] -ml-1 text-ink font-medium"
+                aria-label="Back"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                <span className="text-sm">Back</span>
+              </button>
+            )}
+            <h1 className="text-base font-bold text-ink leading-tight flex-1 text-center">Archaeology Hub</h1>
+            {['archives', 'journal', 'team', 'education', 'social'].includes(view) && <div className="w-[68px]" />}
           </div>
         </header>
         <main
@@ -1095,16 +1126,40 @@ function App() {
             paddingBottom: 'max(5rem, env(safe-area-inset-bottom))'
           }}
         >
-          {location.pathname === '/viewer-3d' && <Viewer3DPage />}
-          {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
-          {!isToolRoute && view === 'home' && <MobileDashboard searchQuery={searchQuery} setSearchQuery={setSearchQuery} profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
+          {location.pathname === '/viewer-3d' && (
+            <div className="relative w-full h-full">
+              <div className="fixed top-0 left-0 right-0 z-[100] flex items-center gap-2 px-4 py-3 bg-black/90 text-white border-b border-white/20" >
+                <Link to="/" className="flex items-center gap-2 text-sm font-medium hover:text-white/90">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Hub
+                </Link>
+              </div>
+              <div className="pt-14">
+                <Viewer3DPage />
+              </div>
+            </div>
+          )}
+          {location.pathname === '/illustrator-2d' && (
+            <div className="relative w-full h-full">
+              <div className="fixed top-0 left-0 right-0 z-[100] flex items-center gap-2 px-4 py-3 bg-black/90 text-white border-b border-white/20" >
+                <Link to="/" className="flex items-center gap-2 text-sm font-medium hover:text-white/90">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Hub
+                </Link>
+              </div>
+              <div className="pt-14">
+                <Illustrator2DPage />
+              </div>
+            </div>
+          )}
+          {!isToolRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
           {!isToolRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
           {!isToolRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
           {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} /></div>}
           {!isToolRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} /></div>}
-          {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} /></div>}
+          {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => setView('map')} /></div>}
           {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
-          {!isToolRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} /></div>}
+          {!isToolRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} onBack={() => setView('home')} /></div>}
           {!isToolRoute && view === 'social' && <SocialPage profile={profile} />}
         </main>
         <nav

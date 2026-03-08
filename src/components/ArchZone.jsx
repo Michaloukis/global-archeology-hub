@@ -59,7 +59,13 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
 
   const [archSearch, setArchSearch] = useState('');
   const [showArchivesPanel, setShowArchivesPanel] = useState(false);
-  const [archView, setArchView] = useState('dashboard'); // 'dashboard' | 'tools'
+  const [archView, setArchViewState] = useState(() => {
+    try { return sessionStorage.getItem('archZone_view') || 'dashboard'; } catch { return 'dashboard'; }
+  });
+  const setArchView = (v) => {
+    try { sessionStorage.setItem('archZone_view', v); } catch {}
+    setArchViewState(v);
+  };
   const [activeTool, setActiveTool] = useState(null); // 'map' | 'notepad' | 'compass' | 'ceramic' | null (from tools tab)
 
   // #region agent log
@@ -555,17 +561,20 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
     <button
       type="button"
       onClick={() => setActiveTool(null)}
-      className="flex items-center gap-1.5 text-ink font-medium text-sm min-h-[44px] px-2 -ml-2"
+      className="flex items-center gap-2 text-ink font-semibold text-base min-h-[44px] min-w-[44px] px-2 -ml-2"
+      aria-label="Back to tools"
     >
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+      <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
       Back to tools
     </button>
   );
 
   if (archView === 'tools' && activeTool) {
     return (
-      <div className="fixed inset-0 z-[200] bg-white flex flex-col" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-        <div className="flex items-center border-b border-ink/20 px-4 py-2 shrink-0">
+      <div className="fixed inset-0 z-[200] bg-white flex flex-col" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+        {/* Safe area spacer so back bar is never cut off by notch */}
+        <div style={{ height: 'max(1rem, env(safe-area-inset-top))', minHeight: 'max(1rem, env(safe-area-inset-top))' }} aria-hidden />
+        <div className="flex items-center border-b border-ink/20 px-4 py-3 shrink-0 min-h-[52px]">
           {fullScreenBackButton}
         </div>
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -598,7 +607,6 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
                   </div>
                 </div>
                 <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
-                  <input type="text" value={noteTitle} onChange={handleNoteTitleChange} placeholder="Note title…" className="w-full min-h-[44px] rounded-xl border border-ink/20 p-3 mb-2 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20" />
                   <textarea value={note} onChange={handleNoteChange} placeholder="Enter field observations…" className="flex-1 min-h-[200px] w-full rounded-xl border border-ink/20 p-4 text-sm text-ink bg-white outline-none focus:ring-2 focus:ring-ink/20 resize-none" />
                   <div className="flex justify-between items-center gap-2 mt-3 flex-wrap">
                     <div className="flex gap-2">
@@ -1366,13 +1374,6 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
               </div>
             </div>
             <div className="flex-1 flex flex-col p-4 min-w-0">
-              <input
-                type="text"
-                value={noteTitle}
-                onChange={handleNoteTitleChange}
-                placeholder="Note title…"
-                className="w-full min-h-[44px] rounded-xl border border-ink/20 p-3 mb-2 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20"
-              />
               <textarea
                 value={note}
                 onChange={handleNoteChange}
