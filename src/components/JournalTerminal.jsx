@@ -26,7 +26,7 @@ async function uploadToStorage(siteId, userId, file, folder) {
   return publicUrl;
 }
 
-const JournalTerminal = ({ siteId, profile }) => {
+const JournalTerminal = ({ siteId, profile, onBack }) => {
   const [site, setSite] = useState(null);
   const [journals, setJournals] = useState([]);
   const [isJournalLoading, setIsJournalLoading] = useState(false);
@@ -208,10 +208,10 @@ const JournalTerminal = ({ siteId, profile }) => {
         </div>
         <button
           type="button"
-          onClick={() => window.close()}
+          onClick={() => (onBack ? onBack() : window.close())}
           className="rounded-xl border border-ink/20 text-ink px-4 py-2.5 text-sm font-medium hover:bg-ink/5 min-h-[44px]"
         >
-          Close
+          {onBack ? '← Back' : 'Close'}
         </button>
       </div>
 

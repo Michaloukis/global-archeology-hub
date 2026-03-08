@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import FindIllustration from './illustration/FindIllustration';
 import { FindEditor } from './editor/FindEditor';
 import { getRecentFinds, addRecentFind, removeRecentFind } from './utils/recentFinds';
 import { exportSvg, exportPng } from './utils/exportIllustration';
 
 function App({ showBackToHub, backToUrl = '/' }) {
+  const navigate2d = useNavigate();
   const [view, setView] = useState('gallery');
   const [viewedSpec, setViewedSpec] = useState(undefined);
   const [editorSpec, setEditorSpec] = useState(undefined);
@@ -75,12 +76,13 @@ function App({ showBackToHub, backToUrl = '/' }) {
       <header className="border-b border-stone-300 bg-white/80 backdrop-blur px-6 py-4">
         <div className="flex items-center gap-4">
           {showBackToHub && (
-            <Link
-              to={backToUrl}
+            <button
+              type="button"
+              onClick={() => navigate2d(-1)}
               className="text-stone-600 hover:text-stone-900 text-sm font-medium"
             >
-              ← Back to Hub
-            </Link>
+              ← Back
+            </button>
           )}
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-stone-800">

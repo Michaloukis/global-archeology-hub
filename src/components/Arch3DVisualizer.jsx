@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Canvas, useLoader, useThree } from '@react-three/fiber'
 import { OrbitControls, TransformControls } from '@react-three/drei'
 import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js'
@@ -658,6 +658,7 @@ function ModelScene({ model, texturesEnabled, transformMode, transformEnabled, s
 }
 
 export default function Arch3DVisualizer({ showBackToHub = false, backToUrl = '/' }) {
+  const navigate3d = useNavigate()
   const [presetKey, setPresetKey] = useState('default')
   const [sceneConfig, setSceneConfig] = useState(SCENE_PRESETS.default)
   const [status, setStatus] = useState(null)
@@ -1082,12 +1083,13 @@ export default function Arch3DVisualizer({ showBackToHub = false, backToUrl = '/
         <div className="flex flex-col items-start gap-2">
           <div className="flex items-center gap-3 flex-wrap">
             {showBackToHub && (
-              <Link
-                to={backToUrl}
+              <button
+                type="button"
+                onClick={() => navigate3d(-1)}
                 className="shrink-0 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-white border border-white/30 hover:border-white/60 rounded px-1.5 py-0.5 transition-colors"
               >
                 ← Back
-              </Link>
+              </button>
             )}
             <div className="text-xs font-black uppercase tracking-widest">
               Arch Zone // 3D Visualizer (Prototype)

@@ -169,9 +169,9 @@ const EducationZone = ({ profile, onNavigateToMap }) => {
             <span className="text-xs font-black uppercase text-indigo-600">Module: Stratigraphy Analysis</span>
             <button 
               onClick={() => setActiveModule(null)}
-              className="text-[10px] font-black uppercase hover:underline"
+              className="rounded-lg border-2 border-black px-4 py-2 text-sm font-bold uppercase hover:bg-gray-100 min-h-[44px]"
             >
-              EXIT_TO_MENU [X]
+              ← Back
             </button>
           </div>
 
@@ -224,9 +224,9 @@ const EducationZone = ({ profile, onNavigateToMap }) => {
                 </button>
                 <button 
                   onClick={() => setActiveModule(null)}
-                  className="bg-black text-white px-6 py-3 text-xs font-black uppercase hover:bg-indigo-600 transition-all"
+                  className="bg-black text-white px-6 py-3 text-sm font-bold uppercase hover:bg-indigo-600 transition-all min-h-[44px]"
                 >
-                  RETURN_TO_PORTAL
+                  ← Back to Portal
                 </button>
               </div>
             </div>
@@ -239,9 +239,9 @@ const EducationZone = ({ profile, onNavigateToMap }) => {
             <h3 className="text-2xl font-black uppercase italic tracking-tighter">Declassified Field Archives</h3>
             <button 
               onClick={() => { setActiveModule(null); setSelectedRecord(null); }}
-              className="text-[10px] font-black uppercase hover:underline border-2 border-black px-3 py-1 bg-white"
+              className="rounded-lg border-2 border-black px-4 py-2 text-sm font-bold uppercase hover:bg-gray-100 min-h-[44px] bg-white"
             >
-              CLOSE_ARCHIVE [X]
+              ← Back
             </button>
           </div>
 

@@ -1,8 +1,19 @@
-export default function TeamPage({ profile }) {
+export default function TeamPage({ profile, onBack }) {
   return (
     <div className="relative parchment-main min-h-full p-6 md:p-8 flex flex-col items-center justify-start">
       <div className="w-full max-w-2xl">
-        <h1 className="text-xl font-bold text-ink border-b border-ink/20 pb-2 mb-6">Team</h1>
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h1 className="text-xl font-bold text-ink border-b border-ink/20 pb-2">Team</h1>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="rounded-xl border border-ink/20 text-ink px-4 py-2.5 text-sm font-medium hover:bg-ink/5 min-h-[44px] shrink-0"
+            >
+              ← Back
+            </button>
+          )}
+        </div>
         <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-6">
           <ul className="space-y-4">
             {[1, 2, 3].map((i) => (
