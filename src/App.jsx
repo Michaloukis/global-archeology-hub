@@ -875,6 +875,7 @@ function App() {
   const [lastScrollY, setLastScrollY] = useState(0)
   const [lastScrollTime, setLastScrollTime] = useState(Date.now())
   const [activeSiteId, setActiveSiteId] = useState(null)
+  const [journalReturnView, setJournalReturnView] = useState(null) // 'map' | 'arch' | 'archives' when journal was opened from Arch/Archives
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [widgetPreferences, setWidgetPreferences] = useState(() => loadWidgetPreferences())
   const mobileMainRef = useRef(null)
@@ -1072,9 +1073,9 @@ function App() {
               )}
               {!isToolRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}
               {!isToolRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
-              {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} /></div></div>}
-              {!isToolRoute && view === 'archives' && <div className="relative parchment-main min-h-full"><ArchivesPage profile={profile} onBack={() => setView('arch')} /></div>}
-              {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => setView('map')} /></div></div>}
+              {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div></div>}
+              {!isToolRoute && view === 'archives' && <div className="relative parchment-main min-h-full"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
+              {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div></div>}
               {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
               {!isToolRoute && view === 'team' && <TeamPage profile={profile} onBack={() => setView('home')} />}
               {!isToolRoute && view === 'social' && <SocialPage profile={profile} />}
@@ -1103,7 +1104,7 @@ function App() {
                 type="button"
                 onClick={() => {
                   if (view === 'archives') setView('arch');
-                  else if (view === 'journal') setView('map');
+                  else if (view === 'journal') { setView(journalReturnView || 'map'); setJournalReturnView(null); }
                   else if (view === 'team' || view === 'education') setView('home');
                   else if (view === 'social') setView('home');
                 }}
@@ -1155,9 +1156,9 @@ function App() {
           {!isToolRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
           {!isToolRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
           {!isToolRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
-          {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} /></div>}
-          {!isToolRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} /></div>}
-          {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => setView('map')} /></div>}
+          {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div>}
+          {!isToolRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
+          {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div>}
           {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
           {!isToolRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} onBack={() => setView('home')} /></div>}
           {!isToolRoute && view === 'social' && <SocialPage profile={profile} />}

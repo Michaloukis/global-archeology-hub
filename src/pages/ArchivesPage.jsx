@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-const ArchivesPage = ({ profile, onBack }) => {
+const ArchivesPage = ({ profile, onBack, onOpenJournal }) => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -194,9 +194,10 @@ const ArchivesPage = ({ profile, onBack }) => {
               <button
                 key={entry.id}
                 type="button"
-                onClick={() =>
-                  window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank')
-                }
+                onClick={() => {
+                  if (typeof onOpenJournal === 'function') onOpenJournal(entry.site_id);
+                  else window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank');
+                }}
                 className="w-full text-left rounded-xl border border-ink/15 bg-white hover:bg-ink/5 transition-colors p-3 sm:p-4"
               >
                 <div className="flex items-center justify-between gap-2 mb-1">

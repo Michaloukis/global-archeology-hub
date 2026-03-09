@@ -4,6 +4,11 @@ import { isArcheologist as isArcheologistRole, isDirector as isDirectorRole } fr
 
 const STORAGE_KEY_CHATROOM = 'global-arch-social-selected-chatroom';
 const STORAGE_KEY_TAB = 'global-arch-social-tab';
+const SOCIAL_POSTS_BUCKET = 'social-posts';
+
+function sanitizeFileName(name) {
+  return name.replace(/[^a-zA-Z0-9.-]/g, '_');
+}
 
 export default function SocialPage({ profile }) {
   const [chatrooms, setChatrooms] = useState([]);
@@ -43,6 +48,8 @@ export default function SocialPage({ profile }) {
   const [messages, setMessages] = useState([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
+  const [newPostFiles, setNewPostFiles] = useState([]);
+  const newPostFileInputRef = useRef(null);
   const [newMessageContent, setNewMessageContent] = useState('');
   const [sendingPost, setSendingPost] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -231,7 +238,7 @@ export default function SocialPage({ profile }) {
       const pattern = `%${query}%`;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, username, avatar_url, role')
+        .select('id, full_name, username')
         .or(`full_name.ilike.${pattern},username.ilike.${pattern}`)
         .limit(20);
       if (error) throw error;
@@ -442,16 +449,31 @@ export default function SocialPage({ profile }) {
     let cancelled = false;
     setPostsLoading(true);
     (async () => {
+      const selectWithAttachments = 'id, content, image_url, attachments, created_at, author_id, profiles:author_id(full_name, username)';
+      const selectWithoutAttachments = 'id, content, image_url, created_at, author_id, profiles:author_id(full_name, username)';
+      let postsData = null;
       try {
-        const { data: postsData, error: postsErr } = await supabase
+        let { data, error: postsErr } = await supabase
           .from('social_posts')
-          .select('id, content, image_url, created_at, author_id, profiles:author_id(full_name, username, avatar_url)')
+          .select(selectWithAttachments)
           .eq('chatroom_id', selectedChatroomId)
           .order('created_at', { ascending: false });
-        if (postsErr) throw postsErr;
-        if (!cancelled) setPosts(postsData || []);
+        if (postsErr) {
+          const msg = (postsErr.message || '').toLowerCase();
+          if (msg.includes('attachments') || msg.includes('column') || msg.includes('schema')) {
+            const fallback = await supabase
+              .from('social_posts')
+              .select(selectWithoutAttachments)
+              .eq('chatroom_id', selectedChatroomId)
+              .order('created_at', { ascending: false });
+            if (fallback.error) throw fallback.error;
+            data = (fallback.data || []).map((p) => ({ ...p, attachments: [] }));
+          } else throw postsErr;
+        }
+        postsData = data || [];
+        if (!cancelled) setPosts(postsData);
 
-        const postIds = (postsData || []).map((p) => p.id);
+        const postIds = postsData.map((p) => p.id);
         if (postIds.length === 0) {
           if (!cancelled) setPostLikesMap({});
           return;
@@ -518,7 +540,7 @@ export default function SocialPage({ profile }) {
         const senderIds = [...new Set(list.map((m) => m.sender_id).filter(Boolean))];
         let profileMap = {};
         if (senderIds.length > 0) {
-          const { data: profilesData } = await supabase.from('profiles').select('id, full_name, username, avatar_url, role').in('id', senderIds);
+          const { data: profilesData } = await supabase.from('profiles').select('id, full_name, username').in('id', senderIds);
           if (profilesData) profileMap = Object.fromEntries(profilesData.map((p) => [String(p.id), p]));
         }
         const currentUserProfile = profile ? { full_name: profile.full_name, username: profile.username, avatar_url: profile.avatar_url, role: profile.role } : null;
@@ -554,7 +576,7 @@ export default function SocialPage({ profile }) {
             if (prev.some((m) => m.id === row.id)) return prev;
             return [...prev, { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, profiles: null }];
           });
-          const { data: author } = await supabase.from('profiles').select('full_name, username, avatar_url, role').eq('id', row.sender_id).single();
+          const { data: author } = await supabase.from('profiles').select('full_name, username').eq('id', row.sender_id).single();
           setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, profiles: author } : m)));
         }
       )
@@ -573,24 +595,44 @@ export default function SocialPage({ profile }) {
 
   const handleCreatePost = async (e) => {
     e.preventDefault();
-    if (!supabase || !selectedChatroomId || !profile?.id || !newPostContent.trim() || sendingPost) return;
+    if (!supabase || !selectedChatroomId || !profile?.id || sendingPost) return;
+    const files = Array.from(newPostFiles);
+    if (files.length === 0) return;
     setSendingPost(true);
     try {
+      const attachments = [];
+      for (const file of files) {
+        const ext = file.name.split('.').pop() || 'bin';
+        const base = sanitizeFileName(file.name.replace(/\.[^/.]+$/, ''));
+        const path = `${selectedChatroomId}/${profile.id}/${Date.now()}_${base}.${ext}`;
+        const { error: upErr } = await supabase.storage.from(SOCIAL_POSTS_BUCKET).upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage.from(SOCIAL_POSTS_BUCKET).getPublicUrl(path);
+        attachments.push({ url: publicUrl, name: file.name, type: file.type || '' });
+      }
       const { error } = await supabase.from('social_posts').insert({
         chatroom_id: selectedChatroomId,
         author_id: profile.id,
-        content: newPostContent.trim(),
+        content: newPostContent.trim() || '',
+        attachments: attachments.length ? attachments : [],
       });
       if (error) throw error;
       setNewPostContent('');
-      const { data: fresh } = await supabase
+      setNewPostFiles([]);
+      if (newPostFileInputRef.current) newPostFileInputRef.current.value = '';
+      let res = await supabase
         .from('social_posts')
-        .select('id, content, image_url, created_at, author_id, profiles:author_id(full_name, username, avatar_url)')
+        .select('id, content, image_url, attachments, created_at, author_id, profiles:author_id(full_name, username)')
         .eq('chatroom_id', selectedChatroomId)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      if (fresh) setPosts((prev) => [fresh, ...prev]);
+      let fresh = res.data;
+      if (res.error && (String(res.error.message || '').includes('attachments') || String(res.error.message || '').includes('column'))) {
+        const fb = await supabase.from('social_posts').select('id, content, image_url, created_at, author_id, profiles:author_id(full_name, username)').eq('chatroom_id', selectedChatroomId).order('created_at', { ascending: false }).limit(1).single();
+        fresh = fb.data ? { ...fb.data, attachments: [] } : null;
+      }
+      if (fresh?.id) setPosts((prev) => [{ ...fresh, attachments: Array.isArray(fresh.attachments) ? fresh.attachments : [] }, ...prev]);
     } catch (e) {
       console.error('Create post error:', e);
     } finally {
@@ -915,17 +957,47 @@ export default function SocialPage({ profile }) {
             {tab === 'posts' && (
               <div className={`flex flex-col min-h-0 overflow-hidden ${posts.length === 0 ? 'flex-initial' : 'flex-1'}`}>
                 <div className="shrink-0 p-3 border-b border-ink/10 bg-white/40">
-                  <form onSubmit={handleCreatePost} className="flex gap-2">
+                  <form onSubmit={handleCreatePost} className="space-y-2">
                     <input
-                      type="text"
-                      placeholder="Share an update with the team…"
+                      ref={newPostFileInputRef}
+                      type="file"
+                      multiple
+                      accept="*/*"
+                      onChange={(e) => setNewPostFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                      className="hidden"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => newPostFileInputRef.current?.click()}
+                        className="rounded-lg border border-ink/20 px-3 py-2 text-sm text-ink/80 hover:bg-ink/5"
+                      >
+                        Add files…
+                      </button>
+                      {newPostFiles.length > 0 && (
+                        <span className="text-xs text-ink/50">
+                          {newPostFiles.length} file{newPostFiles.length !== 1 ? 's' : ''} selected
+                        </span>
+                      )}
+                      {newPostFiles.map((file, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded bg-ink/10 px-2 py-1 text-xs text-ink">
+                          <span className="truncate max-w-[120px]" title={file.name}>{file.name}</span>
+                          <button type="button" onClick={() => setNewPostFiles((prev) => prev.filter((_, j) => j !== i))} className="shrink-0 text-ink/60 hover:text-ink" aria-label="Remove">×</button>
+                        </span>
+                      ))}
+                    </div>
+                    <textarea
+                      placeholder="Describe your files (optional)"
                       value={newPostContent}
                       onChange={(e) => setNewPostContent(e.target.value)}
-                      className="flex-1 min-w-0 rounded-lg border border-ink/20 px-3 py-2 text-sm text-ink placeholder-ink/40 outline-none focus:border-ink/50"
+                      rows={2}
+                      className="w-full min-w-0 rounded-lg border border-ink/20 px-3 py-2 text-sm text-ink placeholder-ink/40 outline-none focus:border-ink/50 resize-none"
                     />
-                    <button type="submit" disabled={sendingPost || !newPostContent.trim()} className="shrink-0 rounded-lg bg-ink text-white px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50">
-                      {sendingPost ? 'Posting…' : 'Post'}
-                    </button>
+                    <div className="flex justify-end">
+                      <button type="submit" disabled={sendingPost || newPostFiles.length === 0} className="rounded-lg bg-ink text-white px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                        {sendingPost ? 'Posting…' : 'Post'}
+                      </button>
+                    </div>
                   </form>
                 </div>
                 <div className={`overflow-y-auto p-4 space-y-4 ${posts.length > 0 ? 'flex-1 min-h-0' : ''}`}>
@@ -1035,8 +1107,52 @@ function PostCard({ post, likes, onLike, currentUserId, comments, commentsOpen, 
             </div>
           </div>
         </div>
-        <p className="text-sm text-ink/80 mt-3 whitespace-pre-wrap break-words">{post.content}</p>
-        {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-full h-auto max-h-64 object-cover" />}
+        {(() => {
+          const attachments = Array.isArray(post.attachments) ? post.attachments : [];
+          const hasAttachments = attachments.length > 0;
+          const isImage = (t) => (t || '').startsWith('image/');
+          const downloadAttachment = async (url, name) => {
+            try {
+              const res = await fetch(url, { mode: 'cors' });
+              const blob = await res.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = blobUrl;
+              a.download = name || 'download';
+              a.style.display = 'none';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(blobUrl);
+            } catch (_) {
+              window.open(url, '_self');
+            }
+          };
+          return (
+            <>
+              {hasAttachments && (
+                <div className="mt-3 space-y-2">
+                  {attachments.map((att, i) => (
+                    <div key={i} className="rounded-lg border border-ink/10 overflow-hidden bg-ink/5">
+                      {isImage(att.type) ? (
+                        <button type="button" onClick={() => downloadAttachment(att.url, att.name || 'image')} className="block w-full text-left cursor-pointer hover:opacity-90">
+                          <img src={att.url} alt={att.name || 'Attachment'} className="max-w-full h-auto max-h-64 w-full object-contain pointer-events-none" />
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => downloadAttachment(att.url, att.name || 'file')} className="flex items-center gap-2 px-3 py-2 text-sm text-ink/90 hover:bg-ink/10 w-full text-left">
+                          <span aria-hidden>📎</span>
+                          <span className="truncate">{att.name || 'Download'}</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-full h-auto max-h-64 object-cover" />}
+              {post.content && <p className="text-sm text-ink/80 mt-3 whitespace-pre-wrap break-words">{post.content}</p>}
+            </>
+          );
+        })()}
         <div className="flex items-center gap-4 mt-3 text-sm">
           <button type="button" onClick={onLike} className={`flex items-center gap-1 ${liked ? 'text-red-600' : 'text-ink/50 hover:text-ink/70'}`}>
             <span aria-hidden>{liked ? '❤️' : '🤍'}</span>

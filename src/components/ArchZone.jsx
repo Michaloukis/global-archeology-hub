@@ -5,7 +5,7 @@ import MiniMapWidget from './MiniMapWidget';
 import AIAssistant from './AIAssistant';
 import Scanner3D from './Scanner3D';
 
-const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives, onOpenSocial }) => {
+const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives, onOpenSocial, onOpenJournal }) => {
   const navigate = useNavigate();
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isCompassOpen, setIsCompassOpen] = useState(false);
@@ -763,7 +763,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
             <button
               key={i}
               type="button"
-              onClick={item.siteId ? () => window.open(`/?view=journal&siteId=${item.siteId}`, '_blank') : undefined}
+              onClick={item.siteId ? () => { if (typeof onOpenJournal === 'function') onOpenJournal(item.siteId); else window.open(`/?view=journal&siteId=${item.siteId}`, '_blank'); } : undefined}
               className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4 text-left flex gap-3 hover:bg-white/95 transition-colors"
             >
               <div className="w-12 h-12 rounded-xl bg-ink/10 flex items-center justify-center shrink-0">
@@ -859,7 +859,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
           ) : (
             <div className="space-y-2 overflow-y-auto pr-1">
               {archiveEntries.map(entry => (
-                <button key={entry.id} type="button" onClick={() => window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank')} className="w-full text-left rounded-lg border border-ink/10 p-3 hover:bg-ink/5 text-sm text-ink">
+                <button key={entry.id} type="button" onClick={() => { if (typeof onOpenJournal === 'function') onOpenJournal(entry.site_id); else window.open(`/?view=journal&siteId=${entry.site_id}`, '_blank'); }} className="w-full text-left rounded-lg border border-ink/10 p-3 hover:bg-ink/5 text-sm text-ink">
                   <span className="font-medium block">{entry.sites?.name}</span>
                   <span className="text-xs text-ink/60 truncate block">{entry.findings || entry.notes?.slice(0, 50) || 'Entry'}…</span>
                   <span className="text-[10px] text-ink/50 block mt-0.5">{new Date(entry.created_at).toLocaleString()}</span>
@@ -1000,7 +1000,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
 
                       {req.status === 'Approved' && (
                         <button
-                          onClick={() => window.open(`/?view=journal&siteId=${req.site_id}`, '_blank')}
+                          onClick={() => { if (typeof onOpenJournal === 'function') onOpenJournal(req.site_id); else window.open(`/?view=journal&siteId=${req.site_id}`, '_blank'); }}
                           className="mt-4 text-sm font-medium text-ink hover:underline"
                         >
                           Open Field Terminal →
