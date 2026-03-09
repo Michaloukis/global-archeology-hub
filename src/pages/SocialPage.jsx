@@ -55,6 +55,7 @@ export default function SocialPage({ profile }) {
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef(null);
   const channelRef = useRef(null);
+  const chatroomsChannelRef = useRef(null);
   const [startChatOpen, setStartChatOpen] = useState(false);
   const [startChatMode, setStartChatMode] = useState('site'); // 'site' | 'dm' | 'group'
   const [sitesWithoutRoom, setSitesWithoutRoom] = useState([]);
@@ -180,6 +181,26 @@ export default function SocialPage({ profile }) {
     if (!supabase || !profile?.id || !isArcheologistRole(profile)) return;
     fetchChatrooms();
   }, [profile?.id, profile?.role]);
+
+  // Realtime: when current user is added to a new room, refresh list so new chats appear without refresh
+  useEffect(() => {
+    if (!supabase || !profile?.id || !isArcheologistRole(profile)) return;
+    const channel = supabase
+      .channel('social-chatrooms-list')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chatroom_members', filter: `user_id=eq.${profile.id}` },
+        () => {
+          fetchChatrooms(false);
+        }
+      )
+      .subscribe();
+    chatroomsChannelRef.current = channel;
+    return () => {
+      supabase.removeChannel(channel);
+      chatroomsChannelRef.current = null;
+    };
+  }, [profile?.id]);
 
   // When "Start a chat" modal opens, load sites that don't have a chatroom yet
   useEffect(() => {

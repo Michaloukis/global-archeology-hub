@@ -1,6 +1,7 @@
 -- Social & chatrooms: one room per dig site, posts + chat per room.
 -- Run in Supabase SQL Editor.
--- After running: enable Realtime for table `chat_messages` in Dashboard → Database → Replication.
+-- After running: enable Realtime in Dashboard → Database → Replication for:
+--   chat_messages (live chat), and chatroom_members (new chats appear for other users without refresh).
 
 -- 1) Chatrooms (one per site)
 CREATE TABLE IF NOT EXISTS chatrooms (
