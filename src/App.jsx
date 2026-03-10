@@ -15,6 +15,7 @@ import AccountPage from './pages/AccountPage.jsx'
 import TeamPage from './pages/TeamPage.jsx'
 import SocialPage from './pages/SocialPage.jsx'
 import ArchivesPage from './pages/ArchivesPage.jsx'
+import StatisticsPage from './pages/StatisticsPage.jsx'
 import SocialActivityWidget from './components/SocialActivityWidget'
 import { isArcheologist as isArcheologistRole } from './utils/roles'
 
@@ -882,6 +883,7 @@ function App() {
   const location = useLocation()
   const navigate = useNavigate()
   const isToolRoute = location.pathname === '/illustrator-2d' || location.pathname === '/viewer-3d'
+  const isStatisticsRoute = location.pathname === '/statistics'
 
   // Auto-hide sidebar when entering a tool route
   useEffect(() => {
@@ -979,6 +981,7 @@ function App() {
   const isStudent = profile?.role === 'Student'
   const pcNavItems = [
     { viewKey: 'home', label: 'Home', icon: 'home' },
+    { to: '/statistics', label: 'Stats', icon: 'chart' },
     ...(isArcheologist ? [{ viewKey: 'arch', label: 'Arch Zone', icon: 'grid' }] : []),
     { viewKey: 'map', label: 'Map', icon: 'map' },
     ...(isStudent ? [{ viewKey: 'education', label: 'Edu Lab', icon: 'document' }] : []),
@@ -1029,8 +1032,19 @@ function App() {
                 <p className="text-[9px] font-medium text-ink text-center truncate w-full leading-tight" title={profile?.full_name || profile?.email}>{profile?.full_name?.split(' ')[0] || profile?.username || 'User'}</p>
               </div>
               <nav className="flex-1 min-h-0 overflow-hidden py-1 flex flex-col items-center gap-0.5">
-                {pcNavItems.map(({ viewKey, label, icon }) => (
-                  <button key={label} onClick={() => { navigate('/'); setView(viewKey); }} className={`group w-full flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg min-w-0 ${view === viewKey ? 'bg-parchment-300/80 text-ink' : 'text-ink hover:bg-parchment-100'}`}>
+                {pcNavItems.map(({ viewKey, to, label, icon }) => (
+                  <button
+                    key={label}
+                    onClick={() => {
+                      if (to) navigate(to)
+                      else { navigate('/'); setView(viewKey) }
+                    }}
+                    className={`group w-full flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg min-w-0 ${
+                      (to && location.pathname === to) || (!to && view === viewKey && !isStatisticsRoute)
+                        ? 'bg-parchment-300/80 text-ink'
+                        : 'text-ink hover:bg-parchment-100'
+                    }`}
+                  >
                     <NavIcon name={icon} className={`w-5 h-5 shrink-0 transition-transform duration-150 group-hover:scale-110 ${view === viewKey ? 'text-yellow-400' : ''}`} />
                     <span className="text-[9px] font-medium leading-tight text-center line-clamp-2">{label}</span>
                   </button>
@@ -1040,6 +1054,19 @@ function App() {
           )}
           <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-transparent overflow-hidden ${isToolRoute ? 'pl-0' : 'pl-4'} h-full`}>
             <main className={`flex-1 min-h-0 bg-transparent ${!isToolRoute && view === 'home' ? 'overflow-hidden flex flex-col h-full' : 'overflow-auto'}`}>
+          {isStatisticsRoute && (
+            <div className="relative w-full min-h-full">
+              <div className="px-6 pt-5">
+                <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-ink/80 hover:text-ink">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Hub
+                </Link>
+              </div>
+              <div className="pt-2">
+                <StatisticsPage />
+              </div>
+            </div>
+          )}
           {location.pathname === '/illustrator-2d' && (
             <div className="relative w-full h-full">
               <div className="md:hidden fixed top-0 left-0 right-0 z-[100] flex items-center gap-2 px-4 py-3 bg-black/90 text-white border-b border-white/20">
@@ -1066,20 +1093,20 @@ function App() {
               </div>
             </div>
           )}
-              {!isToolRoute && view === 'home' && (
+              {!isToolRoute && !isStatisticsRoute && view === 'home' && (
                 <div className="h-full min-h-0 overflow-hidden flex flex-col">
                   <DashboardPage searchQuery={searchQuery} profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => { try { if (chatroomId) localStorage.setItem('global-arch-social-selected-chatroom', chatroomId); } catch (_) {} setView('social'); }} widgetPreferences={widgetPreferences} setWidgetPreferences={setWidgetPreferences} />
                 </div>
               )}
-              {!isToolRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}
-              {!isToolRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
-              {!isToolRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div></div>}
-              {!isToolRoute && view === 'archives' && <div className="relative parchment-main min-h-full"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
-              {!isToolRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div></div>}
-              {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
-              {!isToolRoute && view === 'team' && <TeamPage profile={profile} onBack={() => setView('home')} />}
-              {!isToolRoute && view === 'social' && <SocialPage profile={profile} />}
-              {!isToolRoute && view === 'objects' && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
+              {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}
+              {!isToolRoute && !isStatisticsRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
+              {!isToolRoute && !isStatisticsRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div></div>}
+              {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="relative parchment-main min-h-full"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
+              {!isToolRoute && !isStatisticsRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div></div>}
+              {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
+              {!isToolRoute && !isStatisticsRoute && view === 'team' && <TeamPage profile={profile} onBack={() => setView('home')} />}
+              {!isToolRoute && !isStatisticsRoute && view === 'social' && <SocialPage profile={profile} />}
+              {!isToolRoute && !isStatisticsRoute && view === 'objects' && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
             </main>
           </div>
         </div>
@@ -1127,6 +1154,19 @@ function App() {
             paddingBottom: 'max(5rem, env(safe-area-inset-bottom))'
           }}
         >
+          {isStatisticsRoute && (
+            <div className="min-h-full">
+              <div className="px-4 pt-3">
+                <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-ink/80 hover:text-ink">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Hub
+                </Link>
+              </div>
+              <div className="pt-2">
+                <StatisticsPage />
+              </div>
+            </div>
+          )}
           {location.pathname === '/viewer-3d' && (
             <div className="relative w-full h-full">
               <div className="fixed top-0 left-0 right-0 z-[100] flex items-center gap-2 px-4 py-3 bg-black/90 text-white border-b border-white/20" >
@@ -1153,15 +1193,15 @@ function App() {
               </div>
             </div>
           )}
-          {!isToolRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
-          {!isToolRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
-          {!isToolRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
-          {!isToolRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div>}
-          {!isToolRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
-          {!isToolRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div>}
-          {!isToolRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
-          {!isToolRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} onBack={() => setView('home')} /></div>}
-          {!isToolRoute && view === 'social' && <SocialPage profile={profile} />}
+          {!isToolRoute && !isStatisticsRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
+          {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
+          {!isToolRoute && !isStatisticsRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} onBack={() => setView('home')} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'social' && <SocialPage profile={profile} />}
         </main>
         <nav
           className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-sm border-t border-ink/10 rounded-t-3xl shadow-[0_-4px_20px_rgba(44,40,37,0.06)] transition-transform duration-300 ease-out ${
