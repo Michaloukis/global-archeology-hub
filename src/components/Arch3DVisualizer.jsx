@@ -1078,8 +1078,11 @@ export default function Arch3DVisualizer({ showBackToHub = false, backToUrl = '/
   }
 
   return (
-    <div className="w-screen h-screen bg-black text-white">
-      <div className="absolute top-4 left-4 z-10">
+    <div className="w-full h-full bg-black text-white relative overflow-hidden">
+      <div
+        className="absolute left-4 z-10"
+        style={{ top: 'calc(env(safe-area-inset-top) + 1rem)' }}
+      >
         <div className="flex flex-col items-start gap-2">
           <div className="flex items-center gap-3 flex-wrap">
             {showBackToHub && (
@@ -1285,7 +1288,10 @@ export default function Arch3DVisualizer({ showBackToHub = false, backToUrl = '/
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 bg-black/60 border border-white/20 rounded px-1.5 py-1 text-[9px] uppercase tracking-widest">
+      <div
+        className="absolute left-4 z-10 flex flex-col gap-1 bg-black/60 border border-white/20 rounded px-1.5 py-1 text-[9px] uppercase tracking-widest"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+      >
         {source === 'preset' && (
           <div className="flex items-center gap-1.5">
             <span className="text-gray-400 text-[8px]">Scene</span>
@@ -1317,7 +1323,10 @@ export default function Arch3DVisualizer({ showBackToHub = false, backToUrl = '/
       </div>
 
       {status && (
-        <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 text-[10px] font-black uppercase tracking-widest bg-black/70 border border-white/20 rounded-full px-4 py-1 text-gray-300">
+        <div
+          className="absolute left-1/2 z-10 -translate-x-1/2 text-[10px] font-black uppercase tracking-widest bg-black/70 border border-white/20 rounded-full px-4 py-1 text-gray-300"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+        >
           {status}
         </div>
       )}

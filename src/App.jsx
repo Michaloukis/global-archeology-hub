@@ -17,6 +17,7 @@ import SocialPage from './pages/SocialPage.jsx'
 import ArchivesPage from './pages/ArchivesPage.jsx'
 import StatisticsPage from './pages/StatisticsPage.jsx'
 import SocialActivityWidget from './components/SocialActivityWidget'
+import TeamWidget from './components/TeamWidget'
 import SiteProgressDashboardWidget from './components/SiteProgressDashboardWidget.jsx'
 import RecentFieldLogsWidget from './components/RecentFieldLogsWidget.jsx'
 import { isArcheologist as isArcheologistRole } from './utils/roles'
@@ -265,8 +266,8 @@ const NavIcon = ({ name, className = 'w-5 h-5' }) => {
   return <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">{icons[name] || icons.document}</svg>;
 };
 
-const WIDGET_IDS = ['minimap', 'quickstats', 'site-progress', 'recent-logs', 'archbot', 'global-events', 'social-activity']
-const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', 'site-progress': 'Site Progress', 'recent-logs': 'Recent Logs', archbot: 'ArchBot', 'global-events': 'Global Events', 'social-activity': 'Social Activity' }
+const WIDGET_IDS = ['minimap', 'quickstats', 'site-progress', 'recent-logs', 'archbot', 'global-events', 'social-activity', 'teams']
+const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', 'site-progress': 'Site Progress', 'recent-logs': 'Recent Logs', archbot: 'ArchBot', 'global-events': 'Global Events', 'social-activity': 'Social Activity', teams: 'Teams' }
 const WIDGET_SIZES = ['small', 'medium', 'large']
 const SIZE_CLASS = { small: 'h-[100px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
 const SIZE_CLASS_CONTENT = { small: 'min-h-[120px]', medium: 'min-h-[180px]', large: 'min-h-[260px]' }
@@ -284,10 +285,10 @@ function snapToGrid(value, step, min, max) {
   return Math.max(min, Math.min(max, n))
 }
 
-const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'site-progress'], ['recent-logs', 'archbot'], ['global-events', 'social-activity']]
+const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'site-progress'], ['recent-logs', 'archbot'], ['global-events', 'social-activity', 'teams']]
 
 function getDefaultWidgetPreferences() {
-  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity', 'site-progress', 'recent-logs'].includes(id) ? 'large' : 'medium')
+  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity', 'site-progress', 'recent-logs', 'teams'].includes(id) ? 'large' : 'medium')
   return {
     visible: Object.fromEntries(WIDGET_IDS.map(id => [id, true])),
     size: Object.fromEntries(WIDGET_IDS.map(id => [id, defaultSize(id)])),
@@ -343,7 +344,8 @@ const WIDGET_ICONS = {
   'recent-logs': 'document',
   archbot: 'user',
   'global-events': 'bell',
-  'social-activity': 'social'
+  'social-activity': 'social',
+  teams: 'users'
 }
 
 function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, onResize, onResizeWidth, onRemove, onDragHandleStart, onDragHandleEnd, sizeKey, sizeClassMap, contentClassMap, noPadding, children }) {
@@ -725,7 +727,7 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
                           editMode={customizeOpen}
                           height={customHeight[id]}
                           width={customWidth[id]}
-                          minH={id === 'archbot' ? 120 : id === 'global-events' || id === 'social-activity' ? 100 : undefined}
+                          minH={id === 'archbot' ? 120 : id === 'global-events' || id === 'social-activity' || id === 'teams' ? 100 : undefined}
                           onResize={setCustomHeight}
                           onResizeWidth={customizeOpen ? setCustomWidth : undefined}
                           onRemove={customizeOpen ? (widgetId) => setVisible(widgetId, false) : undefined}
@@ -766,6 +768,9 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
                           )}
                           {id === 'social-activity' && (
                             <SocialActivityWidget profile={profile} onOpenSocial={onOpenSocial} />
+                          )}
+                          {id === 'teams' && (
+                            <TeamWidget profile={profile} />
                           )}
                         </ResizableWidgetBox>
                       </div>
@@ -1185,32 +1190,8 @@ function App() {
               </div>
             </div>
           )}
-          {location.pathname === '/viewer-3d' && (
-            <div className="relative w-full h-full">
-              <div className="fixed top-0 left-0 right-0 z-[100] flex items-center gap-2 px-4 py-3 bg-black/90 text-white border-b border-white/20" >
-                <Link to="/" className="flex items-center gap-2 text-sm font-medium hover:text-white/90">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  Back to Hub
-                </Link>
-              </div>
-              <div className="pt-14">
-                <Viewer3DPage />
-              </div>
-            </div>
-          )}
-          {location.pathname === '/illustrator-2d' && (
-            <div className="relative w-full h-full">
-              <div className="fixed top-0 left-0 right-0 z-[100] flex items-center gap-2 px-4 py-3 bg-black/90 text-white border-b border-white/20" >
-                <Link to="/" className="flex items-center gap-2 text-sm font-medium hover:text-white/90">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  Back to Hub
-                </Link>
-              </div>
-              <div className="pt-14">
-                <Illustrator2DPage />
-              </div>
-            </div>
-          )}
+          {location.pathname === '/viewer-3d' && <Viewer3DPage />}
+          {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
           {!isToolRoute && !isStatisticsRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
           {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { isArcheologist as isArcheologistRole } from '../utils/roles';
 
 const STORAGE_KEY_CHATROOM = 'global-arch-social-selected-chatroom';
 
@@ -20,10 +19,8 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const isArcheologist = isArcheologistRole(profile);
-
   useEffect(() => {
-    if (!supabase || !profile?.id || !isArcheologist) {
+    if (!supabase || !profile?.id) {
       setItems([]);
       setLoading(false);
       return;
@@ -96,7 +93,7 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [profile?.id, isArcheologist]);
+  }, [profile?.id]);
 
   const handleOpenSocialHub = () => {
     onOpenSocial?.();
@@ -109,43 +106,33 @@ export default function SocialActivityWidget({ profile, onOpenSocial }) {
     onOpenSocial?.(chatroomId);
   };
 
-  if (!isArcheologist) {
-    return (
-      <div className="h-full flex flex-col">
-        <h3 className="text-xs font-bold text-ink border-b border-ink/30 pb-1.5 mb-2">Social Activity</h3>
-        <p className="text-[10px] text-ink/60 flex-1">Social Hub is for Field Archeologists and Directors.</p>
-        <button type="button" onClick={handleOpenSocialHub} className="mt-2 text-xs font-medium text-ink/80 hover:text-ink">Open Social Hub →</button>
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col min-h-0">
-      <div className="flex items-center justify-between border-b border-ink/30 pb-1.5 mb-2 shrink-0">
-        <h3 className="text-xs font-bold text-ink">Social Activity</h3>
-        <button type="button" onClick={handleOpenSocialHub} className="text-[10px] font-medium text-ink/70 hover:text-ink">
+      <div className="flex items-center justify-between border-b border-ink/30 pb-1 mb-1.5 shrink-0">
+        <h3 className="text-[11px] font-bold text-ink">Social Activity</h3>
+        <button type="button" onClick={handleOpenSocialHub} className="text-[9px] font-medium text-ink/70 hover:text-ink">
           Open Social Hub →
         </button>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-1">
         {loading ? (
-          <p className="text-[10px] text-ink/50 animate-pulse py-2">Loading…</p>
+          <p className="text-[9px] text-ink/50 animate-pulse py-1.5">Loading…</p>
         ) : items.length === 0 ? (
-          <p className="text-[10px] text-ink/50 py-2">No recent posts or messages.</p>
+          <p className="text-[9px] text-ink/50 py-1.5">No recent posts or messages.</p>
         ) : (
           items.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => handleItemClick(item.chatroom_id)}
-              className="w-full text-left rounded-lg border border-ink/15 bg-white/60 hover:bg-ink/5 hover:border-ink/25 p-2 transition-colors"
+              className="w-full text-left rounded border border-ink/15 bg-white/60 hover:bg-ink/5 hover:border-ink/25 px-1.5 py-1 transition-colors"
             >
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[9px] font-semibold text-ink/70 uppercase">{item.type === 'post' ? 'Post' : 'Chat'}</span>
-                <span className="text-[9px] text-ink/50">· {item.chatroom_name}</span>
-                <span className="text-[9px] text-ink/40 ml-auto">{formatWhen(item.created_at)}</span>
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[8px] font-semibold text-ink/70 uppercase">{item.type === 'post' ? 'Post' : 'Chat'}</span>
+                <span className="text-[8px] text-ink/50">· {item.chatroom_name}</span>
+                <span className="text-[8px] text-ink/40 ml-auto">{formatWhen(item.created_at)}</span>
               </div>
-              <p className="text-[10px] text-ink/80 mt-0.5 line-clamp-2">{item.author}: {item.content || '—'}</p>
+              <p className="text-[9px] text-ink/80 mt-0.5 line-clamp-2">{item.author}: {item.content || '—'}</p>
             </button>
           ))
         )}

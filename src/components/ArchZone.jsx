@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { listTeamsForUser } from '../services/teamsApi';
 import MiniMapWidget from './MiniMapWidget';
 import AIAssistant from './AIAssistant';
 import Scanner3D from './Scanner3D';
 import ReportSyntaxTemplates from './ReportSyntaxTemplates';
+
+function formatSocialWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+  return d.toLocaleDateString();
+}
 
 const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives, onOpenSocial, onOpenJournal }) => {
   const navigate = useNavigate();
@@ -58,7 +71,12 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
   // Social Hub panels: 'chat' | 'forum' | 'events' | null
   const [socialHubPanel, setSocialHubPanel] = useState(null);
 
-  const [archSearch, setArchSearch] = useState('');
+  // Dashboard: Team & Social Activity (real data)
+  const [teams, setTeams] = useState([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
+  const [socialActivityItems, setSocialActivityItems] = useState([]);
+  const [socialActivityLoading, setSocialActivityLoading] = useState(false);
+
   const [showArchivesPanel, setShowArchivesPanel] = useState(false);
   const [archView, setArchViewState] = useState(() => {
     try { return sessionStorage.getItem('archZone_view') || 'dashboard'; } catch { return 'dashboard'; }
@@ -127,6 +145,105 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
       fetchArchiveEntriesChief();
     }
   }, [profile?.id, profile?.role, requests]);
+
+  // Fetch teams for dashboard section
+  useEffect(() => {
+    if (!profile?.id) {
+      setTeams([]);
+      return;
+    }
+    let cancelled = false;
+    setTeamsLoading(true);
+    const isDirector = profile?.role === 'Director';
+    listTeamsForUser({ userId: profile.id, isDirector })
+      .then((data) => {
+        if (!cancelled) setTeams(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setTeams([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTeamsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [profile?.id, profile?.role]);
+
+  // Fetch social activity for dashboard section
+  useEffect(() => {
+    if (!supabase || !profile?.id) {
+      setSocialActivityItems([]);
+      setSocialActivityLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSocialActivityLoading(true);
+    (async () => {
+      try {
+        const { data: membersData } = await supabase
+          .from('chatroom_members')
+          .select('chatroom_id, chatrooms(id, name)')
+          .eq('user_id', profile.id);
+        const chatrooms = (membersData || [])
+          .map((r) => r.chatrooms)
+          .filter(Boolean)
+          .reduce((acc, c) => (c && !acc.find((x) => x.id === c.id) ? [...acc, c] : acc), []);
+        const roomIds = chatrooms.map((c) => c.id);
+        const roomMap = Object.fromEntries(chatrooms.map((c) => [c.id, c.name]));
+
+        if (roomIds.length === 0 || cancelled) {
+          if (!cancelled) setSocialActivityItems([]);
+          return;
+        }
+
+        const [postsRes, messagesRes] = await Promise.all([
+          supabase
+            .from('social_posts')
+            .select('id, content, created_at, chatroom_id, profiles:author_id(full_name, username)')
+            .in('chatroom_id', roomIds)
+            .order('created_at', { ascending: false })
+            .limit(10),
+          supabase
+            .from('chat_messages')
+            .select('id, content, created_at, chatroom_id, profiles:sender_id(full_name, username)')
+            .in('chatroom_id', roomIds)
+            .order('created_at', { ascending: false })
+            .limit(10),
+        ]);
+
+        if (cancelled) return;
+
+        const postItems = (postsRes.data || []).map((p) => ({
+          type: 'post',
+          id: `post-${p.id}`,
+          chatroom_id: p.chatroom_id,
+          chatroom_name: roomMap[p.chatroom_id] || 'Chatroom',
+          content: (p.content || '').slice(0, 60) + ((p.content || '').length > 60 ? '…' : ''),
+          created_at: p.created_at,
+          author: p.profiles?.full_name || p.profiles?.username || 'Someone',
+        }));
+        const messageItems = (messagesRes.data || []).map((m) => ({
+          type: 'message',
+          id: `msg-${m.id}`,
+          chatroom_id: m.chatroom_id,
+          chatroom_name: roomMap[m.chatroom_id] || 'Chatroom',
+          content: (m.content || '').slice(0, 60) + ((m.content || '').length > 60 ? '…' : ''),
+          created_at: m.created_at,
+          author: m.profiles?.full_name || m.profiles?.username || 'Someone',
+        }));
+
+        const merged = [...postItems, ...messageItems]
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 6);
+        setSocialActivityItems(merged);
+      } catch (e) {
+        if (!cancelled) setSocialActivityItems([]);
+        console.error('Social activity fetch error:', e);
+      } finally {
+        if (!cancelled) setSocialActivityLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profile?.id]);
 
   async function fetchArchiveEntriesField() {
     setArchiveLoading(true);
@@ -747,18 +864,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-24 md:pb-0">
-      <h1 className="text-xl sm:text-2xl font-bold text-ink text-center">Archeologists&apos; Dashboard</h1>
-
-      <div className="flex items-center gap-2 rounded-xl bg-white/90 border border-ink/20 px-3 py-2.5 shadow-sm max-w-md mx-auto">
-        <svg className="w-4 h-4 text-ink/50 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        <input
-          type="text"
-          placeholder="Search"
-          value={archSearch}
-          onChange={(e) => setArchSearch(e.target.value)}
-          className="flex-1 min-w-0 bg-transparent text-sm text-ink placeholder-ink/50 outline-none"
-        />
-      </div>
+      <h1 className="text-xl sm:text-2xl font-bold text-ink text-center">Archaeologists&apos; Dashboard</h1>
 
       <section>
         <h2 className="text-base font-bold text-ink mb-3">Recent Activity</h2>
@@ -878,47 +984,66 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
         </section>
       )}
 
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4">
-          <h2 className="text-base font-bold text-ink mb-3">Team</h2>
-          <ul className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <li key={i} className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-ink/10 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink">User {i}</p>
-                  <p className="text-xs text-ink/50">Secondary text</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-4">
-          <h2 className="text-base font-bold text-ink mb-3">Social Activity</h2>
-          <div className="space-y-3">
-            {[
-              { user: 'User3', time: '2h ago', likes: 16, text: 'Excited to be starting a new dig site in Jordan! Hoping to uncover some interesting artifacts.', likesBottom: 24, comments: 8 },
-              { user: 'User3', time: '2h ago', likes: 16, text: 'Excited to be starting a new dig site in Jordan! Hoping to uncover some interesting artifacts.', likesBottom: 24, comments: 8 },
-            ].map((post, i) => (
-              <button key={i} type="button" onClick={() => setSocialHubPanel('forum')} className="w-full text-left rounded-xl border border-ink/10 p-3 hover:bg-ink/5 transition-colors">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-ink/10" />
-                    <span className="text-sm font-medium text-ink">{post.user}</span>
-                  </div>
-                  <span className="text-xs text-ink/50">{post.time}</span>
-                </div>
-                <p className="text-xs text-ink/70 mt-2 leading-snug">{post.text}</p>
-                <div className="flex items-center gap-3 mt-2 text-[11px] text-ink/50">
-                  <span>❤️ {post.likesBottom}</span>
-                  <span>💬 {post.comments}</span>
-                  <span aria-hidden>→</span>
-                </div>
-              </button>
-            ))}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(44,40,37,0.06)] border border-ink/10 p-3 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-ink">Team</h2>
+            <Link to="/teams" className="text-[10px] font-medium text-ink/70 hover:text-ink">View all →</Link>
           </div>
+          {teamsLoading ? (
+            <p className="text-[10px] text-ink/50 animate-pulse py-1.5">Loading…</p>
+          ) : teams.length === 0 ? (
+            <p className="text-[10px] text-ink/50 py-1.5">No teams yet. Join or create one from the Teams page.</p>
+          ) : (
+            <ul className="space-y-1.5 overflow-y-auto">
+              {teams.slice(0, 5).map((team) => (
+                <li key={team.id}>
+                  <Link to="/teams" className="flex items-center gap-2 rounded-lg border border-ink/10 px-2 py-1.5 hover:bg-ink/5 transition-colors">
+                    <div className="w-7 h-7 rounded-full bg-ink/10 flex items-center justify-center shrink-0">
+                      <svg className="w-3 h-3 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-ink truncate">{team.name || 'Unnamed team'}</p>
+                      {team.visibility && <p className="text-[10px] text-ink/50 capitalize">{team.visibility}</p>}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(44,40,37,0.06)] border border-ink/10 p-3 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-ink">Social Activity</h2>
+            {typeof onOpenSocial === 'function' ? (
+              <button type="button" onClick={() => onOpenSocial()} className="text-[10px] font-medium text-ink/70 hover:text-ink">Open Social Hub →</button>
+            ) : (
+              <button type="button" onClick={() => setSocialHubPanel('forum')} className="text-[10px] font-medium text-ink/70 hover:text-ink">Open forum →</button>
+            )}
+          </div>
+          {socialActivityLoading ? (
+            <p className="text-[10px] text-ink/50 animate-pulse py-1.5">Loading…</p>
+          ) : socialActivityItems.length === 0 ? (
+            <p className="text-[10px] text-ink/50 py-1.5">No recent posts or messages. Open Social Hub to join chatrooms.</p>
+          ) : (
+            <div className="space-y-1.5 overflow-y-auto">
+              {socialActivityItems.slice(0, 5).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => { typeof onOpenSocial === 'function' ? onOpenSocial(item.chatroom_id) : setSocialHubPanel('forum'); }}
+                  className="w-full text-left rounded-lg border border-ink/10 px-2 py-1.5 hover:bg-ink/5 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[9px] font-semibold text-ink/70 uppercase">{item.type === 'post' ? 'Post' : 'Chat'}</span>
+                    <span className="text-[9px] text-ink/50">{formatSocialWhen(item.created_at)}</span>
+                  </div>
+                  <p className="text-[10px] text-ink/80 mt-0.5 line-clamp-2">{item.author}: {item.content || '—'}</p>
+                  <p className="text-[9px] text-ink/50 mt-0.5">{item.chatroom_name}</p>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1206,7 +1331,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
                 >
                   <option value="private">Private (Exclusive Map only — your eyes)</option>
                   <option value="team">Team (Students & approved personnel)</option>
-                  <option value="student">Student (students & archeologists)</option>
+                  <option value="student">Student (students & archaeologists)</option>
                   <option value="public">Public (everyone)</option>
                 </select>
               </div>
