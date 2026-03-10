@@ -17,6 +17,8 @@ import SocialPage from './pages/SocialPage.jsx'
 import ArchivesPage from './pages/ArchivesPage.jsx'
 import StatisticsPage from './pages/StatisticsPage.jsx'
 import SocialActivityWidget from './components/SocialActivityWidget'
+import SiteProgressDashboardWidget from './components/SiteProgressDashboardWidget.jsx'
+import RecentFieldLogsWidget from './components/RecentFieldLogsWidget.jsx'
 import { isArcheologist as isArcheologistRole } from './utils/roles'
 
 // #region agent log
@@ -263,8 +265,8 @@ const NavIcon = ({ name, className = 'w-5 h-5' }) => {
   return <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">{icons[name] || icons.document}</svg>;
 };
 
-const WIDGET_IDS = ['minimap', 'quickstats', 'archbot', 'global-events', 'social-activity']
-const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', archbot: 'ArchBot', 'global-events': 'Global Events', 'social-activity': 'Social Activity' }
+const WIDGET_IDS = ['minimap', 'quickstats', 'site-progress', 'recent-logs', 'archbot', 'global-events', 'social-activity']
+const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', 'site-progress': 'Site Progress', 'recent-logs': 'Recent Logs', archbot: 'ArchBot', 'global-events': 'Global Events', 'social-activity': 'Social Activity' }
 const WIDGET_SIZES = ['small', 'medium', 'large']
 const SIZE_CLASS = { small: 'h-[100px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
 const SIZE_CLASS_CONTENT = { small: 'min-h-[120px]', medium: 'min-h-[180px]', large: 'min-h-[260px]' }
@@ -282,10 +284,10 @@ function snapToGrid(value, step, min, max) {
   return Math.max(min, Math.min(max, n))
 }
 
-const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'archbot'], ['global-events', 'social-activity']]
+const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'site-progress'], ['recent-logs', 'archbot'], ['global-events', 'social-activity']]
 
 function getDefaultWidgetPreferences() {
-  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity'].includes(id) ? 'large' : 'medium')
+  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity', 'site-progress', 'recent-logs'].includes(id) ? 'large' : 'medium')
   return {
     visible: Object.fromEntries(WIDGET_IDS.map(id => [id, true])),
     size: Object.fromEntries(WIDGET_IDS.map(id => [id, defaultSize(id)])),
@@ -337,6 +339,8 @@ function saveWidgetPreferences(prefs) {
 const WIDGET_ICONS = {
   minimap: 'map',
   quickstats: 'chart',
+  'site-progress': 'chart',
+  'recent-logs': 'document',
   archbot: 'user',
   'global-events': 'bell',
   'social-activity': 'social'
@@ -734,6 +738,8 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
                         >
                           {id === 'minimap' && <MiniMapWidget profile={profile} onOpenMap={onOpenMap} />}
                           {id === 'quickstats' && <QuickStatsWidget profile={profile} onOpenMap={onOpenMap} />}
+                          {id === 'site-progress' && <SiteProgressDashboardWidget profile={profile} />}
+                          {id === 'recent-logs' && <RecentFieldLogsWidget profile={profile} />}
                           {id === 'archbot' && (
                             <div className="flex-1 min-h-0 flex flex-col min-w-0">
                               <ArchBotChatBox profile={profile} />
@@ -884,6 +890,7 @@ function App() {
   const navigate = useNavigate()
   const isToolRoute = location.pathname === '/illustrator-2d' || location.pathname === '/viewer-3d'
   const isStatisticsRoute = location.pathname === '/statistics'
+  const isTeamsRoute = location.pathname.toLowerCase().startsWith('/teams')
 
   // Auto-hide sidebar when entering a tool route
   useEffect(() => {
@@ -899,6 +906,10 @@ function App() {
       setActiveSiteId(siteParam)
     }
   }, [])
+
+  useEffect(() => {
+    if (isTeamsRoute) setView('team')
+  }, [isTeamsRoute])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -981,7 +992,6 @@ function App() {
   const isStudent = profile?.role === 'Student'
   const pcNavItems = [
     { viewKey: 'home', label: 'Home', icon: 'home' },
-    { to: '/statistics', label: 'Stats', icon: 'chart' },
     ...(isArcheologist ? [{ viewKey: 'arch', label: 'Arch Zone', icon: 'grid' }] : []),
     { viewKey: 'map', label: 'Map', icon: 'map' },
     ...(isStudent ? [{ viewKey: 'education', label: 'Edu Lab', icon: 'document' }] : []),
@@ -1014,7 +1024,14 @@ function App() {
                 </div>
                 <nav className="flex-1 min-h-0 overflow-hidden py-1 flex flex-col items-center gap-0.5">
                   {pcNavItems.map(({ viewKey, label, icon }) => (
-                    <button key={label} onClick={() => { navigate('/'); setView(viewKey); }} className="group w-full flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg min-w-0 text-ink hover:bg-parchment-100">
+                    <button
+                      key={label}
+                      onClick={() => {
+                        if (viewKey === 'team') navigate('/teams')
+                        else { navigate('/'); setView(viewKey) }
+                      }}
+                      className="group w-full flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg min-w-0 text-ink hover:bg-parchment-100"
+                    >
                       <NavIcon name={icon} className="w-5 h-5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
                       <span className="text-[9px] font-medium leading-tight text-center line-clamp-2">{label}</span>
                     </button>
@@ -1036,11 +1053,12 @@ function App() {
                   <button
                     key={label}
                     onClick={() => {
-                      if (to) navigate(to)
+                      if (viewKey === 'team') navigate('/teams')
+                      else if (to) navigate(to)
                       else { navigate('/'); setView(viewKey) }
                     }}
                     className={`group w-full flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg min-w-0 ${
-                      (to && location.pathname === to) || (!to && view === viewKey && !isStatisticsRoute)
+                      (!to && view === viewKey && !isStatisticsRoute)
                         ? 'bg-parchment-300/80 text-ink'
                         : 'text-ink hover:bg-parchment-100'
                     }`}
@@ -1104,7 +1122,7 @@ function App() {
               {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="relative parchment-main min-h-full"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
               {!isToolRoute && !isStatisticsRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div></div>}
               {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
-              {!isToolRoute && !isStatisticsRoute && view === 'team' && <TeamPage profile={profile} onBack={() => setView('home')} />}
+              {!isToolRoute && !isStatisticsRoute && (view === 'team' || isTeamsRoute) && <TeamPage profile={profile} onBack={() => { navigate('/'); setView('home') }} />}
               {!isToolRoute && !isStatisticsRoute && view === 'social' && <SocialPage profile={profile} />}
               {!isToolRoute && !isStatisticsRoute && view === 'objects' && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
             </main>
@@ -1200,7 +1218,7 @@ function App() {
           {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
-          {!isToolRoute && !isStatisticsRoute && view === 'team' && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} onBack={() => setView('home')} /></div>}
+          {!isToolRoute && !isStatisticsRoute && (view === 'team' || isTeamsRoute) && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} onBack={() => { navigate('/'); setView('home') }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'social' && <SocialPage profile={profile} />}
         </main>
         <nav
