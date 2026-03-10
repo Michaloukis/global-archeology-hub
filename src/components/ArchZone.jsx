@@ -815,7 +815,11 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
       </section>
 
       <section className="flex flex-wrap gap-3 justify-center">
-        <button type="button" className="rounded-xl bg-white border border-ink/20 shadow-sm px-5 py-3 flex items-center gap-2 hover:bg-white/95 text-ink font-medium text-sm">
+        <button
+          type="button"
+          onClick={() => navigate('/statistics')}
+          className="rounded-xl bg-white border border-ink/20 shadow-sm px-5 py-3 flex items-center gap-2 hover:bg-white/95 text-ink font-medium text-sm"
+        >
           <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16" /></svg>
           Analytics
         </button>
