@@ -72,6 +72,9 @@ export default function SocialPage({ profile }) {
   const pendingRoomsRef = useRef([]);
   const [, forceListUpdate] = useState(0);
 
+  const isArcheologist = isArcheologistRole(profile);
+  const isStudent = profile?.role === 'Student';
+
   const displayChatrooms = [...chatrooms];
   for (const pr of pendingRoomsRef.current) {
     if (pr?.id && !displayChatrooms.some((c) => c.id === pr.id)) {
@@ -176,15 +179,14 @@ export default function SocialPage({ profile }) {
     }
   };
 
-  // Fetch chatrooms for current user (Field / Chief)
   useEffect(() => {
-    if (!supabase || !profile?.id || !isArcheologistRole(profile)) return;
+    if (!supabase || !profile?.id) return;
     fetchChatrooms();
   }, [profile?.id, profile?.role]);
 
   // Realtime: when current user is added to a new room, refresh list so new chats appear without refresh
   useEffect(() => {
-    if (!supabase || !profile?.id || !isArcheologistRole(profile)) return;
+    if (!supabase || !profile?.id) return;
     const channel = supabase
       .channel('social-chatrooms-list')
       .on(
@@ -204,7 +206,7 @@ export default function SocialPage({ profile }) {
 
   // When "Start a chat" modal opens, load sites that don't have a chatroom yet
   useEffect(() => {
-    if (!startChatOpen || startChatMode !== 'site' || !supabase || !profile?.id || !isArcheologistRole(profile)) return;
+    if (!startChatOpen || startChatMode !== 'site' || !supabase || !profile?.id || !isArcheologist) return;
     (async () => {
       try {
         const isChief = isDirectorRole(profile);
@@ -734,13 +736,13 @@ export default function SocialPage({ profile }) {
     );
   }
 
-  if (!isArcheologistRole(profile)) {
+  if (!isArcheologist && !isStudent) {
     return (
       <div className="relative parchment-main min-h-full p-6 md:p-8 flex flex-col items-center justify-center">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 p-8 text-center">
           <h2 className="text-xl font-bold text-ink border-b border-ink/20 pb-2 mb-4">Social Hub</h2>
           <p className="text-sm text-ink/70">
-            Social Hub is for Field Archeologists and Directors. Join a dig site from the Map and get approved to access mission-specific discussions and chat.
+            Social Hub is currently available for Field Archeologists, Directors, and Students. Join a dig site from the Map or connect with your team to access discussions and chat.
           </p>
         </div>
       </div>
@@ -800,11 +802,17 @@ export default function SocialPage({ profile }) {
             </div>
             <div className="p-4 max-h-[70vh] overflow-y-auto">
               <div className="flex gap-1 bg-ink/5 p-1 rounded-xl border border-ink/10 mb-3">
-                {[
-                  { id: 'site', label: 'Dig site' },
-                  { id: 'dm', label: 'Direct' },
-                  { id: 'group', label: 'Group' },
-                ].map((m) => (
+                {(isArcheologist
+                  ? [
+                      { id: 'site', label: 'Dig site' },
+                      { id: 'dm', label: 'Direct' },
+                      { id: 'group', label: 'Group' },
+                    ]
+                  : [
+                      { id: 'dm', label: 'Direct' },
+                      { id: 'group', label: 'Group' },
+                    ]
+                ).map((m) => (
                   <button
                     key={m.id}
                     type="button"
