@@ -100,9 +100,10 @@ function TeamPageInner({ profile, onBack }) {
   const dashboardApi = demoMode ? { inviteToTeam: inviteToTeamDemo } : { inviteToTeam }
 
   return (
-    <div className="relative parchment-main min-h-full p-4 md:p-8">
-      <div className="max-w-[1400px] mx-auto w-full">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="parchment-main min-h-full p-4 pb-28 md:p-8">
+      <div className="max-w-none md:max-w-[1400px] md:mx-auto w-full space-y-4 md:space-y-5">
+        {/* Desktop header row (mobile already has app header) */}
+        <div className="hidden md:flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-lg font-bold text-ink">Teams</h1>
             {profile?.role ? (
@@ -127,9 +128,10 @@ function TeamPageInner({ profile, onBack }) {
           ) : null}
         </div>
 
-        <div className="mt-5 rounded-3xl border border-ink/10 bg-white/50 backdrop-blur-sm shadow-[0_2px_18px_rgba(44,40,37,0.06)] p-5 md:p-6">
+        {/* Mobile: native card stack. Desktop: card container. */}
+        <div className="space-y-4 md:space-y-0 md:rounded-3xl md:border md:border-ink/10 md:bg-white/50 md:backdrop-blur-sm md:shadow-[0_2px_18px_rgba(44,40,37,0.06)] md:p-6">
           {teamsError ? (
-            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+            <div className="mb-3 md:mb-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-3 md:p-4">
               <p className="text-sm font-semibold text-amber-900">Teams data unavailable</p>
               <p className="text-xs text-amber-900/70 mt-1">{teamsError}</p>
               <p className="text-[11px] text-amber-900/70 mt-2">
@@ -150,7 +152,7 @@ function TeamPageInner({ profile, onBack }) {
             </div>
           ) : null}
           {demoMode ? (
-            <div className="mb-4 rounded-2xl border border-ink/10 bg-white/60 p-4">
+            <div className="mb-3 md:mb-4 rounded-2xl border border-ink/10 bg-white/60 p-3 md:p-4">
               <p className="text-sm font-semibold text-ink">Demo data mode</p>
               <p className="text-xs text-ink/60 mt-1">
                 Your database doesn’t have Teams tables yet, so the app is showing realistic local records to match the normal UI flow.
@@ -188,7 +190,7 @@ function TeamPageInner({ profile, onBack }) {
             </div>
           ) : null}
           {!demoMode && !teamsLoading && !teamsError && teams.length === 0 ? (
-            <div className="mb-4 rounded-2xl border border-ink/10 bg-white/60 p-4">
+            <div className="mb-3 md:mb-4 rounded-2xl border border-ink/10 bg-white/60 p-3 md:p-4">
               <p className="text-sm font-semibold text-ink">No teams found in database</p>
               <p className="text-xs text-ink/60 mt-1">
                 Your Teams tables exist now, but there are no team records associated with your account yet.
@@ -242,6 +244,7 @@ function TeamPageInner({ profile, onBack }) {
               onRefresh={reloadTeams}
               onOpenTeam={openTeam}
               api={hubApi}
+              embedded
             />
           ) : (
             <TeamDashboard team={selectedTeam} profile={profile} onBack={goHub} onTeamUpdated={reloadTeams} api={dashboardApi} />

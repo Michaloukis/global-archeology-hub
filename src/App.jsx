@@ -1218,7 +1218,7 @@ function App() {
           {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
-          {!isToolRoute && !isStatisticsRoute && (view === 'team' || isTeamsRoute) && <div className="p-4 min-h-[60vh]"><TeamPage profile={profile} onBack={() => { navigate('/'); setView('home') }} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'team' && <div className="min-h-full"><TeamPage profile={profile} onBack={() => { navigate('/'); setView('home') }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'social' && <SocialPage profile={profile} />}
         </main>
         <nav
@@ -1235,7 +1235,16 @@ function App() {
             <NavIcon name="map" className={`w-6 h-6 ${view === 'map' ? 'text-ink' : 'text-ink/50'}`} />
             <span className="text-[10px] font-medium">Map</span>
           </button>
-          <button type="button" onClick={() => setView('arch')} className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Arch Zone">
+          <button
+            type="button"
+            onClick={() => { navigate('/teams'); setView('team') }}
+            className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50"
+            aria-label="Teams"
+          >
+            <NavIcon name="people" className={`w-6 h-6 ${view === 'team' || isTeamsRoute ? 'text-ink' : 'text-ink/50'}`} />
+            <span className="text-[10px] font-medium">Teams</span>
+          </button>
+          <button type="button" onClick={() => { navigate('/'); setView('arch') }} className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Arch Zone">
             <NavIcon name="grid" className={`w-6 h-6 ${view === 'arch' ? 'text-ink' : 'text-ink/50'}`} />
             <span className="text-[10px] font-medium">Arch Zone</span>
           </button>

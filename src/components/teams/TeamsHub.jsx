@@ -12,7 +12,7 @@ function Modal({ title, open, onClose, children, wide }) {
       <div
         className={`relative w-full ${wide ? 'md:max-w-3xl' : 'md:max-w-xl'} bg-[#f8f3e8] rounded-t-3xl md:rounded-3xl border border-ink/15 shadow-[0_18px_70px_rgba(0,0,0,0.35)] max-h-[92vh] overflow-hidden`}
       >
-        <div className="px-5 py-4 border-b border-ink/10 bg-white/55 backdrop-blur-sm flex items-center justify-between gap-3">
+        <div className="px-4 md:px-5 py-3.5 md:py-4 border-b border-ink/10 bg-white/55 backdrop-blur-sm flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold text-ink">{title}</h3>
           <button
             type="button"
@@ -22,7 +22,7 @@ function Modal({ title, open, onClose, children, wide }) {
             Close
           </button>
         </div>
-        <div className="p-5 overflow-y-auto">{children}</div>
+        <div className="p-4 md:p-5 overflow-y-auto">{children}</div>
       </div>
     </div>
   )
@@ -33,7 +33,7 @@ function Fab({ label, onClick, icon }) {
     <button
       type="button"
       onClick={onClick}
-      className="fixed bottom-6 right-6 z-[1200] rounded-full shadow-[0_10px_30px_rgba(44,40,37,0.22)] border border-ink/15 bg-ink text-white px-5 py-3.5 text-sm font-semibold hover:bg-ink/90 focus:outline-none focus:ring-2 focus:ring-ink/30 inline-flex items-center gap-2"
+      className="fixed z-50 bottom-24 right-4 rounded-full shadow-lg border border-ink/15 bg-ink text-white px-4 md:px-5 py-3 md:py-3.5 text-sm font-semibold hover:bg-ink/90 focus:outline-none focus:ring-2 focus:ring-ink/30 inline-flex items-center gap-2"
     >
       <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center" aria-hidden>
         {icon}
@@ -59,7 +59,7 @@ function IconSearch() {
   )
 }
 
-export default function TeamsHub({ profile, teams, loading, onRefresh, onOpenTeam, api }) {
+export default function TeamsHub({ profile, teams, loading, onRefresh, onOpenTeam, api, embedded = false }) {
   const { isDirector, isFieldArchaeologist } = useUserRole()
   const [createOpen, setCreateOpen] = useState(false)
   const [joinOpen, setJoinOpen] = useState(false)
@@ -96,34 +96,52 @@ export default function TeamsHub({ profile, teams, loading, onRefresh, onOpenTea
 
   return (
     <div className="relative">
-      <div className="flex items-end justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Teams</h1>
-          <p className="text-xs md:text-sm text-ink/60 mt-1">
-            The Hub for collaboration, permissions, field tasks, and project progress.
-          </p>
+      {!embedded ? (
+        <div className="flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-2xl font-bold text-ink">Teams</h1>
+            <p className="text-xs md:text-sm text-ink/60 mt-1">
+              The Hub for collaboration, permissions, field tasks, and project progress.
+            </p>
+          </div>
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <span className="text-[11px] font-semibold text-ink/60 bg-white/60 border border-ink/10 px-2 py-1 rounded-full">
+              Museum-Modern · earth tones · slate accents
+            </span>
+          </div>
         </div>
-        <div className="hidden md:flex items-center gap-2 shrink-0">
-          <span className="text-[11px] font-semibold text-ink/60 bg-white/60 border border-ink/10 px-2 py-1 rounded-full">
-            Museum-Modern · earth tones · slate accents
-          </span>
+      ) : (
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-ink">Teams</h2>
+            <p className="text-xs text-ink/60 mt-0.5">Find your teams and project workspaces.</p>
+          </div>
+          {onRefresh ? (
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="rounded-xl border border-ink/15 bg-white/70 px-3 py-2 text-xs font-semibold text-ink hover:bg-white shrink-0"
+            >
+              Refresh
+            </button>
+          ) : null}
         </div>
-      </div>
+      )}
 
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className={`${embedded ? 'mt-4' : 'mt-6'} flex flex-col gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`}>
         {loading ? (
-          Array.from({ length: 8 }).map((_, i) => (
+          Array.from({ length: embedded ? 4 : 8 }).map((_, i) => (
             <div key={i} className="aspect-square rounded-2xl border border-ink/10 bg-white/40 animate-pulse" />
           ))
         ) : (teams || []).length === 0 ? (
-          <div className="col-span-full rounded-2xl border border-ink/10 bg-white/60 p-6">
+          <div className="col-span-full rounded-2xl border border-ink/10 bg-white/60 p-4 md:p-6">
             <p className="text-sm font-semibold text-ink">No teams yet</p>
             <p className="text-xs text-ink/60 mt-1">
               {isDirector
                 ? 'Create your first team to begin inviting archaeologists.'
                 : 'Find teams to join, or ask a Director for an invitation.'}
             </p>
-            {onRefresh ? (
+            {onRefresh && !embedded ? (
               <button
                 type="button"
                 onClick={onRefresh}
