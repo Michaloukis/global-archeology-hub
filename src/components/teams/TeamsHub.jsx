@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { useUserRole } from '../../contexts/UserRoleContext'
 import TeamCard from './TeamCard'
 import ApplyForm from './ApplyForm'
+import { createTeam, searchTeams, applyToTeam } from '../../services/teamsApi'
 
 function Modal({ title, open, onClose, children, wide }) {
   if (!open) return null
@@ -58,20 +59,40 @@ function IconSearch() {
   )
 }
 
-export default function TeamsHub({ profile, teams, onOpenTeam, onCreateTeam }) {
+export default function TeamsHub({ profile, teams, loading, onRefresh, onOpenTeam, api }) {
   const { isDirector, isFieldArchaeologist } = useUserRole()
   const [createOpen, setCreateOpen] = useState(false)
   const [joinOpen, setJoinOpen] = useState(false)
   const [createName, setCreateName] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
 
   const [joinQuery, setJoinQuery] = useState('')
-  const filteredTeams = useMemo(() => {
-    const q = joinQuery.trim().toLowerCase()
-    if (!q) return teams
-    return teams.filter((t) => (t?.name || '').toLowerCase().includes(q) || (t?.region || '').toLowerCase().includes(q))
-  }, [teams, joinQuery])
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
 
   const [applyTeam, setApplyTeam] = useState(null)
+  const effectiveApi = api || { createTeam, searchTeams, applyToTeam }
+
+  const runSearch = async (q) => {
+    setSearchLoading(true)
+    setActionError('')
+    try {
+      const rows = await effectiveApi.searchTeams({ query: q })
+      setSearchResults(Array.isArray(rows) ? rows : [])
+    } catch (e) {
+      setActionError(e?.message || 'Failed to search teams')
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  const joinList = useMemo(() => {
+    const q = joinQuery.trim().toLowerCase()
+    const base = q ? searchResults : (teams || [])
+    if (!q) return base
+    return (base || []).filter((t) => (t?.name || '').toLowerCase().includes(q) || (t?.region || '').toLowerCase().includes(q))
+  }, [joinQuery, searchResults, teams])
 
   return (
     <div className="relative">
@@ -90,9 +111,33 @@ export default function TeamsHub({ profile, teams, onOpenTeam, onCreateTeam }) {
       </div>
 
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {(teams || []).map((team) => (
-          <TeamCard key={team.id} team={team} onClick={() => onOpenTeam?.(team.id)} />
-        ))}
+        {loading ? (
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="aspect-square rounded-2xl border border-ink/10 bg-white/40 animate-pulse" />
+          ))
+        ) : (teams || []).length === 0 ? (
+          <div className="col-span-full rounded-2xl border border-ink/10 bg-white/60 p-6">
+            <p className="text-sm font-semibold text-ink">No teams yet</p>
+            <p className="text-xs text-ink/60 mt-1">
+              {isDirector
+                ? 'Create your first team to begin inviting archaeologists.'
+                : 'Find teams to join, or ask a Director for an invitation.'}
+            </p>
+            {onRefresh ? (
+              <button
+                type="button"
+                onClick={onRefresh}
+                className="mt-3 rounded-xl border border-ink/15 bg-white/70 px-4 py-2 text-xs font-semibold text-ink hover:bg-white"
+              >
+                Refresh
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          (teams || []).map((team) => (
+            <TeamCard key={team.id} team={team} onClick={() => onOpenTeam?.(team.id)} />
+          ))
+        )}
       </div>
 
       {isDirector ? (
@@ -112,6 +157,11 @@ export default function TeamsHub({ profile, teams, onOpenTeam, onCreateTeam }) {
 
       <Modal title="Create New Team" open={createOpen} onClose={() => setCreateOpen(false)}>
         <div className="space-y-4">
+          {actionError ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+              <p className="text-xs font-semibold text-amber-900">{actionError}</p>
+            </div>
+          ) : null}
           <div>
             <label className="text-xs font-semibold text-ink">Team name</label>
             <input
@@ -134,15 +184,30 @@ export default function TeamsHub({ profile, teams, onOpenTeam, onCreateTeam }) {
             <button
               type="button"
               onClick={() => {
-                const name = createName.trim()
-                if (!name) return
-                onCreateTeam?.(name)
-                setCreateName('')
-                setCreateOpen(false)
+                ;(async () => {
+                  const name = createName.trim()
+                  if (!name) return
+                  setActionLoading(true)
+                  setActionError('')
+                  try {
+                    const userId = profile?.id
+                    if (!userId) throw new Error('Missing user id')
+                    const created = await effectiveApi.createTeam({ name, directorUserId: userId })
+                    setCreateName('')
+                    setCreateOpen(false)
+                    onRefresh?.()
+                    if (created?.id) onOpenTeam?.(created.id)
+                  } catch (e) {
+                    setActionError(e?.message || 'Failed to create team')
+                  } finally {
+                    setActionLoading(false)
+                  }
+                })()
               }}
-              className="rounded-xl border border-ink/20 bg-ink text-white px-4 py-2.5 text-sm font-semibold hover:bg-ink/90"
+              disabled={actionLoading}
+              className="rounded-xl border border-ink/20 bg-ink text-white px-4 py-2.5 text-sm font-semibold hover:bg-ink/90 disabled:opacity-60"
             >
-              Create team
+              {actionLoading ? 'Creating…' : 'Create team'}
             </button>
           </div>
         </div>
@@ -151,20 +216,31 @@ export default function TeamsHub({ profile, teams, onOpenTeam, onCreateTeam }) {
       <Modal title="Find & Join Teams" open={joinOpen} onClose={() => { setJoinOpen(false); setApplyTeam(null) }} wide>
         {!applyTeam ? (
           <div className="space-y-4">
+            {actionError ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+                <p className="text-xs font-semibold text-amber-900">{actionError}</p>
+              </div>
+            ) : null}
             <div className="flex items-center gap-2">
               <input
                 value={joinQuery}
-                onChange={(e) => setJoinQuery(e.target.value)}
+                onChange={(e) => {
+                  const q = e.target.value
+                  setJoinQuery(q)
+                  const trimmed = q.trim()
+                  if (trimmed.length >= 2) runSearch(trimmed)
+                  if (trimmed.length === 0) setSearchResults([])
+                }}
                 placeholder="Search teams by name or region…"
                 className="flex-1 rounded-xl border border-ink/15 bg-white/80 px-3 py-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-ink/20"
               />
               <span className="text-xs font-semibold text-ink/60 bg-white/60 border border-ink/10 px-2 py-2.5 rounded-xl">
-                {filteredTeams.length}
+                {searchLoading ? '…' : joinList.length}
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredTeams.map((t) => (
+              {joinList.map((t) => (
                 <div key={t.id} className="rounded-2xl border border-ink/10 bg-white/70 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -203,9 +279,20 @@ export default function TeamsHub({ profile, teams, onOpenTeam, onCreateTeam }) {
             teamName={applyTeam.name}
             initialValues={{ fullName: profile?.full_name || '', email: profile?.email || '' }}
             onCancel={() => setApplyTeam(null)}
-            onSubmit={() => {
-              setApplyTeam(null)
-              setJoinOpen(false)
+            onSubmit={async (values) => {
+              setActionLoading(true)
+              setActionError('')
+              try {
+                const userId = profile?.id
+                if (!userId) throw new Error('Missing user id')
+                await effectiveApi.applyToTeam({ teamId: applyTeam.id, userId, payload: values })
+                setApplyTeam(null)
+                setJoinOpen(false)
+              } catch (e) {
+                setActionError(e?.message || 'Failed to submit application')
+              } finally {
+                setActionLoading(false)
+              }
             }}
           />
         )}

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { useUserRole } from '../../contexts/UserRoleContext'
 import InviteForm from './InviteForm'
 import RoleManager from './RoleManager'
+import { inviteToTeam } from '../../services/teamsApi'
 
 const SECTIONS = [
   { id: 'overview', label: 'Dashboard' },
@@ -144,37 +145,19 @@ function FieldWidgets({ tasks, messages }) {
   )
 }
 
-export default function TeamDashboard({ team, profile, onBack }) {
+export default function TeamDashboard({ team, profile, onBack, onTeamUpdated, api }) {
   const { isDirector, isFieldArchaeologist } = useUserRole()
   const [section, setSection] = useState('overview')
   const [settingsTab, setSettingsTab] = useState('roles')
+  const [actionError, setActionError] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const effectiveApi = api || { inviteToTeam }
 
-  const members = useMemo(
-    () => [
-      { id: 'm1', name: profile?.full_name || 'You' },
-      { id: 'm2', name: 'Dr. Sarah Chen' },
-      { id: 'm3', name: 'Prof. James Morrison' },
-      { id: 'm4', name: 'Amina El-Sayed' },
-    ],
-    [profile],
-  )
-
-  const fieldTasks = useMemo(
-    () => [
-      { id: 'ft1', title: 'Photograph locus 12 (north profile)', due: 'Today' },
-      { id: 'ft2', title: 'Enter ceramic diagnostics (bag 3–7)', due: 'Tomorrow' },
-      { id: 'ft3', title: 'Draft field log summary', due: 'Fri' },
-    ],
-    [],
-  )
-
-  const recentMessages = useMemo(
-    () => [
-      { id: 'rm1', from: 'Trench Lead', text: 'Please confirm the context sheet format for Unit B before lunch.', time: '18m ago' },
-      { id: 'rm2', from: 'Finds Tent', text: 'We’re missing bag numbers for two sherd lots; can you check your notes?', time: '2h ago' },
-    ],
-    [],
-  )
+  // Live data for tasks/messages/members depends on your schema.
+  // This dashboard now renders empty states instead of mock content until wired to your tables.
+  const members = useMemo(() => [{ id: profile?.id || 'me', name: profile?.full_name || profile?.email || 'You' }], [profile])
+  const fieldTasks = useMemo(() => [], [])
+  const recentMessages = useMemo(() => [], [])
 
   return (
     <div className="flex flex-col md:flex-row gap-4 min-h-[70vh]">
@@ -269,7 +252,37 @@ export default function TeamDashboard({ team, profile, onBack }) {
               ) : settingsTab === 'roles' ? (
                 <RoleManager team={team} members={members} />
               ) : (
-                <InviteForm teamName={team?.name} onSubmit={() => {}} />
+                <div className="space-y-4">
+                  {actionError ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+                      <p className="text-xs font-semibold text-amber-900">{actionError}</p>
+                    </div>
+                  ) : null}
+                  <InviteForm
+                    teamName={team?.name}
+                    onSubmit={async (values) => {
+                      setActionLoading(true)
+                      setActionError('')
+                      try {
+                        const userId = profile?.id
+                        if (!userId) throw new Error('Missing user id')
+                        await effectiveApi.inviteToTeam({
+                          teamId: team?.id,
+                          directorUserId: userId,
+                          targetUser: values?.targetUser,
+                          proposedRole: values?.proposedRole,
+                          expectations: values?.expectations,
+                        })
+                        onTeamUpdated?.()
+                      } catch (e) {
+                        setActionError(e?.message || 'Failed to send invite')
+                      } finally {
+                        setActionLoading(false)
+                      }
+                    }}
+                  />
+                  {actionLoading ? <p className="text-xs text-ink/60">Sending…</p> : null}
+                </div>
               )}
             </div>
           </div>
