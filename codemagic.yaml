@@ -13,15 +13,15 @@ workflows:
       # android_signing:
       #   - your_keystore_reference
     scripts:
-      - name: Set Android SDK location
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/mobile/android/local.properties"
       - name: Install npm dependencies
         script: |
           cd mobile && npm ci
       - name: Run Expo prebuild
         script: |
           cd mobile && npx expo prebuild --no-install
+      - name: Set Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/mobile/android/local.properties"
       - name: Build Android APK (release)
         script: |
           cd mobile/android && ./gradlew assembleRelease
