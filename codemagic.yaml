@@ -29,7 +29,8 @@ workflows:
       - mobile/android/app/build/outputs/**/*.apk
     publishing:
       email:
-        recipients: []
+        recipients:
+          - alexandrosmenelaou203@gmail.com  # Replace with your email for build notifications
         notify:
           success: true
           failure: true
@@ -70,7 +71,8 @@ workflows:
       - build/ios/ipa/*.ipa
     publishing:
       email:
-        recipients: []
+        recipients:
+          - alexandrosmenelaou203@gmail.com  # Replace with your email for build notifications
         notify:
           success: true
           failure: true

@@ -55,6 +55,13 @@ Preview the production build:
 npm run preview
 ```
 
+## Mobile app (Android / iOS)
+
+The **native app** lives in **`mobile/`** (Expo / React Native). Builds are run with **[Codemagic](https://codemagic.io)** using the root **`codemagic.yaml`**.
+
+- Add the repo in Codemagic and run the **Android (APK)** or **iOS (IPA)** workflow to get installable artifacts.
+- See **[mobile/README.md](mobile/README.md)** for running locally, SDK setup, and signing options.
+
 ## Project Structure
 
 ```
