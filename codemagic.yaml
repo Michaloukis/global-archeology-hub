@@ -1,0 +1,76 @@
+# Codemagic CI/CD for Global Archaeology Hub (Expo app in mobile/)
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-react-native-app/
+
+workflows:
+  android-global-archeology-hub:
+    name: Android (APK)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      vars:
+        PACKAGE_NAME: "com.alexmen203.globalarcheologyhub"
+      # Optional: add Android code signing (upload keystore in Codemagic UI first)
+      # android_signing:
+      #   - your_keystore_reference
+    scripts:
+      - name: Set Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/mobile/android/local.properties"
+      - name: Install npm dependencies
+        script: |
+          cd mobile && npm ci
+      - name: Run Expo prebuild
+        script: |
+          cd mobile && npx expo prebuild --no-install
+      - name: Build Android APK (release)
+        script: |
+          cd mobile/android && ./gradlew assembleRelease
+    artifacts:
+      - mobile/android/app/build/outputs/**/*.apk
+    publishing:
+      email:
+        recipients: []
+        notify:
+          success: true
+          failure: true
+
+  ios-global-archeology-hub:
+    name: iOS (IPA)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      vars:
+        BUNDLE_ID: "com.alexmen203.globalarcheologyhub"
+        XCODE_WORKSPACE: "global-archeology-hub.xcworkspace"
+        XCODE_SCHEME: "global-archeology-hub"
+      # Optional: add iOS code signing in Codemagic UI (App Store Connect API key, distribution cert)
+      # ios_signing:
+      #   distribution_type: app_store
+      #   bundle_identifier: com.alexmen203.globalarcheologyhub
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          cd mobile && npm ci
+      - name: Run Expo prebuild
+        script: |
+          cd mobile && npx expo prebuild --no-install
+      - name: Set Info.plist (export compliance)
+        script: |
+          PLIST="$CM_BUILD_DIR/mobile/ios/global-archeology-hub/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" $PLIST 2>/dev/null || true
+      - name: Install CocoaPods
+        script: |
+          cd mobile/ios && pod install
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/mobile/ios/$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients: []
+        notify:
+          success: true
+          failure: true
