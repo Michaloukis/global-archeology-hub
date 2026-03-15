@@ -64,9 +64,10 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
   const [ceramicSessionLabel, setCeramicSessionLabel] = useState('');
   const [ceramicDimensionLength, setCeramicDimensionLength] = useState('');
   const [ceramicDimensionWidth, setCeramicDimensionWidth] = useState('');
-  const [currentSessionPieces, setCurrentSessionPieces] = useState([]); // { lat, lng, createdAt } per click
+  const [currentSessionPieces, setCurrentSessionPieces] = useState([]); // { id, lat, lng, createdAt, description? } per click
   const [ceramicGeoError, setCeramicGeoError] = useState('');
   const [ceramicSessions, setCeramicSessions] = useState([]); // { id, label, count, createdAt, lengthM?, widthM?, pieces? }
+  const [expandedCeramicSessionId, setExpandedCeramicSessionId] = useState(null);
 
   // Social Hub panels: 'chat' | 'forum' | 'events' | null
   const [socialHubPanel, setSocialHubPanel] = useState(null);
@@ -464,26 +465,33 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
     } catch (_) {}
   };
 
+  const pieceId = () => 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+
   const handleCeramicAddOne = () => {
     setCeramicGeoError('');
+    const id = pieceId();
     const createdAt = new Date().toISOString();
     if (!navigator.geolocation) {
-      setCurrentSessionPieces(p => [...p, { lat: null, lng: null, createdAt }]);
+      setCurrentSessionPieces(p => [...p, { id, lat: null, lng: null, createdAt, description: '' }]);
       setCeramicCount(c => c + 1);
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setCurrentSessionPieces(p => [...p, { lat: pos.coords.latitude, lng: pos.coords.longitude, createdAt }]);
+        setCurrentSessionPieces(p => [...p, { id, lat: pos.coords.latitude, lng: pos.coords.longitude, createdAt, description: '' }]);
         setCeramicCount(c => c + 1);
       },
       () => {
         setCeramicGeoError('Location denied or unavailable');
-        setCurrentSessionPieces(p => [...p, { lat: null, lng: null, createdAt }]);
+        setCurrentSessionPieces(p => [...p, { id, lat: null, lng: null, createdAt, description: '' }]);
         setCeramicCount(c => c + 1);
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
+  };
+
+  const updatePieceDescription = (pieceId, description) => {
+    setCurrentSessionPieces(prev => prev.map(p => p.id === pieceId ? { ...p, description: description ?? '' } : p));
   };
 
   const handleSaveCeramicSession = () => {
@@ -519,6 +527,40 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
     const next = ceramicSessions.filter(s => s.id !== id);
     setCeramicSessions(next);
     persistCeramicSessions(next);
+  };
+
+  const escapeCsv = (v) => {
+    const s = String(v == null ? '' : v);
+    if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+
+  const handleExportCeramicSession = (session) => {
+    const rows = [];
+    rows.push(['Session', session.label, '', '', '']);
+    rows.push(['Saved at', new Date(session.createdAt).toLocaleString(), '', '', '']);
+    rows.push(['Count', session.count, 'Length (m)', session.lengthM ?? '', 'Width (m)', session.widthM ?? '']);
+    rows.push([]);
+    rows.push(['Piece #', 'Lat', 'Lng', 'Description', 'Created at']);
+    (session.pieces || []).forEach((p, i) => {
+      rows.push([
+        i + 1,
+        p.lat != null ? p.lat : '',
+        p.lng != null ? p.lng : '',
+        p.description ?? '',
+        p.createdAt ? new Date(p.createdAt).toLocaleString() : ''
+      ]);
+    });
+    const csv = rows.map(row => row.map(escapeCsv).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeLabel = (session.label || 'session').replace(/[^\w\s-]/g, '').replace(/\s+/g, '_').slice(0, 40);
+    const date = new Date(session.createdAt).toISOString().slice(0, 10);
+    a.download = `ceramic_session_${safeLabel}_${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const persistNotes = (notes) => {
@@ -782,6 +824,28 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
                 </div>
                 {ceramicGeoError && <p className="text-xs text-rose-600">{ceramicGeoError}</p>}
               </div>
+              {currentSessionPieces.length > 0 && (
+                <div className="space-y-2 mb-4 border-t border-ink/20 pt-3">
+                  <p className="text-xs font-medium text-ink/70">Pieces in this session — add notes or description</p>
+                  <ul className="space-y-2 max-h-48 overflow-y-auto">
+                    {currentSessionPieces.map((p, i) => (
+                      <li key={p.id || i} className="rounded-xl border border-ink/15 bg-white/70 p-2.5">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-[10px] font-semibold text-ink/70">#{i + 1}</span>
+                          {p.lat != null && <span className="text-[9px] text-amber-700">GPS</span>}
+                        </div>
+                        <input
+                          type="text"
+                          value={p.description ?? ''}
+                          onChange={(e) => updatePieceDescription(p.id, e.target.value)}
+                          placeholder="Notes or description (optional)"
+                          className="w-full rounded-lg border border-ink/15 p-2 text-xs text-ink placeholder-ink/40 outline-none focus:ring-1 focus:ring-ink/20"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="space-y-2 mb-3">
                 <label className="text-xs font-medium text-ink/70 block">Site dimensions (optional)</label>
                 <div className="flex gap-2">
@@ -800,18 +864,38 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
                   <p className="text-xs text-ink/50">No sessions yet.</p>
                 ) : (
                   <ul className="space-y-2">
-                    {ceramicSessions.map(s => (
-                      <li key={s.id} className="rounded-xl border border-ink/20 p-3 bg-white shadow-[0_2px_8px_rgba(44,40,37,0.06)] flex justify-between items-center gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-ink truncate">{s.label}</p>
-                          <p className="text-xs text-ink/50">{s.count} pcs · {new Date(s.createdAt).toLocaleString()}</p>
-                        </div>
-                        <div className="flex gap-1.5 shrink-0">
-                          <button type="button" onClick={() => handleUseCeramicSessionCount(s.count)} className="text-xs font-medium rounded-lg border border-ink/20 px-2.5 py-1 text-ink hover:bg-ink/5">Use</button>
-                          <button type="button" onClick={() => handleDeleteCeramicSession(s.id)} className="text-xs font-medium rounded-lg border border-rose-500 text-rose-600 px-2.5 py-1 hover:bg-rose-50">Del</button>
-                        </div>
-                      </li>
-                    ))}
+                    {ceramicSessions.map(s => {
+                      const withNotes = (s.pieces || []).filter(p => (p.description || '').trim()).length;
+                      const isExpanded = expandedCeramicSessionId === s.id;
+                      return (
+                        <li key={s.id} className="rounded-xl border border-ink/20 p-3 bg-white shadow-[0_2px_8px_rgba(44,40,37,0.06)]">
+                          <div className="flex justify-between items-center gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-ink truncate">{s.label}</p>
+                              <p className="text-xs text-ink/50">{s.count} pcs{withNotes > 0 && ` · ${withNotes} with notes`} · {new Date(s.createdAt).toLocaleString()}</p>
+                            </div>
+                            <div className="flex gap-1.5 shrink-0 items-center flex-wrap justify-end">
+                              {s.pieces?.length > 0 && (
+                                <button type="button" onClick={() => setExpandedCeramicSessionId(isExpanded ? null : s.id)} className="text-xs font-medium rounded-lg border border-ink/20 px-2.5 py-1 text-ink hover:bg-ink/5">{isExpanded ? 'Hide' : 'Notes'}</button>
+                              )}
+                              <button type="button" onClick={() => handleExportCeramicSession(s)} className="text-xs font-medium rounded-lg border border-emerald-600/50 text-emerald-700 px-2.5 py-1 hover:bg-emerald-50" title="Export to Excel (CSV)">Export</button>
+                              <button type="button" onClick={() => handleUseCeramicSessionCount(s.count)} className="text-xs font-medium rounded-lg border border-ink/20 px-2.5 py-1 text-ink hover:bg-ink/5">Use</button>
+                              <button type="button" onClick={() => handleDeleteCeramicSession(s.id)} className="text-xs font-medium rounded-lg border border-rose-500 text-rose-600 px-2.5 py-1 hover:bg-rose-50">Del</button>
+                            </div>
+                          </div>
+                          {isExpanded && s.pieces?.length > 0 && (
+                            <ul className="mt-2 pt-2 border-t border-ink/10 space-y-1.5 max-h-32 overflow-y-auto">
+                              {s.pieces.map((p, i) => (
+                                <li key={p.id || i} className="text-xs">
+                                  <span className="font-medium text-ink/70">#{i + 1}</span>
+                                  {(p.description || '').trim() ? <span className="text-ink ml-1">{p.description}</span> : <span className="text-ink/40 italic ml-1">—</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -1400,6 +1484,28 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
             {currentSessionPieces.length > 0 && <p className="text-xs text-amber-700">{currentSessionPieces.filter(p => p.lat != null).length}/{currentSessionPieces.length} with location</p>}
             {ceramicGeoError && <p className="text-xs text-rose-600">{ceramicGeoError}</p>}
           </div>
+          {currentSessionPieces.length > 0 && (
+            <div className="space-y-2 mb-4 border-t border-ink/20 pt-3">
+              <p className="text-xs font-medium text-ink/70">Pieces in this session — add notes or description</p>
+              <ul className="space-y-2 max-h-40 overflow-y-auto">
+                {currentSessionPieces.map((p, i) => (
+                  <li key={p.id || i} className="rounded-xl border border-ink/15 bg-white/70 p-2.5">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[10px] font-semibold text-ink/70">#{i + 1}</span>
+                      {p.lat != null && <span className="text-[9px] text-amber-700">GPS</span>}
+                    </div>
+                    <input
+                      type="text"
+                      value={p.description ?? ''}
+                      onChange={(e) => updatePieceDescription(p.id, e.target.value)}
+                      placeholder="Notes or description (optional)"
+                      className="w-full rounded-lg border border-ink/15 p-2 text-xs text-ink placeholder-ink/40 outline-none focus:ring-1 focus:ring-ink/20"
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="space-y-2 mb-3">
             <label className="text-xs font-medium text-ink/70 block">Site dimensions (optional)</label>
             <div className="flex gap-2">
@@ -1418,22 +1524,42 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
               <p className="text-xs text-ink/50">No sessions yet. Count and save above.</p>
             ) : (
               <ul className="space-y-2 overflow-y-auto max-h-48">
-                {ceramicSessions.map(s => (
-                  <li key={s.id} className="rounded-xl border border-ink/20 p-3 bg-white shadow-[0_2px_8px_rgba(44,40,37,0.06)] flex justify-between items-center gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink truncate">{s.label}</p>
-                      <p className="text-xs text-ink/50">{s.count} pcs{(s.lengthM != null || s.widthM != null) && ` · ${s.lengthM ?? '?'}×${s.widthM ?? '?'} m`}{s.pieces?.length > 0 && ` · ${s.pieces.filter(p => p.lat != null).length} locations`} · {new Date(s.createdAt).toLocaleString()}</p>
-                    </div>
-                    <div className="flex gap-1.5 shrink-0">
-                      <button type="button" onClick={() => handleUseCeramicSessionCount(s.count)} className="text-xs font-medium rounded-lg border border-ink/20 px-2.5 py-1 text-ink hover:bg-ink/5">Use</button>
-                      <button type="button" onClick={() => handleDeleteCeramicSession(s.id)} className="text-xs font-medium rounded-lg border border-rose-500 text-rose-600 px-2.5 py-1 hover:bg-rose-50">Del</button>
-                    </div>
-                  </li>
-                ))}
+                {ceramicSessions.map(s => {
+                  const withNotes = (s.pieces || []).filter(p => (p.description || '').trim()).length;
+                  const isExpanded = expandedCeramicSessionId === s.id;
+                  return (
+                    <li key={s.id} className="rounded-xl border border-ink/20 p-3 bg-white shadow-[0_2px_8px_rgba(44,40,37,0.06)]">
+                      <div className="flex justify-between items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-ink truncate">{s.label}</p>
+                          <p className="text-xs text-ink/50">{s.count} pcs{(s.lengthM != null || s.widthM != null) && ` · ${s.lengthM ?? '?'}×${s.widthM ?? '?'} m`}{s.pieces?.length > 0 && ` · ${s.pieces.filter(p => p.lat != null).length} locations`}{withNotes > 0 && ` · ${withNotes} with notes`} · {new Date(s.createdAt).toLocaleString()}</p>
+                        </div>
+                        <div className="flex gap-1.5 shrink-0 items-center flex-wrap justify-end">
+                          {s.pieces?.length > 0 && (
+                            <button type="button" onClick={() => setExpandedCeramicSessionId(isExpanded ? null : s.id)} className="text-xs font-medium rounded-lg border border-ink/20 px-2.5 py-1 text-ink hover:bg-ink/5">{isExpanded ? 'Hide' : 'Notes'}</button>
+                          )}
+                          <button type="button" onClick={() => handleExportCeramicSession(s)} className="text-xs font-medium rounded-lg border border-emerald-600/50 text-emerald-700 px-2.5 py-1 hover:bg-emerald-50" title="Export to Excel (CSV)">Export</button>
+                          <button type="button" onClick={() => handleUseCeramicSessionCount(s.count)} className="text-xs font-medium rounded-lg border border-ink/20 px-2.5 py-1 text-ink hover:bg-ink/5">Use</button>
+                          <button type="button" onClick={() => handleDeleteCeramicSession(s.id)} className="text-xs font-medium rounded-lg border border-rose-500 text-rose-600 px-2.5 py-1 hover:bg-rose-50">Del</button>
+                        </div>
+                      </div>
+                      {isExpanded && s.pieces?.length > 0 && (
+                        <ul className="mt-2 pt-2 border-t border-ink/10 space-y-1.5 max-h-28 overflow-y-auto">
+                          {s.pieces.map((p, i) => (
+                            <li key={p.id || i} className="text-xs">
+                              <span className="font-medium text-ink/70">#{i + 1}</span>
+                              {(p.description || '').trim() ? <span className="text-ink ml-1">{p.description}</span> : <span className="text-ink/40 italic ml-1">—</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
-          <p className="text-xs text-ink/50 mt-3 text-center">Use → opens Register New Expedition with this count.</p>
+          <p className="text-xs text-ink/50 mt-3 text-center">Export → CSV (opens in Excel). Use → opens Register New Expedition with this count.</p>
         </div>
       )}
 
