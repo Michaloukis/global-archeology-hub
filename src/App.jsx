@@ -18,6 +18,8 @@ import ArchivesPage from './pages/ArchivesPage.jsx'
 import StatisticsPage from './pages/StatisticsPage.jsx'
 import SocialActivityWidget from './components/SocialActivityWidget'
 import TeamWidget from './components/TeamWidget'
+import CoursesWidget from './components/CoursesWidget'
+import NotepadWidget from './components/NotepadWidget'
 import SiteProgressDashboardWidget from './components/SiteProgressDashboardWidget.jsx'
 import RecentFieldLogsWidget from './components/RecentFieldLogsWidget.jsx'
 import { isArcheologist as isArcheologistRole } from './utils/roles'
@@ -267,7 +269,9 @@ const NavIcon = ({ name, className = 'w-5 h-5' }) => {
 };
 
 const WIDGET_IDS = ['minimap', 'quickstats', 'site-progress', 'recent-logs', 'archbot', 'global-events', 'social-activity', 'teams']
-const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', 'site-progress': 'Site Progress', 'recent-logs': 'Recent Logs', archbot: 'ArchBot', 'global-events': 'Global Events', 'social-activity': 'Social Activity', teams: 'Teams' }
+const ARCHAEOLOGIST_ONLY_WIDGET_IDS = ['site-progress', 'recent-logs']
+const STUDENT_WIDGET_IDS = WIDGET_IDS.filter((id) => !ARCHAEOLOGIST_ONLY_WIDGET_IDS.includes(id)).concat(['courses', 'notepad'])
+const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', 'site-progress': 'Site Progress', 'recent-logs': 'Recent Logs', archbot: 'ArchBot', 'global-events': 'Global Events', 'social-activity': 'Social Activity', teams: 'Teams', courses: 'Courses', notepad: 'Notepad' }
 const WIDGET_SIZES = ['small', 'medium', 'large']
 const SIZE_CLASS = { small: 'h-[100px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
 const SIZE_CLASS_CONTENT = { small: 'min-h-[120px]', medium: 'min-h-[180px]', large: 'min-h-[260px]' }
@@ -286,16 +290,19 @@ function snapToGrid(value, step, min, max) {
 }
 
 const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'site-progress'], ['recent-logs', 'archbot'], ['global-events', 'social-activity', 'teams']]
+const STUDENT_DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'archbot'], ['courses', 'notepad'], ['global-events', 'social-activity', 'teams']]
 
-function getDefaultWidgetPreferences() {
-  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity', 'site-progress', 'recent-logs', 'teams'].includes(id) ? 'large' : 'medium')
+function getDefaultWidgetPreferences(isStudent = false) {
+  const ids = isStudent ? STUDENT_WIDGET_IDS : WIDGET_IDS
+  const defaultLayout = isStudent ? STUDENT_DEFAULT_LAYOUT : DEFAULT_LAYOUT
+  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity', 'site-progress', 'recent-logs', 'teams', 'courses', 'notepad'].includes(id) ? 'large' : 'medium')
   return {
-    visible: Object.fromEntries(WIDGET_IDS.map(id => [id, true])),
-    size: Object.fromEntries(WIDGET_IDS.map(id => [id, defaultSize(id)])),
+    visible: Object.fromEntries(ids.map(id => [id, true])),
+    size: Object.fromEntries(ids.map(id => [id, defaultSize(id)])),
     customHeight: {},
     customWidth: {},
     lockToGrid: true,
-    layout: DEFAULT_LAYOUT.map(row => [...row])
+    layout: defaultLayout.map(row => [...row])
   }
 }
 
@@ -304,19 +311,21 @@ function orderToLayout(order) {
   return order.map(id => [id])
 }
 
-function loadWidgetPreferences() {
+function loadWidgetPreferences(isStudent = false) {
+  const storageKey = isStudent ? 'global-archeology-dashboard-widgets-student' : 'global-archeology-dashboard-widgets'
+  const widgetIds = isStudent ? STUDENT_WIDGET_IDS : WIDGET_IDS
   try {
-    const raw = localStorage.getItem('global-archeology-dashboard-widgets')
-    if (!raw) return getDefaultWidgetPreferences()
+    const raw = localStorage.getItem(storageKey)
+    if (!raw) return getDefaultWidgetPreferences(isStudent)
     const parsed = JSON.parse(raw)
-    const def = getDefaultWidgetPreferences()
+    const def = getDefaultWidgetPreferences(isStudent)
     let layout = def.layout
     if (Array.isArray(parsed.layout) && parsed.layout.length > 0) {
-      layout = parsed.layout.map(row => Array.isArray(row) ? row.filter(id => WIDGET_IDS.includes(id)) : []).filter(row => row.length > 0)
+      layout = parsed.layout.map(row => Array.isArray(row) ? row.filter(id => widgetIds.includes(id)) : []).filter(row => row.length > 0)
       const used = new Set(layout.flat())
-      WIDGET_IDS.filter(id => !used.has(id)).forEach(id => layout.push([id]))
+      widgetIds.filter(id => !used.has(id)).forEach(id => layout.push([id]))
     } else if (Array.isArray(parsed.order) && parsed.order.length > 0) {
-      layout = orderToLayout(WIDGET_IDS.filter(id => parsed.order.includes(id)).concat(WIDGET_IDS.filter(id => !parsed.order.includes(id))))
+      layout = orderToLayout(widgetIds.filter(id => parsed.order.includes(id)).concat(widgetIds.filter(id => !parsed.order.includes(id))), widgetIds)
     }
     return {
       visible: { ...def.visible, ...(parsed.visible || {}) },
@@ -327,13 +336,14 @@ function loadWidgetPreferences() {
       layout
     }
   } catch (_) {
-    return getDefaultWidgetPreferences()
+    return getDefaultWidgetPreferences(isStudent)
   }
 }
 
-function saveWidgetPreferences(prefs) {
+function saveWidgetPreferences(prefs, isStudent = false) {
   try {
-    localStorage.setItem('global-archeology-dashboard-widgets', JSON.stringify(prefs))
+    const storageKey = isStudent ? 'global-archeology-dashboard-widgets-student' : 'global-archeology-dashboard-widgets'
+    localStorage.setItem(storageKey, JSON.stringify(prefs))
   } catch (_) {}
 }
 
@@ -345,7 +355,9 @@ const WIDGET_ICONS = {
   archbot: 'user',
   'global-events': 'bell',
   'social-activity': 'social',
-  teams: 'users'
+  teams: 'users',
+  courses: 'document',
+  notepad: 'document'
 }
 
 function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, onResize, onResizeWidth, onRemove, onDragHandleStart, onDragHandleEnd, sizeKey, sizeClassMap, contentClassMap, noPadding, children }) {
@@ -461,18 +473,20 @@ function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, 
   )
 }
 
-const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPreferences, setWidgetPreferences }) => {
+const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, onOpenEduLab, widgetPreferences, setWidgetPreferences, isStudent = false }) => {
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [galleryDragId, setGalleryDragId] = useState(null)
   const [saveFeedback, setSaveFeedback] = useState(false)
   const undoSnapshotRef = useRef(null)
-  const visible = widgetPreferences?.visible ?? getDefaultWidgetPreferences().visible
-  const size = widgetPreferences?.size ?? getDefaultWidgetPreferences().size
+  const widgetIds = isStudent ? STUDENT_WIDGET_IDS : WIDGET_IDS
+  const defaultPrefs = getDefaultWidgetPreferences(isStudent)
+  const visible = widgetPreferences?.visible ?? defaultPrefs.visible
+  const size = widgetPreferences?.size ?? defaultPrefs.size
   const customHeight = widgetPreferences?.customHeight ?? {}
   const customWidth = widgetPreferences?.customWidth ?? {}
   const lockToGrid = widgetPreferences?.lockToGrid !== false
 
-  const layout = widgetPreferences?.layout ?? getDefaultWidgetPreferences().layout
+  const layout = widgetPreferences?.layout ?? defaultPrefs.layout
   const [dropTarget, setDropTarget] = useState(null)
   const dropTargetRef = useRef(null)
   const [draggedWidgetId, setDraggedWidgetId] = useState(null)
@@ -480,7 +494,7 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
   const setLayout = (newLayout) => {
     setWidgetPreferences(prev => {
       const next = { ...prev, layout: newLayout }
-      saveWidgetPreferences(next)
+      saveWidgetPreferences(next, isStudent)
       return next
     })
   }
@@ -528,31 +542,32 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
 
   useEffect(() => {
     if (customizeOpen) {
+      const def = getDefaultWidgetPreferences(isStudent)
       undoSnapshotRef.current = {
-        visible: { ...(widgetPreferences?.visible ?? getDefaultWidgetPreferences().visible) },
-        size: { ...(widgetPreferences?.size ?? getDefaultWidgetPreferences().size) },
+        visible: { ...(widgetPreferences?.visible ?? def.visible) },
+        size: { ...(widgetPreferences?.size ?? def.size) },
         customHeight: { ...(widgetPreferences?.customHeight ?? {}) },
         customWidth: { ...(widgetPreferences?.customWidth ?? {}) },
         lockToGrid: widgetPreferences?.lockToGrid !== false,
-        layout: (widgetPreferences?.layout ?? getDefaultWidgetPreferences().layout).map(row => [...row])
+        layout: (widgetPreferences?.layout ?? def.layout).map(row => [...row])
       }
     }
-  }, [customizeOpen])
+  }, [customizeOpen, isStudent])
 
   const handleUndo = () => {
     if (undoSnapshotRef.current) {
       const next = { ...widgetPreferences, ...undoSnapshotRef.current }
-      saveWidgetPreferences(next)
+      saveWidgetPreferences(next, isStudent)
       setWidgetPreferences(next)
     }
   }
   const handleLoadDefaults = () => {
-    const next = getDefaultWidgetPreferences()
-    saveWidgetPreferences(next)
+    const next = getDefaultWidgetPreferences(isStudent)
+    saveWidgetPreferences(next, isStudent)
     setWidgetPreferences(next)
   }
   const handleSaveLayout = () => {
-    saveWidgetPreferences(widgetPreferences)
+    saveWidgetPreferences(widgetPreferences, isStudent)
     setSaveFeedback(true)
     setTimeout(() => setSaveFeedback(false), 2000)
   }
@@ -560,14 +575,14 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
   const setVisible = (id, value) => {
     setWidgetPreferences(prev => {
       const next = { ...prev, visible: { ...prev.visible, [id]: value } }
-      saveWidgetPreferences(next)
+      saveWidgetPreferences(next, isStudent)
       return next
     })
   }
   const setSize = (id, value) => {
     setWidgetPreferences(prev => {
       const next = { ...prev, size: { ...prev.size, [id]: value } }
-      saveWidgetPreferences(next)
+      saveWidgetPreferences(next, isStudent)
       return next
     })
   }
@@ -575,14 +590,14 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
     const snapped = lockToGrid ? snapToGrid(value, WIDGET_GRID_STEP, WIDGET_MIN_H, WIDGET_MAX_H) : Math.max(WIDGET_MIN_H, Math.min(WIDGET_MAX_H, value))
     setWidgetPreferences(prev => {
       const next = { ...prev, customHeight: { ...prev.customHeight, [id]: snapped } }
-      saveWidgetPreferences(next)
+      saveWidgetPreferences(next, isStudent)
       return next
     })
   }
   const setLockToGrid = (value) => {
     setWidgetPreferences(prev => {
       const next = { ...prev, lockToGrid: value }
-      saveWidgetPreferences(next)
+      saveWidgetPreferences(next, isStudent)
       return next
     })
   }
@@ -590,7 +605,7 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
     const snapped = lockToGrid ? snapToGrid(value, WIDGET_GRID_STEP, WIDGET_MIN_W, WIDGET_MAX_W) : Math.max(WIDGET_MIN_W, Math.min(WIDGET_MAX_W, value))
     setWidgetPreferences(prev => {
       const next = { ...prev, customWidth: { ...prev.customWidth, [id]: snapped } }
-      saveWidgetPreferences(next)
+      saveWidgetPreferences(next, isStudent)
       return next
     })
   }
@@ -602,6 +617,7 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
     setGalleryDragId(null)
   }
   const addWidgetToBottom = (id) => {
+    if (!widgetIds.includes(id)) return
     setVisible(id, true)
     setLayout([...removeWidgetFromLayout(layout, id), [id]])
   }
@@ -727,14 +743,14 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
                           editMode={customizeOpen}
                           height={customHeight[id]}
                           width={customWidth[id]}
-                          minH={id === 'archbot' ? 120 : id === 'global-events' || id === 'social-activity' || id === 'teams' ? 100 : undefined}
+                          minH={id === 'archbot' ? 120 : id === 'global-events' || id === 'social-activity' || id === 'teams' || id === 'courses' || id === 'notepad' ? 100 : undefined}
                           onResize={setCustomHeight}
                           onResizeWidth={customizeOpen ? setCustomWidth : undefined}
                           onRemove={customizeOpen ? (widgetId) => setVisible(widgetId, false) : undefined}
                           onDragHandleStart={customizeOpen ? onReorderDragStart(id) : undefined}
                           onDragHandleEnd={customizeOpen ? onReorderDragEnd : undefined}
                           sizeKey={size[id]}
-                          sizeClassMap={id === 'archbot' ? SIZE_CLASS_ARCHBOT : id === 'global-events' ? SIZE_CLASS_CONTENT : SIZE_CLASS}
+                          sizeClassMap={id === 'archbot' ? SIZE_CLASS_ARCHBOT : id === 'global-events' || id === 'courses' || id === 'notepad' ? SIZE_CLASS_CONTENT : SIZE_CLASS}
                           contentClassMap={null}
                           noPadding={id === 'archbot'}
                         >
@@ -771,6 +787,12 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
                           )}
                           {id === 'teams' && (
                             <TeamWidget profile={profile} />
+                          )}
+                          {id === 'courses' && (
+                            <CoursesWidget profile={profile} onOpenEduLab={onOpenEduLab} />
+                          )}
+                          {id === 'notepad' && (
+                            <NotepadWidget profile={profile} />
                           )}
                         </ResizableWidgetBox>
                       </div>
@@ -854,7 +876,7 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, widgetPr
           </div>
           <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-hide p-4">
             <div className="flex flex-wrap gap-3">
-              {WIDGET_IDS.map(id => (
+              {widgetIds.map(id => (
                 <button
                   key={id}
                   type="button"
@@ -890,6 +912,7 @@ function App() {
   const [journalReturnView, setJournalReturnView] = useState(null) // 'map' | 'arch' | 'archives' when journal was opened from Arch/Archives
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [widgetPreferences, setWidgetPreferences] = useState(() => loadWidgetPreferences())
+  const [studentWidgetPreferences, setStudentWidgetPreferences] = useState(() => getDefaultWidgetPreferences(true))
   const mobileMainRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
@@ -915,6 +938,10 @@ function App() {
   useEffect(() => {
     if (isTeamsRoute) setView('team')
   }, [isTeamsRoute])
+
+  useEffect(() => {
+    if (profile?.role === 'Student') setStudentWidgetPreferences(loadWidgetPreferences(true))
+  }, [profile?.role])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1118,7 +1145,16 @@ function App() {
           )}
               {!isToolRoute && !isStatisticsRoute && view === 'home' && (
                 <div className="h-full min-h-0 overflow-hidden flex flex-col">
-                  <DashboardPage searchQuery={searchQuery} profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => { try { if (chatroomId) localStorage.setItem('global-arch-social-selected-chatroom', chatroomId); } catch (_) {} setView('social'); }} widgetPreferences={widgetPreferences} setWidgetPreferences={setWidgetPreferences} />
+                  <DashboardPage
+                    searchQuery={searchQuery}
+                    profile={profile}
+                    onOpenMap={() => setView('map')}
+                    onOpenSocial={(chatroomId) => { try { if (chatroomId) localStorage.setItem('global-arch-social-selected-chatroom', chatroomId); } catch (_) {} setView('social'); }}
+                    onOpenEduLab={isStudent ? () => setView('education') : undefined}
+                    widgetPreferences={isStudent ? studentWidgetPreferences : widgetPreferences}
+                    setWidgetPreferences={isStudent ? setStudentWidgetPreferences : setWidgetPreferences}
+                    isStudent={isStudent}
+                  />
                 </div>
               )}
               {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}

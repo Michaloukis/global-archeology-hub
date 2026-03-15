@@ -265,6 +265,25 @@ function setStoredProgress(profileId, data) {
   }
 }
 
+/** Pure helper for widgets: compute course progress from stored progress object. */
+export function getCourseProgressFromStored(courseId, progressObj) {
+  const c = COURSES.find((x) => x.id === courseId);
+  if (!c) return { percent: 0, label: 'Not started' };
+  const p = progressObj[courseId] || {};
+  let steps = 0;
+  const totalModules = c.modules?.length ?? 0;
+  steps += p.completedModules?.length ?? 0;
+  if (p.testPassed) steps += 1;
+  if (p.examPassed) steps += 1;
+  const total = totalModules + 2;
+  const percent = total ? Math.round((steps / total) * 100) : 0;
+  let label = 'Not started';
+  if (steps > 0) label = steps >= total ? 'Complete' : `${percent}%`;
+  return { percent, label };
+}
+
+export { COURSES, getStoredProgress, STORAGE_KEY_NOTEPAD };
+
 export default function EducationZone({ profile, onNavigateToMap }) {
   const [view, setView] = useState('catalog'); // 'catalog' | 'course' | 'assessment' | 'certificate'
   const [selectedCourseId, setSelectedCourseId] = useState(null);
