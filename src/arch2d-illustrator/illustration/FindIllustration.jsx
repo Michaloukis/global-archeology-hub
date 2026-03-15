@@ -49,6 +49,21 @@ function buildSectionPath(exterior, interior, widthScale, heightScale) {
   return `M ${extRight} L ${intRight} Z`;
 }
 
+function pathForBandRight(profile, interior, band, widthScale, heightScale) {
+  const inBand = (y) => y >= band.fromY && y <= band.toY;
+  const outerPts = profile.filter((p) => inBand(p.y));
+  const innerPts = interior.filter((p) => inBand(p.y));
+  if (outerPts.length < 2) return '';
+  const outer = outerPts.map(
+    (p) => `${CENTER_X + p.x * widthScale * RADIUS_SCALE},${BASE_Y - scaleY(p.y, heightScale) * HEIGHT_SCALE}`
+  );
+  const inner = [...innerPts].reverse().map(
+    (p) => `${CENTER_X + p.x * widthScale * RADIUS_SCALE},${BASE_Y - scaleY(p.y, heightScale) * HEIGHT_SCALE}`
+  );
+  if (inner.length < 1) return '';
+  return `M ${outer.join(' L ')} L ${inner.join(' L ')} Z`;
+}
+
 function pathForBand(profile, band, widthScale, heightScale) {
   const inBand = (y) => y >= band.fromY && y <= band.toY;
   const leftPoints = profile
@@ -65,7 +80,10 @@ const SCALE_BAR_Y = 152;
 const SCALE_BAR_X_LEFT = 8;
 const LABEL_Y = 10;
 
-const FindIllustration = forwardRef(function FindIllustrationInner({ spec, className, scale = 1, label, scaleBar }, ref) {
+const FindIllustration = forwardRef(function FindIllustrationInner(
+  { spec, className, scale = 1, label, scaleBar, referenceImageUrl, referenceImageOpacity },
+  ref
+) {
   const widthScale = Math.max(0.25, Math.min(2, spec.widthScale ?? 1));
   const heightScale = Math.max(0.25, Math.min(2, spec.heightScale ?? 1));
   const interior = getInteriorProfile(spec.profile, spec.wallThickness);
@@ -78,6 +96,26 @@ const FindIllustration = forwardRef(function FindIllustrationInner({ spec, class
   const showLabel = label !== undefined ? label : spec.label;
   const showScaleBar = scaleBar ?? undefined;
 
+  const crop = spec.fragmentCrop;
+  const hasCrop = !!(crop && (crop.minY > 0 || crop.maxY < 1));
+  const cropClipId = `clip-crop-${spec.id}`;
+  const cropSvgYTop = hasCrop ? BASE_Y - scaleY(crop.maxY, heightScale) * HEIGHT_SCALE : RIM_Y;
+  const cropSvgYBottom = hasCrop ? BASE_Y - scaleY(crop.minY, heightScale) * HEIGHT_SCALE : BASE_Y;
+
+  function cropBreakLineAt(sy) {
+    const p = spec.profile.find((pt) => Math.abs((BASE_Y - scaleY(pt.y, heightScale) * HEIGHT_SCALE) - sy) < 8);
+    const rx = p ? p.x * widthScale * RADIUS_SCALE : RADIUS_SCALE * 0.5 * widthScale;
+    return (
+      <path
+        d={`M ${CENTER_X - rx} ${sy} Q ${CENTER_X - rx - 3} ${sy + 2} ${CENTER_X} ${sy} Q ${CENTER_X + rx + 2} ${sy - 2} ${CENTER_X + rx} ${sy}`}
+        fill="none"
+        strokeWidth={0.8}
+        stroke="#000"
+        strokeDasharray="1.5 1"
+      />
+    );
+  }
+
   return (
     <svg
       ref={ref}
@@ -88,6 +126,24 @@ const FindIllustration = forwardRef(function FindIllustrationInner({ spec, class
       style={{ overflow: 'visible' }}
     >
       <DecorationPatterns />
+      {hasCrop && (
+        <defs>
+          <clipPath id={cropClipId}>
+            <rect x={0} y={cropSvgYTop} width={WIDTH} height={cropSvgYBottom - cropSvgYTop} />
+          </clipPath>
+        </defs>
+      )}
+      {referenceImageUrl && (
+        <image
+          href={referenceImageUrl}
+          x={0}
+          y={0}
+          width={WIDTH}
+          height={HEIGHT}
+          opacity={referenceImageOpacity ?? 0.35}
+          preserveAspectRatio="xMidYMid meet"
+        />
+      )}
       {/* Label above figure */}
       {showLabel && (
         <text
@@ -101,46 +157,43 @@ const FindIllustration = forwardRef(function FindIllustrationInner({ spec, class
           {showLabel}
         </text>
       )}
-      <g stroke="#000" fill="none" strokeLinejoin="round">
-        {/* Left half: exterior */}
-        <clipPath id={`clip-left-${spec.id}`}>
-          <path d={`M ${CENTER_X} ${RIM_Y} L ${CENTER_X} ${BASE_Y} L 0 ${BASE_Y} L 0 ${RIM_Y} Z`} />
-        </clipPath>
-        <g clipPath={`url(#clip-left-${spec.id})`}>
-          <path
-            d={exteriorPath}
-            fill="#fff"
-            strokeWidth={1.2}
-            stroke="#000"
-          />
-          {spec.decorationBands.map((band, i) => {
-            const pid = patternIdForType(band.type);
-            if (!pid) return null;
-            const bandPath = pathForBand(spec.profile, band, widthScale, heightScale);
-            if (!bandPath) return null;
-            return (
-              <path
-                key={i}
-                d={bandPath}
-                fill={`url(#${pid})`}
-                stroke="none"
-              />
-            );
-          })}
-        </g>
-
-        {/* Right half: section */}
-        <clipPath id={`clip-right-${spec.id}`}>
-          <path d={`M ${CENTER_X} ${RIM_Y} L ${CENTER_X} ${BASE_Y} L ${WIDTH} ${BASE_Y} L ${WIDTH} ${RIM_Y} Z`} />
-        </clipPath>
-        <g clipPath={`url(#clip-right-${spec.id})`}>
-          <path
-            d={sectionPath}
-            fill="#fff"
-            strokeWidth={1}
-            stroke="#000"
-          />
-        </g>
+      <g stroke="#000" fill="none" strokeLinejoin="round" clipPath={hasCrop ? `url(#${cropClipId})` : undefined}>
+        {spec.singlePiece ? (
+          /* ── Single piece: right-side cross-section only, no mirror ── */
+          <>
+            <path d={sectionPath} fill="#ddd" strokeWidth={1.2} stroke="#000" />
+            {spec.decorationBands.map((band, i) => {
+              const pid = patternIdForType(band.type);
+              if (!pid) return null;
+              const bandPath = pathForBandRight(spec.profile, interior, band, widthScale, heightScale);
+              if (!bandPath) return null;
+              return <path key={i} d={bandPath} fill={`url(#${pid})`} stroke="none" />;
+            })}
+          </>
+        ) : (
+          /* ── Standard: left = exterior, right = section ── */
+          <>
+            <clipPath id={`clip-left-${spec.id}`}>
+              <path d={`M ${CENTER_X} ${RIM_Y} L ${CENTER_X} ${BASE_Y} L 0 ${BASE_Y} L 0 ${RIM_Y} Z`} />
+            </clipPath>
+            <g clipPath={`url(#clip-left-${spec.id})`}>
+              <path d={exteriorPath} fill="#fff" strokeWidth={1.2} stroke="#000" />
+              {spec.decorationBands.map((band, i) => {
+                const pid = patternIdForType(band.type);
+                if (!pid) return null;
+                const bandPath = pathForBand(spec.profile, band, widthScale, heightScale);
+                if (!bandPath) return null;
+                return <path key={i} d={bandPath} fill={`url(#${pid})`} stroke="none" />;
+              })}
+            </g>
+            <clipPath id={`clip-right-${spec.id}`}>
+              <path d={`M ${CENTER_X} ${RIM_Y} L ${CENTER_X} ${BASE_Y} L ${WIDTH} ${BASE_Y} L ${WIDTH} ${RIM_Y} Z`} />
+            </clipPath>
+            <g clipPath={`url(#clip-right-${spec.id})`}>
+              <path d={sectionPath} fill="#fff" strokeWidth={1} stroke="#000" />
+            </g>
+          </>
+        )}
 
         {/* Base detail: ring or foot */}
         {spec.baseDetail === 'ring' && (() => {
@@ -148,6 +201,16 @@ const FindIllustration = forwardRef(function FindIllustrationInner({ spec, class
           const rx = baseRx * widthScale * RADIUS_SCALE;
           const ringOut = 5;
           const ringH = 2.5;
+          if (spec.singlePiece) {
+            return (
+              <path
+                d={`M ${CENTER_X + rx} ${BASE_Y} h ${ringOut} v ${ringH} H ${CENTER_X} V ${BASE_Y} Z`}
+                fill="#ddd"
+                stroke="#000"
+                strokeWidth={1}
+              />
+            );
+          }
           return (
             <>
               <g clipPath={`url(#clip-left-${spec.id})`}>
@@ -175,6 +238,16 @@ const FindIllustration = forwardRef(function FindIllustrationInner({ spec, class
           const footH = 5;
           const footTop = rx * 0.9;
           const footBottom = rx * 0.6;
+          if (spec.singlePiece) {
+            return (
+              <path
+                d={`M ${CENTER_X + footTop} ${BASE_Y} L ${CENTER_X + footBottom} ${BASE_Y + footH} H ${CENTER_X} V ${BASE_Y} Z`}
+                fill="#ddd"
+                stroke="#000"
+                strokeWidth={1}
+              />
+            );
+          }
           return (
             <>
               <g clipPath={`url(#clip-left-${spec.id})`}>
@@ -197,17 +270,19 @@ const FindIllustration = forwardRef(function FindIllustrationInner({ spec, class
           );
         })()}
 
-        {/* Center line (bisector) */}
-        <line
-          x1={CENTER_X}
-          y1={centerLineY[0]}
-          x2={CENTER_X}
-          y2={centerLineY[1]}
-          strokeWidth={0.8}
-          stroke="#000"
-        />
+        {/* Center line (bisector) — hidden in single piece mode */}
+        {!spec.singlePiece && (
+          <line
+            x1={CENTER_X}
+            y1={centerLineY[0]}
+            x2={CENTER_X}
+            y2={centerLineY[1]}
+            strokeWidth={0.8}
+            stroke="#000"
+          />
+        )}
 
-        {/* Handles; support handles[] or legacy handle; each handle has side left/right */}
+        {/* Handles */}
         {(() => {
           const handleList = spec.handles ?? (spec.handle ? [spec.handle] : []);
           const xAt = (y) => {
@@ -233,18 +308,18 @@ const FindIllustration = forwardRef(function FindIllustrationInner({ spec, class
               : (p0y + p3y) / 2;
             const apexYFallback = h.apexY ?? (h.fromY + h.toY) / 2;
             const ctrlYFinal = h.midT != null ? ctrlY : BASE_Y - scaleY(apexYFallback, heightScale) * HEIGHT_SCALE;
-            const clipId = side === 'right' ? `clip-right-${spec.id}` : `clip-left-${spec.id}`;
             const p0 = `${CENTER_X + sign * xFrom} ${p0y}`;
             const ctrl = `${CENTER_X + sign * rOut} ${ctrlYFinal}`;
             const p3 = `${CENTER_X + sign * xTo} ${p3y}`;
+            if (spec.singlePiece) {
+              return (
+                <path key={i} d={`M ${p0} Q ${ctrl} ${p3}`} fill="none" strokeWidth={1} stroke="#000" />
+              );
+            }
+            const clipId = side === 'right' ? `clip-right-${spec.id}` : `clip-left-${spec.id}`;
             return (
               <g key={i} clipPath={`url(#${clipId})`}>
-                <path
-                  d={`M ${p0} Q ${ctrl} ${p3}`}
-                  fill="none"
-                  strokeWidth={1}
-                  stroke="#000"
-                />
+                <path d={`M ${p0} Q ${ctrl} ${p3}`} fill="none" strokeWidth={1} stroke="#000" />
               </g>
             );
           });
@@ -268,6 +343,13 @@ const FindIllustration = forwardRef(function FindIllustrationInner({ spec, class
             );
           })}
       </g>
+      {/* Crop boundary break lines rendered outside the crop clip */}
+      {hasCrop && (
+        <g stroke="#000" fill="none">
+          {crop.maxY < 1 && cropBreakLineAt(cropSvgYTop)}
+          {crop.minY > 0 && cropBreakLineAt(cropSvgYBottom)}
+        </g>
+      )}
       {/* Scale bar(s): horizontal below figure; optional vertical on left */}
       {showScaleBar && (
         <g stroke="#000" fill="none">

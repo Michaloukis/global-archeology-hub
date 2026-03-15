@@ -17,7 +17,7 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [username, setUsername] = useState('')
-  const [role, setRole] = useState('Enthusiast')
+  const [role, setRole] = useState('Public')
   const [isSignUp, setIsSignUp] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -145,7 +145,7 @@ export default function Auth() {
                   <option value="Director">Director</option>
                   <option value="Field Archeologist">Field Archeologist</option>
                   <option value="Student">Student</option>
-                  <option value="Enthusiast">Enthusiast</option>
+                  <option value="Public">Public</option>
                 </select>
               </div>
             </>

@@ -47,6 +47,9 @@ export function FindEditor({ initialSpec, onReset, onSave }) {
   const [scaleBarVerticalUnit, setScaleBarVerticalUnit] = useState('cm');
   const [importMessage, setImportMessage] = useState(null);
   const fileInputRef = useRef(null);
+  const [referenceImageUrl, setReferenceImageUrl] = useState(null);
+  const [referenceImageOpacity, setReferenceImageOpacity] = useState(0.35);
+  const referenceInputRef = useRef(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
   const [photoExtractLoading, setPhotoExtractLoading] = useState(false);
   const [photoError, setPhotoError] = useState(null);
@@ -108,6 +111,23 @@ export function FindEditor({ initialSpec, onReset, onSave }) {
       return URL.createObjectURL(file);
     });
     e.target.value = '';
+  }, []);
+
+  const handleReferenceImageSelect = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    setReferenceImageUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    e.target.value = '';
+  }, []);
+
+  const clearReferenceImage = useCallback(() => {
+    setReferenceImageUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
   }, []);
 
   const handleExtractProfile = useCallback(async () => {
@@ -275,6 +295,8 @@ export function FindEditor({ initialSpec, onReset, onSave }) {
             onWidthScaleChange={(scale) => update('widthScale', scale)}
             onHeightScaleChange={(scale) => update('heightScale', scale)}
             svgRef={svgRef}
+            referenceImageUrl={referenceImageUrl}
+            referenceImageOpacity={referenceImageOpacity}
           />
         </div>
         {spec.label && (
@@ -756,16 +778,76 @@ export function FindEditor({ initialSpec, onReset, onSave }) {
           )}
         </fieldset>
 
-        {/* Fragment: compact */}
+        {/* Fragment: crop range + break lines */}
         <fieldset className="space-y-0.5 md:space-y-1">
           <legend className="text-[11px] md:text-xs font-medium text-stone-600">Fragment</legend>
+          <p className="text-[10px] text-stone-500">In the field you find sherds, not whole vessels. Crop to show only the piece you have.</p>
+          {/* Single piece: no mirror */}
           <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={!!spec.singlePiece}
+              onChange={(e) => update('singlePiece', e.target.checked || undefined)}
+            />
+            <span className="text-xs">Single piece (no mirror — draw as-is)</span>
+          </label>
+          {/* Crop to fragment range */}
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={!!spec.fragmentCrop}
+              onChange={(e) =>
+                update('fragmentCrop', e.target.checked ? { minY: 0, maxY: 1 } : undefined)
+              }
+            />
+            <span className="text-xs">Crop to piece range</span>
+          </label>
+          {spec.fragmentCrop && (
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+              <label className="flex items-center gap-1">
+                <span className="text-[10px] text-stone-500">From (base=0)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={round2((spec.fragmentCrop.maxY ?? 1) - 0.05)}
+                  step={0.05}
+                  value={round2(spec.fragmentCrop.minY ?? 0)}
+                  onChange={(e) =>
+                    update('fragmentCrop', {
+                      minY: Math.max(0, Math.min((spec.fragmentCrop.maxY ?? 1) - 0.05, Number(e.target.value) || 0)),
+                      maxY: spec.fragmentCrop.maxY ?? 1,
+                    })
+                  }
+                  className="w-14 rounded border border-stone-300 px-1 py-0.5 text-xs"
+                />
+              </label>
+              <label className="flex items-center gap-1">
+                <span className="text-[10px] text-stone-500">To (rim=1)</span>
+                <input
+                  type="number"
+                  min={round2((spec.fragmentCrop.minY ?? 0) + 0.05)}
+                  max={1}
+                  step={0.05}
+                  value={round2(spec.fragmentCrop.maxY ?? 1)}
+                  onChange={(e) =>
+                    update('fragmentCrop', {
+                      minY: spec.fragmentCrop.minY ?? 0,
+                      maxY: Math.max((spec.fragmentCrop.minY ?? 0) + 0.05, Math.min(1, Number(e.target.value) || 1)),
+                    })
+                  }
+                  className="w-14 rounded border border-stone-300 px-1 py-0.5 text-xs"
+                />
+              </label>
+            </div>
+          )}
+          {/* Manual break lines */}
+          <label className="flex items-center gap-1.5 mt-0.5">
             <input
               type="checkbox"
               checked={!!spec.isFragment}
               onChange={(e) => update('isFragment', e.target.checked)}
             />
-            <span className="text-xs">Break lines</span>
+            <span className="text-xs">Additional break lines</span>
           </label>
           {spec.isFragment && (
             <input
@@ -782,6 +864,59 @@ export function FindEditor({ initialSpec, onReset, onSave }) {
               placeholder="0.2, 0.95"
             />
           )}
+        </fieldset>
+
+        {/* Reference image overlay */}
+        <fieldset className="space-y-0.5 md:space-y-1">
+          <legend className="text-[11px] md:text-xs font-medium text-stone-600">Reference image overlay</legend>
+          <p className="text-[10px] text-stone-500">
+            Load a second photo behind the illustration. Use it to show a complete vessel when your piece is missing parts.
+          </p>
+          <input
+            ref={referenceInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleReferenceImageSelect}
+            className="hidden"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => referenceInputRef.current?.click()}
+              className="text-xs text-stone-600 hover:text-stone-800 border border-stone-300 rounded px-1.5 py-0.5"
+            >
+              {referenceImageUrl ? 'Change image' : 'Choose image'}
+            </button>
+            {referenceImageUrl && (
+              <>
+                <img
+                  src={referenceImageUrl}
+                  alt="Reference"
+                  className="h-10 w-auto rounded border border-stone-200 object-contain"
+                />
+                <label className="flex items-center gap-1">
+                  <span className="text-[10px] text-stone-500">Opacity</span>
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={1}
+                    step={0.05}
+                    value={referenceImageOpacity}
+                    onChange={(e) => setReferenceImageOpacity(Number(e.target.value))}
+                    className="w-20"
+                  />
+                  <span className="text-[10px] text-stone-500 w-6">{Math.round(referenceImageOpacity * 100)}%</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={clearReferenceImage}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  Clear
+                </button>
+              </>
+            )}
+          </div>
         </fieldset>
       </div>
     </div>

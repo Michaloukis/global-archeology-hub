@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../supabaseClient';
 import { colors } from '../theme';
 
-const ROLES = ['Director', 'Field Archeologist', 'Student', 'Enthusiast'];
+const ROLES = ['Director', 'Field Archeologist', 'Student', 'Public'];
 
 export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
-  const [role, setRole] = useState('Enthusiast');
+  const [role, setRole] = useState('Public');
   const [isSignUp, setIsSignUp] = useState(false);
   const [message, setMessage] = useState('');
 

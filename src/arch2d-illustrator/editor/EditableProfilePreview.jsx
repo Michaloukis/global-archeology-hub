@@ -60,6 +60,8 @@ export function EditableProfilePreview({
   onWidthScaleChange,
   onHeightScaleChange,
   svgRef,
+  referenceImageUrl,
+  referenceImageOpacity,
 }) {
   const overlayRef = useRef(null);
   const [dragging, setDragging] = useState(null);
@@ -167,6 +169,8 @@ export function EditableProfilePreview({
         spec={spec}
         scale={scale}
         scaleBar={scaleBar}
+        referenceImageUrl={referenceImageUrl}
+        referenceImageOpacity={referenceImageOpacity}
       />
       <svg
         ref={overlayRef}

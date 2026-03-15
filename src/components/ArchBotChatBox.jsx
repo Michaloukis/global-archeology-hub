@@ -18,7 +18,7 @@ export default function ArchBotChatBox({ profile }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const messagesEndRef = useRef(null)
-  const role = profile?.role || 'Enthusiast'
+  const role = profile?.role || 'Public'
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   useEffect(() => { scrollToBottom() }, [messages])

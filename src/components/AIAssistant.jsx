@@ -24,7 +24,7 @@ export default function AIAssistant({ profile, embedded = false, open: controlle
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const messagesEndRef = useRef(null)
-  const role = profile?.role || 'Enthusiast'
+  const role = profile?.role || 'Public'
 
   // Popup position/size for embedded desktop (draggable + resizable)
   const [popupPosition, setPopupPosition] = useState(null)

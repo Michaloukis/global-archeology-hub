@@ -223,7 +223,7 @@ export default function ReportSyntaxTemplates({ onBack, profile }) {
                 {selectedTemplate.name}
               </h1>
               <p className="text-xs text-ink/60 mb-6">
-                Global Archaeology Hub — Report Syntax · {new Date().toLocaleDateString()} · {authorName}
+                Global Archaeology Hub — Report Form · {new Date().toLocaleDateString()} · {authorName}
               </p>
               <div className="space-y-4">
                 {selectedTemplate.fields.map((field) => (
@@ -286,7 +286,7 @@ export default function ReportSyntaxTemplates({ onBack, profile }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="shrink-0 px-4 py-3 border-b border-ink/20">
-        <h2 className="text-lg font-bold text-ink">Report Syntax</h2>
+        <h2 className="text-lg font-bold text-ink">Report Form</h2>
         <p className="text-sm text-ink/60 mt-1">
           Choose an archaeology report template, fill it in, and export or print.
         </p>
