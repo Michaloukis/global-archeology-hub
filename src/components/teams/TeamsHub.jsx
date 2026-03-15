@@ -33,7 +33,7 @@ function Fab({ label, onClick, icon }) {
     <button
       type="button"
       onClick={onClick}
-      className="fixed z-50 bottom-24 right-4 rounded-full shadow-lg border border-ink/15 bg-ink text-white px-4 md:px-5 py-3 md:py-3.5 text-sm font-semibold hover:bg-ink/90 focus:outline-none focus:ring-2 focus:ring-ink/30 inline-flex items-center gap-2"
+      className="fixed z-[100] right-4 rounded-full shadow-lg border border-ink/15 bg-ink text-white px-4 md:px-5 py-3 md:py-3.5 text-sm font-semibold hover:bg-ink/90 focus:outline-none focus:ring-2 focus:ring-ink/30 inline-flex items-center gap-2 bottom-[max(5.5rem,calc(4rem+env(safe-area-inset-bottom,0px)))] md:bottom-4 md:right-4"
     >
       <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center" aria-hidden>
         {icon}

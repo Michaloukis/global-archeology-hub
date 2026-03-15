@@ -6,7 +6,11 @@ const WEB_HUB_URL = 'https://global-archeology-hub.vercel.app'; // or your deplo
 
 export default function ArchScreen({ onOpenMap, onOpenArchives }) {
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={true}
+    >
       <Text style={styles.title}>Arch Zone</Text>
       <Text style={styles.subtitle}>Field archaeology tools and site management</Text>
       <View style={styles.card}>
@@ -35,7 +39,7 @@ export default function ArchScreen({ onOpenMap, onOpenArchives }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.parchment },
-  content: { padding: 20, paddingBottom: 100 },
+  content: { flexGrow: 1, padding: 20, paddingBottom: 100 },
   title: { fontSize: 22, fontWeight: '800', color: colors.ink },
   subtitle: { fontSize: 14, color: colors.inkMuted, marginTop: 4, marginBottom: 20 },
   card: {

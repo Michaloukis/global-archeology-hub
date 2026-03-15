@@ -27,6 +27,7 @@ const TAB_ACCOUNT = 'account';
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [profileAttempted, setProfileAttempted] = useState(false);
   const [tab, setTab] = useState(TAB_HOME);
   const [subView, setSubView] = useState(null); // 'archives' | 'journal'
   const [journalSiteId, setJournalSiteId] = useState(null);
@@ -35,24 +36,36 @@ export default function App() {
     if (!supabase) {
       setSession(null);
       setProfile(null);
+      setProfileAttempted(true);
       return;
     }
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
-      if (s?.user?.id) fetchProfile(s.user.id);
+      if (s?.user?.id) {
+        fetchProfile(s.user.id);
+      } else {
+        setProfileAttempted(true);
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (s) fetchProfile(s.user?.id);
-      else setProfile(null);
+      else { setProfile(null); setProfileAttempted(true); }
     });
     return () => subscription?.unsubscribe();
   }, []);
 
   async function fetchProfile(userId) {
-    if (!supabase || !userId) return;
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId);
-    if (data?.[0]) setProfile(data[0]);
+    if (!supabase || !userId) {
+      setProfileAttempted(true);
+      return;
+    }
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId);
+      if (data?.[0]) setProfile(data[0]);
+    } finally {
+      setProfileAttempted(true);
+    }
   }
 
   const handleLogout = async () => {
@@ -72,6 +85,17 @@ export default function App() {
 
   const isArcheologistRole = isArcheologist(profile);
   const isStudent = profile?.role === 'Student';
+
+  if (!profileAttempted) {
+    return (
+      <SafeAreaProvider>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ fontSize: 14, color: colors.inkMuted }}>Loading…</Text>
+        </View>
+        <StatusBar style="dark" />
+      </SafeAreaProvider>
+    );
+  }
 
   const tabs = [
     { key: TAB_HOME, label: 'Home', icon: '⌂' },
@@ -139,13 +163,19 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        <View style={styles.main}>{renderContent()}</View>
+        <View style={styles.main} collapsable={false} key={tab + (subView || '')}>
+          {renderContent()}
+        </View>
         <View style={styles.tabBar}>
           {tabs.map((t) => (
             <TouchableOpacity
               key={t.key}
               style={[styles.tab, tab === t.key && styles.tabActive]}
-              onPress={() => { setTab(t.key); setSubView(null); }}
+              onPress={() => {
+                setSubView(null);
+                setTab(t.key);
+              }}
+              activeOpacity={0.7}
             >
               <Text style={[styles.tabIcon, tab === t.key && styles.tabIconActive]}>{t.icon}</Text>
               <Text style={[styles.tabLabel, tab === t.key && styles.tabLabelActive]} numberOfLines={1}>
@@ -162,7 +192,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.parchment },
-  main: { flex: 1 },
+  main: { flex: 1, minHeight: 0 },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.95)',

@@ -943,6 +943,15 @@ function App() {
     if (profile?.role === 'Student') setStudentWidgetPreferences(loadWidgetPreferences(true))
   }, [profile?.role])
 
+  // When on Arch view and profile still null, retry profile fetch so Arch Zone can show without refresh
+  useEffect(() => {
+    if (view !== 'arch' || profile != null || !session?.user?.id || !supabase) return
+    const t = setTimeout(() => {
+      fetchProfile(session.user.id)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [view, profile, session?.user?.id])
+
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
@@ -1159,7 +1168,13 @@ function App() {
               )}
               {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}
               {!isToolRoute && !isStatisticsRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
-              {!isToolRoute && !isStatisticsRoute && view === 'arch' && isArcheologist && <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div></div>}
+              {!isToolRoute && !isStatisticsRoute && view === 'arch' && (
+                profile == null
+                  ? <div className="relative parchment-main min-h-full flex items-center justify-center p-6"><p className="text-sm text-ink/60">Loading…</p></div>
+                  : isArcheologist
+                    ? <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div></div>
+                    : <div className="relative parchment-main min-h-full flex items-center justify-center p-6"><p className="text-sm text-ink/60">Arch Zone is for Directors and Field Archaeologists.</p></div>
+              )}
               {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="relative parchment-main min-h-full"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
               {!isToolRoute && !isStatisticsRoute && view === 'journal' && activeSiteId && <div className="relative parchment-main min-h-full"><div className="p-6"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div></div>}
               {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
@@ -1231,7 +1246,13 @@ function App() {
           {!isToolRoute && !isStatisticsRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
           {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
-          {!isToolRoute && !isStatisticsRoute && view === 'arch' && isArcheologist && <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'arch' && (
+            profile == null
+              ? <div className="p-4 flex items-center justify-center min-h-[40vh]"><p className="text-sm text-ink/60">Loading…</p></div>
+              : isArcheologist
+                ? <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div>
+                : <div className="p-4 flex items-center justify-center min-h-[40vh]"><p className="text-sm text-ink/60">Arch Zone is for Directors and Field Archaeologists.</p></div>
+          )}
           {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'journal' && activeSiteId && <div className="p-4"><JournalTerminal siteId={activeSiteId} profile={profile} onBack={() => { setView(journalReturnView || 'map'); setJournalReturnView(null); }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
@@ -1261,10 +1282,17 @@ function App() {
             <NavIcon name="people" className={`w-6 h-6 ${view === 'team' || isTeamsRoute ? 'text-ink' : 'text-ink/50'}`} />
             <span className="text-[10px] font-medium">Teams</span>
           </button>
-          <button type="button" onClick={() => { navigate('/'); setView('arch') }} className="flex flex-col items-center gap-0.5 p-2 min-h-[44px] text-ink/50" aria-label="Arch Zone">
-            <NavIcon name="grid" className={`w-6 h-6 ${view === 'arch' ? 'text-ink' : 'text-ink/50'}`} />
-            <span className="text-[10px] font-medium">Arch Zone</span>
-          </button>
+          {isStudent ? (
+            <button type="button" onClick={() => { navigate('/'); setView('education') }} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'education' ? 'text-ink' : 'text-ink/50'}`} aria-label="Edu Lab">
+              <NavIcon name="document" className={`w-6 h-6 ${view === 'education' ? 'text-ink' : 'text-ink/50'}`} />
+              <span className="text-[10px] font-medium">Edu Lab</span>
+            </button>
+          ) : isArcheologist ? (
+            <button type="button" onClick={() => { navigate('/'); setView('arch') }} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'arch' ? 'text-ink' : 'text-ink/50'}`} aria-label="Arch Zone">
+              <NavIcon name="grid" className={`w-6 h-6 ${view === 'arch' ? 'text-ink' : 'text-ink/50'}`} />
+              <span className="text-[10px] font-medium">Arch Zone</span>
+            </button>
+          ) : null}
           <button type="button" onClick={() => setView('account')} className={`flex flex-col items-center gap-0.5 p-2 min-h-[44px] ${view === 'account' ? 'text-ink' : 'text-ink/50'}`} aria-label="Account">
             <NavIcon name="user" className={`w-6 h-6 ${view === 'account' ? 'text-ink' : 'text-ink/50'}`} />
             <span className="text-[10px] font-medium">Account</span>
