@@ -93,7 +93,7 @@ input, select, textarea, button {
   display: none;
 }
 
-/* Hide zoom in/out buttons on mini map widget only */
+/* Mini map: hide zoom controls only */
 .minimap-no-zoom .leaflet-control-zoom {
   display: none;
 }
