@@ -19,7 +19,7 @@ function formatSocialWhen(iso) {
   return d.toLocaleDateString();
 }
 
-const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives, onOpenSocial, onOpenJournal }) => {
+const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives, onOpenSocial, onOpenJournal, onOpenCalendar }) => {
   const navigate = useNavigate();
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isCompassOpen, setIsCompassOpen] = useState(false);
@@ -1001,7 +1001,7 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
                 <span key={d} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium ${highlightedDates.includes(d) ? 'bg-ink text-white' : 'bg-ink/10 text-ink/70'}`}>{d}</span>
               ))}
             </div>
-            <button type="button" className="mt-3 text-sm font-medium text-ink/80 hover:text-ink flex items-center gap-1">
+            <button type="button" onClick={() => onOpenCalendar?.()} className="mt-3 text-sm font-medium text-ink/80 hover:text-ink flex items-center gap-1">
               View Calendar <span aria-hidden>→</span>
             </button>
           </div>

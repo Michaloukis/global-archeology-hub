@@ -20,7 +20,9 @@ import SocialActivityWidget from './components/SocialActivityWidget'
 import TeamWidget from './components/TeamWidget'
 import CoursesWidget from './components/CoursesWidget'
 import NotepadWidget from './components/NotepadWidget'
+import MiniCalendarWidget from './components/MiniCalendarWidget'
 import SiteProgressDashboardWidget from './components/SiteProgressDashboardWidget.jsx'
+import CalendarPage from './pages/CalendarPage.jsx'
 import RecentFieldLogsWidget from './components/RecentFieldLogsWidget.jsx'
 import { isArcheologist as isArcheologistRole } from './utils/roles'
 
@@ -128,12 +130,22 @@ const openSocialFromMobile = (setView, chatroomId) => {
   setView('social');
 };
 
-const MobileDashboard = ({ profile, onOpenMap, onOpenSocial }) => (
+const MobileDashboard = ({ profile, onOpenMap, onOpenSocial, onOpenCalendar }) => (
   <div className="p-4 pb-28 space-y-6 parchment-main min-h-full">
     <div>
       <h2 className="text-lg font-bold text-ink">The Global Archaeology Hub</h2>
       <p className="text-sm text-ink/70 mt-0.5">A global standardized archaeology data platform</p>
     </div>
+
+    {onOpenCalendar && (
+      <button type="button" onClick={onOpenCalendar} className="w-full bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 overflow-hidden p-4 text-left flex items-center justify-between">
+        <span className="text-sm font-semibold text-ink flex items-center gap-2">
+          <NavIcon name="calendar" className="w-5 h-5 text-ink/60" />
+          Calendar
+        </span>
+        <span className="text-sm font-medium text-ink/80">Open calendar →</span>
+      </button>
+    )}
 
     <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(44,40,37,0.08)] border border-ink/10 overflow-hidden">
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
@@ -264,14 +276,15 @@ const NavIcon = ({ name, className = 'w-5 h-5' }) => {
     user: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
     search: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
     grid: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></>,
+    calendar: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></>,
   };
   return <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">{icons[name] || icons.document}</svg>;
 };
 
-const WIDGET_IDS = ['minimap', 'quickstats', 'site-progress', 'recent-logs', 'archbot', 'global-events', 'social-activity', 'teams']
+const WIDGET_IDS = ['minimap', 'quickstats', 'site-progress', 'recent-logs', 'archbot', 'calendar', 'global-events', 'social-activity', 'teams']
 const ARCHAEOLOGIST_ONLY_WIDGET_IDS = ['site-progress', 'recent-logs']
 const STUDENT_WIDGET_IDS = WIDGET_IDS.filter((id) => !ARCHAEOLOGIST_ONLY_WIDGET_IDS.includes(id)).concat(['courses', 'notepad'])
-const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', 'site-progress': 'Site Progress', 'recent-logs': 'Recent Logs', archbot: 'ArchBot', 'global-events': 'Global Events', 'social-activity': 'Social Activity', teams: 'Teams', courses: 'Courses', notepad: 'Notepad' }
+const WIDGET_LABELS = { minimap: 'Mini Map', quickstats: 'Quick Stats', 'site-progress': 'Site Progress', 'recent-logs': 'Recent Logs', archbot: 'ArchBot', calendar: 'Calendar', 'global-events': 'Global Events', 'social-activity': 'Social Activity', teams: 'Teams', courses: 'Courses', notepad: 'Notepad' }
 const WIDGET_SIZES = ['small', 'medium', 'large']
 const SIZE_CLASS = { small: 'h-[100px] min-h-0', medium: 'h-[180px] min-h-0', large: 'h-[260px] min-h-0' }
 const SIZE_CLASS_CONTENT = { small: 'min-h-[120px]', medium: 'min-h-[180px]', large: 'min-h-[260px]' }
@@ -289,13 +302,13 @@ function snapToGrid(value, step, min, max) {
   return Math.max(min, Math.min(max, n))
 }
 
-const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'site-progress'], ['recent-logs', 'archbot'], ['global-events', 'social-activity', 'teams']]
-const STUDENT_DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'archbot'], ['courses', 'notepad'], ['global-events', 'social-activity', 'teams']]
+const DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'site-progress'], ['recent-logs', 'archbot'], ['calendar', 'global-events'], ['social-activity', 'teams']]
+const STUDENT_DEFAULT_LAYOUT = [['minimap'], ['quickstats', 'archbot'], ['courses', 'notepad'], ['calendar', 'global-events'], ['social-activity', 'teams']]
 
 function getDefaultWidgetPreferences(isStudent = false) {
   const ids = isStudent ? STUDENT_WIDGET_IDS : WIDGET_IDS
   const defaultLayout = isStudent ? STUDENT_DEFAULT_LAYOUT : DEFAULT_LAYOUT
-  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity', 'site-progress', 'recent-logs', 'teams', 'courses', 'notepad'].includes(id) ? 'large' : 'medium')
+  const defaultSize = (id) => (['minimap', 'quickstats', 'archbot', 'social-activity', 'site-progress', 'recent-logs', 'teams', 'courses', 'notepad', 'calendar'].includes(id) ? 'large' : 'medium')
   return {
     visible: Object.fromEntries(ids.map(id => [id, true])),
     size: Object.fromEntries(ids.map(id => [id, defaultSize(id)])),
@@ -353,6 +366,7 @@ const WIDGET_ICONS = {
   'site-progress': 'chart',
   'recent-logs': 'document',
   archbot: 'user',
+  calendar: 'calendar',
   'global-events': 'bell',
   'social-activity': 'social',
   teams: 'users',
@@ -473,7 +487,7 @@ function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, 
   )
 }
 
-const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, onOpenEduLab, widgetPreferences, setWidgetPreferences, isStudent = false }) => {
+const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, onOpenEduLab, onOpenCalendar, widgetPreferences, setWidgetPreferences, isStudent = false }) => {
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [galleryDragId, setGalleryDragId] = useState(null)
   const [saveFeedback, setSaveFeedback] = useState(false)
@@ -750,7 +764,7 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, onOpenEd
                           onDragHandleStart={customizeOpen ? onReorderDragStart(id) : undefined}
                           onDragHandleEnd={customizeOpen ? onReorderDragEnd : undefined}
                           sizeKey={size[id]}
-                          sizeClassMap={id === 'archbot' ? SIZE_CLASS_ARCHBOT : id === 'global-events' || id === 'courses' || id === 'notepad' ? SIZE_CLASS_CONTENT : SIZE_CLASS}
+                          sizeClassMap={id === 'archbot' ? SIZE_CLASS_ARCHBOT : id === 'global-events' || id === 'courses' || id === 'notepad' || id === 'calendar' ? SIZE_CLASS_CONTENT : SIZE_CLASS}
                           contentClassMap={null}
                           noPadding={id === 'archbot'}
                         >
@@ -762,6 +776,9 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, onOpenEd
                             <div className="flex-1 min-h-0 flex flex-col min-w-0">
                               <ArchBotChatBox profile={profile} />
                             </div>
+                          )}
+                          {id === 'calendar' && (
+                            <MiniCalendarWidget onOpenCalendar={onOpenCalendar} globalEvents={EVENTS} />
                           )}
                           {id === 'global-events' && (
                             <div className="h-full">
@@ -1160,6 +1177,7 @@ function App() {
                     onOpenMap={() => setView('map')}
                     onOpenSocial={(chatroomId) => { try { if (chatroomId) localStorage.setItem('global-arch-social-selected-chatroom', chatroomId); } catch (_) {} setView('social'); }}
                     onOpenEduLab={isStudent ? () => setView('education') : undefined}
+                    onOpenCalendar={() => setView('calendar')}
                     widgetPreferences={isStudent ? studentWidgetPreferences : widgetPreferences}
                     setWidgetPreferences={isStudent ? setStudentWidgetPreferences : setWidgetPreferences}
                     isStudent={isStudent}
@@ -1172,7 +1190,7 @@ function App() {
                 profile == null
                   ? <div className="relative parchment-main min-h-full flex items-center justify-center p-6"><p className="text-sm text-ink/60">Loading…</p></div>
                   : isArcheologist
-                    ? <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div></div>
+                    ? <div className="relative parchment-main min-h-full"><div className="p-6"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop onOpenArchives={() => setView('archives')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} onOpenCalendar={() => setView('calendar')} /></div></div>
                     : <div className="relative parchment-main min-h-full flex items-center justify-center p-6"><p className="text-sm text-ink/60">Arch Zone is for Directors and Field Archaeologists.</p></div>
               )}
               {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="relative parchment-main min-h-full"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
@@ -1180,6 +1198,7 @@ function App() {
               {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile={false} />}
               {!isToolRoute && !isStatisticsRoute && (view === 'team' || isTeamsRoute) && <TeamPage profile={profile} onBack={() => { navigate('/'); setView('home') }} />}
               {!isToolRoute && !isStatisticsRoute && view === 'social' && <SocialPage profile={profile} />}
+              {!isToolRoute && !isStatisticsRoute && view === 'calendar' && <div className="relative parchment-main min-h-full"><CalendarPage profile={profile} onBack={() => setView('home')} globalEvents={EVENTS} /></div>}
               {!isToolRoute && !isStatisticsRoute && view === 'objects' && <div className="relative parchment-main min-h-full p-8 flex items-center justify-center text-ink/60"><p className="text-sm">Coming soon</p></div>}
             </main>
           </div>
@@ -1200,14 +1219,13 @@ function App() {
           {/* Opaque cap over status bar so no content can ever paint there */}
           <div style={{ height: 'env(safe-area-inset-top)', minHeight: 0, background: '#f8f3e8' }} aria-hidden />
           <div className="px-3 pb-2 pt-0.5 flex items-center gap-3" style={{ paddingTop: '0.75rem' }}>
-            {['archives', 'journal', 'team', 'education', 'social'].includes(view) && (
+            {['archives', 'journal', 'team', 'education', 'social', 'calendar'].includes(view) && (
               <button
                 type="button"
                 onClick={() => {
                   if (view === 'archives') setView('arch');
                   else if (view === 'journal') { setView(journalReturnView || 'map'); setJournalReturnView(null); }
-                  else if (view === 'team' || view === 'education') setView('home');
-                  else if (view === 'social') setView('home');
+                  else if (view === 'team' || view === 'education' || view === 'social' || view === 'calendar') setView('home');
                 }}
                 className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] -ml-1 text-ink font-medium"
                 aria-label="Back"
@@ -1217,7 +1235,7 @@ function App() {
               </button>
             )}
             <h1 className="text-base font-bold text-ink leading-tight flex-1 text-center">Archaeology Hub</h1>
-            {['archives', 'journal', 'team', 'education', 'social'].includes(view) && <div className="w-[68px]" />}
+            {['archives', 'journal', 'team', 'education', 'social', 'calendar'].includes(view) && <div className="w-[68px]" />}
           </div>
         </header>
         <main
@@ -1243,14 +1261,14 @@ function App() {
           )}
           {location.pathname === '/viewer-3d' && <Viewer3DPage />}
           {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
-          {!isToolRoute && !isStatisticsRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} />}
+          {!isToolRoute && !isStatisticsRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} onOpenCalendar={() => setView('calendar')} />}
           {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'arch' && (
             profile == null
               ? <div className="p-4 flex items-center justify-center min-h-[40vh]"><p className="text-sm text-ink/60">Loading…</p></div>
               : isArcheologist
-                ? <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} /></div>
+                ? <div className="p-4"><ArchZone profile={profile} onNavigateToMap={() => setView('map')} isDesktop={false} onOpenArchives={() => setView('archives')} onOpenSocial={() => setView('social')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('arch'); setView('journal'); }} onOpenCalendar={() => setView('calendar')} /></div>
                 : <div className="p-4 flex items-center justify-center min-h-[40vh]"><p className="text-sm text-ink/60">Arch Zone is for Directors and Field Archaeologists.</p></div>
           )}
           {!isToolRoute && !isStatisticsRoute && view === 'archives' && <div className="p-4 min-h-[60vh]"><ArchivesPage profile={profile} onBack={() => setView('arch')} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('archives'); setView('journal'); }} /></div>}
@@ -1258,6 +1276,7 @@ function App() {
           {!isToolRoute && !isStatisticsRoute && view === 'account' && <AccountPage profile={profile} session={session} onProfileUpdate={(updated) => setProfile(prev => prev ? { ...prev, ...updated } : null)} onLogout={handleLogout} onRestoreDefaultLayout={() => { const def = getDefaultWidgetPreferences(); setWidgetPreferences(def); saveWidgetPreferences(def); setView('home'); }} isMobile />}
           {!isToolRoute && !isStatisticsRoute && view === 'team' && <div className="min-h-full"><TeamPage profile={profile} onBack={() => { navigate('/'); setView('home') }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'social' && <SocialPage profile={profile} />}
+          {!isToolRoute && !isStatisticsRoute && view === 'calendar' && <div className="p-4 min-h-[60vh]"><CalendarPage profile={profile} onBack={() => setView('home')} globalEvents={EVENTS} /></div>}
         </main>
         <nav
           className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white/90 backdrop-blur-sm border-t border-ink/10 rounded-t-3xl shadow-[0_-4px_20px_rgba(44,40,37,0.06)] transition-transform duration-300 ease-out ${
