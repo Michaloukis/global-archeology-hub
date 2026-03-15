@@ -19,7 +19,7 @@ function formatSocialWhen(iso) {
   return d.toLocaleDateString();
 }
 
-const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives, onOpenSocial, onOpenJournal, onOpenCalendar }) => {
+const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives, onOpenSocial, onOpenJournal, onOpenCalendar, upcomingEvents: upcomingEventsProp }) => {
   const navigate = useNavigate();
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isCompassOpen, setIsCompassOpen] = useState(false);
@@ -688,6 +688,26 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
   const sampleDates = [10, 11, 12, 13, 14, 15];
   const highlightedDates = [12, 13, 14];
 
+  const dayLabelsDesktop = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - dayOfWeek);
+  const currentWeekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + i);
+    return { dayNum: d.getDate(), dateOnly: d.getTime() };
+  });
+  const todayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+  // Upcoming events for the card (static preview when not passed from app)
+  const defaultUpcoming = [
+    { title: 'Lidar Tech Seminar', day: '12', month: 'FEB', loc: 'Virtual Hub' },
+    { title: 'Giza Plateau Expedition', day: '24', month: 'MAR', loc: 'Cairo, Egypt' },
+  ];
+  const upcomingEvents = Array.isArray(upcomingEventsProp) && upcomingEventsProp.length > 0
+    ? upcomingEventsProp.slice(0, 2)
+    : defaultUpcoming;
+
   const professionalTools = [
     { id: 'notepad', label: 'Notepad', icon: 'notepad', action: () => setActiveTool('notepad') },
     { id: 'compass', label: 'Compass', icon: 'compass', action: () => setActiveTool('compass') },
@@ -991,19 +1011,61 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
             <h2 className="text-sm font-semibold text-ink">Upcoming Activity</h2>
           </div>
           <div className="px-4 pb-4">
-            <div className="flex gap-1 justify-center mb-2">
-              {dayLabels.map((d, i) => (
-                <span key={i} className="text-[10px] font-medium text-ink/60 w-8 text-center">{d}</span>
-              ))}
-            </div>
-            <div className="flex gap-1 justify-center flex-wrap">
-              {sampleDates.map((d) => (
-                <span key={d} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium ${highlightedDates.includes(d) ? 'bg-ink text-white' : 'bg-ink/10 text-ink/70'}`}>{d}</span>
-              ))}
-            </div>
+            {isDesktop ? (
+              <>
+                <div className="flex gap-1 justify-center mb-2">
+                  {dayLabelsDesktop.map((d, i) => (
+                    <span key={i} className="text-[10px] font-medium text-ink/60 w-8 text-center">{d}</span>
+                  ))}
+                </div>
+                <div className="flex gap-1 justify-center flex-wrap">
+                  {currentWeekDates.map((cell, i) => (
+                    <span key={i} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium ${cell.dateOnly === todayTime ? 'bg-ink text-white' : 'bg-ink/10 text-ink/70'}`}>{cell.dayNum}</span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex gap-1 justify-center mb-2">
+                  {dayLabels.map((d, i) => (
+                    <span key={i} className="text-[10px] font-medium text-ink/60 w-8 text-center">{d}</span>
+                  ))}
+                </div>
+                <div className="flex gap-1 justify-center flex-wrap">
+                  {sampleDates.map((d) => (
+                    <span key={d} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium ${highlightedDates.includes(d) ? 'bg-ink text-white' : 'bg-ink/10 text-ink/70'}`}>{d}</span>
+                  ))}
+                </div>
+              </>
+            )}
             <button type="button" onClick={() => onOpenCalendar?.()} className="mt-3 text-sm font-medium text-ink/80 hover:text-ink flex items-center gap-1">
               View Calendar <span aria-hidden>→</span>
             </button>
+            <div className="mt-4 pt-3 border-t border-ink/10">
+              <p className="text-[10px] font-semibold text-ink/60 uppercase tracking-wide mb-2">Next up</p>
+              <ul className="space-y-2">
+                {upcomingEvents.map((ev, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenCalendar?.()}
+                      className="w-full text-left flex items-center gap-2.5 rounded-lg border border-ink/10 px-2.5 py-2 hover:bg-ink/5 transition-colors group"
+                    >
+                      <span className="shrink-0 w-9 h-9 rounded-lg bg-ink/10 flex flex-col items-center justify-center">
+                        <span className="text-[8px] font-bold text-ink/70 leading-tight">{ev.month}</span>
+                        <span className="text-xs font-bold text-ink leading-tight -mt-0.5">{ev.day}</span>
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-ink truncate group-hover:text-ink">{ev.title}</p>
+                        <p className="text-[10px] text-ink/50 truncate">{ev.loc}</p>
+                      </div>
+                      <span className="shrink-0 text-ink/40 group-hover:text-ink/70" aria-hidden>→</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] text-ink/45 mt-2.5">Add digs & seminars in Calendar, or sync to Google.</p>
+            </div>
           </div>
         </div>
       </section>
