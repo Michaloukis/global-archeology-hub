@@ -68,6 +68,9 @@ function MapControls() {
         el.style.display = 'flex'
         el.style.gap = '6px'
         el.style.flexDirection = 'column'
+        el.style.border = 'none'
+        el.style.boxShadow = 'none'
+        el.style.background = 'transparent'
         el.innerHTML = `
           <button type="button" aria-label="Zoom out" title="Zoom out" class="minimap-unzoom-btn" style="
             display: flex; align-items: center; justify-content: center;
