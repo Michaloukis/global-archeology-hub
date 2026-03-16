@@ -1185,7 +1185,7 @@ function App() {
                   />
                 </div>
               )}
-              {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} /></div></div>}
+              {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="relative parchment-main min-h-full"><div className="p-6"><SitesMap searchQuery={searchQuery} profile={profile} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('map'); setView('journal'); }} /></div></div>}
               {!isToolRoute && !isStatisticsRoute && view === 'education' && isStudent && <div className="relative parchment-main min-h-full"><div className="p-6"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div></div>}
               {!isToolRoute && !isStatisticsRoute && view === 'arch' && (
                 profile == null
@@ -1263,7 +1263,7 @@ function App() {
           {location.pathname === '/viewer-3d' && <Viewer3DPage />}
           {location.pathname === '/illustrator-2d' && <Illustrator2DPage />}
           {!isToolRoute && !isStatisticsRoute && view === 'home' && <MobileDashboard profile={profile} onOpenMap={() => setView('map')} onOpenSocial={(chatroomId) => openSocialFromMobile(setView, chatroomId)} onOpenCalendar={() => setView('calendar')} />}
-          {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} /></div>}
+          {!isToolRoute && !isStatisticsRoute && view === 'map' && <div className="p-4 min-h-[60vh]"><SitesMap searchQuery={searchQuery} profile={profile} onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('map'); setView('journal'); }} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'education' && isStudent && <div className="p-4"><EducationZone profile={profile} onNavigateToMap={() => setView('map')} /></div>}
           {!isToolRoute && !isStatisticsRoute && view === 'arch' && (
             profile == null

@@ -179,7 +179,7 @@ function journalVisibility(entry) {
   return entry?.visibility || (entry?.is_public === false ? 'private' : 'public')
 }
 
-export default function SitesMap({ searchQuery, profile }) {
+export default function SitesMap({ searchQuery, profile, onOpenJournal }) {
   const [sites, setSites] = useState([])
   const [artifacts, setArtifacts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -200,6 +200,7 @@ export default function SitesMap({ searchQuery, profile }) {
   const [showFilters, setShowFilters] = useState(false)
 
   const [approvedSiteIds, setApprovedSiteIds] = useState([])
+  const [selectedSite, setSelectedSite] = useState(null)
   const isChief = isDirector(profile)
   const isFieldArch = isFieldArcheologist(profile)
   const isArcheologist = isArcheologistRole(profile)
@@ -869,16 +870,20 @@ export default function SitesMap({ searchQuery, profile }) {
                       )}
 
                       <div className="flex flex-col gap-2 mt-2">
-                        <button 
-                          onClick={() => site.tourUrl && window.open(site.tourUrl, '_blank')}
-                          className="w-full bg-[#2c2825] text-white text-xs font-medium py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                        >
-                          <span>Launch 360° Tour</span>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
+                        {site.tourUrl ? (
+                          <button
+                            onClick={() => window.open(site.tourUrl, '_blank')}
+                            className="w-full bg-[#2c2825] text-white text-xs font-medium py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                          >
+                            <span>Launch 360° Tour</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                        ) : (
+                          <p className="text-[10px] text-[#2c2825]/40 italic text-center">No 360° tour available</p>
+                        )}
                         {isFieldArch && site.status !== 'Finished' && !userRequests.includes(site.id) && (
                           <button 
                             onClick={() => setActiveSiteForRequest(site)}
@@ -902,66 +907,88 @@ export default function SitesMap({ searchQuery, profile }) {
             <p className="text-sm text-ink/60">No sites match the current filters.</p>
           </div>
         ) : (
-          filteredSites.map(site => (
-            <div key={site.id} className={`aspect-square md:aspect-[4/3] rounded-xl border bg-white shadow-[0_2px_10px_rgba(44,40,37,0.07)] hover:shadow-[0_4px_18px_rgba(44,40,37,0.12)] transition-shadow flex flex-col overflow-hidden ${site.status === 'Finished' ? 'border-emerald-200' : 'border-amber-200'}`}>
-              <div className={`h-0.5 md:h-1 w-full shrink-0 ${site.status === 'Finished' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              <div className="flex flex-col flex-1 p-3 gap-1.5 min-h-0 overflow-hidden">
+          filteredSites.map(site => {
+            const validLat = Math.abs(site.lat) <= 90
+            const validLng = Math.abs(site.lng) <= 180
+            const coordText = validLat && validLng
+              ? `${site.lat.toFixed(3)}°, ${site.lng.toFixed(3)}°`
+              : null
+            return (
+            <div
+              key={site.id}
+              className={`rounded-xl border bg-white shadow-[0_2px_10px_rgba(44,40,37,0.07)] hover:shadow-[0_4px_18px_rgba(44,40,37,0.12)] transition-shadow flex flex-col cursor-pointer ${site.status === 'Finished' ? 'border-emerald-200' : 'border-amber-200'}`}
+              onClick={() => setSelectedSite(site)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && setSelectedSite(site)}
+            >
+              <div className={`h-1 w-full rounded-t-xl shrink-0 ${site.status === 'Finished' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              <div className="flex flex-col p-3 gap-2">
+                {/* Header */}
                 <div className="flex items-start justify-between gap-1.5">
                   <div className="min-w-0">
-                    <p className="text-[9px] md:text-[10px] font-medium text-ink/40 mb-0.5 tracking-wide uppercase">Site #{site.id.toString().padStart(3, '0')}</p>
-                    <h4 className="font-bold text-xs md:text-sm text-ink leading-snug line-clamp-1">{site.name}</h4>
+                    <p className="text-[9px] font-medium text-ink/40 mb-0.5 tracking-wide uppercase">Site #{String(site.id).padStart(3, '0')}</p>
+                    <h4 className="font-bold text-sm text-ink leading-snug line-clamp-2">{site.name}</h4>
                   </div>
-                  <span className={`text-[9px] md:text-[10px] font-medium px-1.5 py-0.5 rounded-full border shrink-0 ${site.status === 'Finished' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0 ${site.status === 'Finished' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                     {site.status}
                   </span>
                 </div>
+
+                {/* Badges + coords */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className={`text-[9px] md:text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-700 border-amber-200' : getSiteSourceLabel(site) === 'Director only' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-ink/10 text-ink border-ink/20'}`}>
+                  <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${getSiteSourceLabel(site) === 'Public' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : getSiteSourceLabel(site) === 'Student' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : getSiteSourceLabel(site) === 'Team' ? 'bg-amber-50 text-amber-700 border-amber-200' : getSiteSourceLabel(site) === 'Director only' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-ink/10 text-ink border-ink/20'}`}>
                     {getSiteSourceLabel(site)}
                   </span>
-                  <span className="text-[9px] md:text-[10px] text-ink/35 font-mono">{site.lat.toFixed(3)}°, {site.lng.toFixed(3)}°</span>
+                  {coordText && (
+                    <span className="text-[9px] text-ink/35 font-mono truncate">{coordText}</span>
+                  )}
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 min-h-0 overflow-hidden">
+                {/* Description / journal snippet */}
+                <div>
                   {journals[site.id]?.length > 0 ? (
-                    <div className="h-full flex flex-col gap-1 p-2 rounded-lg bg-[#f8f3e8] border border-ink/10 overflow-hidden">
+                    <div className="flex flex-col gap-1 p-2 rounded-lg bg-[#f8f3e8] border border-ink/10">
                       <div className="flex items-center gap-1">
-                        <span className="w-1 h-1 md:w-1.5 md:h-1.5 bg-rose-500 rounded-full animate-pulse shrink-0" />
-                        <span className="text-[9px] md:text-[10px] font-semibold text-ink/60">Latest</span>
+                        <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse shrink-0" />
+                        <span className="text-[9px] font-semibold text-ink/60">Latest</span>
                       </div>
                       {journals[site.id][0].image_url && (
-                        <img src={journals[site.id][0].image_url} className="w-full h-10 md:h-12 object-cover rounded border border-ink/10 shrink-0 grayscale hover:grayscale-0 transition-all" alt="Latest finding" />
+                        <img src={journals[site.id][0].image_url} className="w-full h-12 object-cover rounded border border-ink/10 grayscale hover:grayscale-0 transition-all" alt="Latest finding" />
                       )}
-                      <p className="text-[10px] md:text-[11px] text-ink leading-snug line-clamp-2 md:line-clamp-3">
+                      <p className="text-[10px] text-ink leading-snug line-clamp-2">
                         {journals[site.id][0].findings || 'Site observation recorded'}
                       </p>
                     </div>
                   ) : (
-                    <p className="text-[10px] md:text-xs text-ink/55 leading-snug line-clamp-3 md:line-clamp-4">
+                    <p className="text-[10px] text-ink/55 leading-snug line-clamp-3">
                       {site.description || 'No description available.'}
                     </p>
                   )}
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); if (site.tourUrl) window.open(site.tourUrl, '_blank') }}
-                    className="flex-1 rounded-lg border border-ink/20 bg-white text-ink text-[10px] md:text-[11px] font-medium py-1.5 md:py-2 hover:bg-ink/5 transition-colors flex items-center justify-center gap-0.5"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    360°
-                  </button>
+                <div className="flex gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                  {site.tourUrl ? (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); window.open(site.tourUrl, '_blank') }}
+                      className="flex-1 rounded-lg border border-ink/20 bg-white text-ink text-[10px] font-medium py-1.5 hover:bg-ink/5 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      360°
+                    </button>
+                  ) : (
+                    <span className="flex-1 text-center text-[9px] text-ink/30 italic py-1.5">No tour</span>
+                  )}
                   {isFieldArch && site.status !== 'Finished' && !userRequests.includes(site.id) && (
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setActiveSiteForRequest(site) }}
-                      className="flex-1 rounded-lg bg-rose-500 text-white text-[10px] md:text-[11px] font-medium py-1.5 md:py-2 hover:opacity-90 transition-opacity flex items-center justify-center"
+                      className="flex-1 rounded-lg bg-rose-500 text-white text-[10px] font-medium py-1.5 hover:opacity-90 transition-opacity flex items-center justify-center"
                     >
                       Join
                     </button>
@@ -969,9 +996,137 @@ export default function SitesMap({ searchQuery, profile }) {
                 </div>
               </div>
             </div>
-          ))
+          )})
         )}
       </div>
+
+      {/* Site Detail Modal */}
+      {selectedSite && (
+        <div
+          className="fixed inset-0 bg-ink/50 backdrop-blur-sm z-[140] flex items-center justify-center p-4 md:p-8"
+          onClick={() => setSelectedSite(null)}
+        >
+          <div
+            className="bg-white rounded-2xl border border-ink/20 w-full max-w-xl shadow-[0_8px_40px_rgba(44,40,37,0.18)] overflow-hidden max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* colour bar */}
+            <div className={`h-1.5 w-full shrink-0 ${selectedSite.status === 'Finished' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+
+            {/* header */}
+            <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-ink/10 shrink-0">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold text-ink/40 uppercase tracking-widest mb-0.5">
+                  Site #{String(selectedSite.id).padStart(3, '0')}
+                </p>
+                <h2 className="text-xl font-black text-ink leading-tight">{selectedSite.name}</h2>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${selectedSite.status === 'Finished' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                    {selectedSite.status || 'Unknown'}
+                  </span>
+                  <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${getSiteSourceLabel(selectedSite) === 'Public' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : getSiteSourceLabel(selectedSite) === 'Student' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : getSiteSourceLabel(selectedSite) === 'Team' ? 'bg-amber-50 text-amber-700 border-amber-200' : getSiteSourceLabel(selectedSite) === 'Director only' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-ink/10 text-ink border-ink/20'}`}>
+                    {getSiteSourceLabel(selectedSite)}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSite(null)}
+                className="shrink-0 text-ink/50 hover:text-ink text-xl font-light leading-none mt-0.5"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* body */}
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+              {/* coordinates */}
+              <div className="flex items-center gap-2 text-xs text-ink/50 font-mono">
+                <svg className="w-3.5 h-3.5 shrink-0 text-ink/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 21s7-4.438 7-11a7 7 0 10-14 0c0 6.562 7 11 7 11z" />
+                  <circle cx="12" cy="10" r="2.5" strokeWidth={1.5} />
+                </svg>
+                {Number(selectedSite.lat).toFixed(5)}°N, {Number(selectedSite.lng).toFixed(5)}°E
+              </div>
+
+              {/* description */}
+              {selectedSite.description && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-ink/40 mb-1">About</p>
+                  <p className="text-sm text-ink/80 leading-relaxed">{selectedSite.description}</p>
+                </div>
+              )}
+
+              {/* latest journal entries */}
+              {journals[selectedSite.id]?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse shrink-0" />
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-ink/40">Field Intel</p>
+                  </div>
+                  <div className="space-y-2">
+                    {journals[selectedSite.id].slice(0, 3).map(entry => (
+                      <div key={entry.id} className="rounded-xl bg-[#f8f3e8] border border-ink/10 p-3">
+                        {entry.image_url && (
+                          <img src={entry.image_url} className="w-full h-28 object-cover rounded-lg border border-ink/10 mb-2 grayscale hover:grayscale-0 transition-all" alt="Field record" />
+                        )}
+                        {entry.findings && (
+                          <p className="text-xs font-medium text-ink leading-snug">
+                            <span className="text-rose-600 font-semibold">Find: </span>{entry.findings}
+                          </p>
+                        )}
+                        {entry.notes && (
+                          <p className="text-[11px] text-ink/60 mt-1 italic leading-snug">"{entry.notes.slice(0, 120)}{entry.notes.length > 120 ? '…' : ''}"</p>
+                        )}
+                        <p className="text-[10px] text-ink/35 mt-1.5">{new Date(entry.created_at).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* footer actions */}
+            <div className="px-6 py-4 border-t border-ink/10 flex flex-wrap gap-2 shrink-0">
+              {onOpenJournal && isArcheologist && (
+                <button
+                  type="button"
+                  onClick={() => { setSelectedSite(null); onOpenJournal(selectedSite.id) }}
+                  className="flex-1 rounded-xl bg-ink text-white text-sm font-medium py-2.5 hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  View Journal
+                </button>
+              )}
+              {selectedSite.tourUrl && (
+                <button
+                  type="button"
+                  onClick={() => window.open(selectedSite.tourUrl, '_blank')}
+                  className="flex-1 rounded-xl border border-ink/20 text-ink text-sm font-medium py-2.5 hover:bg-ink/5 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  360° Tour
+                </button>
+              )}
+              {isFieldArch && selectedSite.status !== 'Finished' && !userRequests.includes(selectedSite.id) && (
+                <button
+                  type="button"
+                  onClick={() => { setSelectedSite(null); setActiveSiteForRequest(selectedSite) }}
+                  className="flex-1 rounded-xl bg-rose-500 text-white text-sm font-medium py-2.5 hover:opacity-90 transition-opacity flex items-center justify-center"
+                >
+                  Request to Join
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Request Modal */}
       {activeSiteForRequest && (
