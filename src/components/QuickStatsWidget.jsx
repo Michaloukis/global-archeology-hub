@@ -5,7 +5,7 @@ function siteVisibility(site) {
   return site?.visibility ?? (site?.is_public === false ? 'private' : 'public')
 }
 
-export default function QuickStatsWidget({ profile, onOpenMap }) {
+export default function QuickStatsWidget({ profile, onOpenMap, onOpenJournal }) {
   const [sites, setSites] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -73,17 +73,8 @@ export default function QuickStatsWidget({ profile, onOpenMap }) {
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden rounded-lg">
-      <div className="flex items-center justify-between px-2 py-1 border-b border-ink/20 shrink-0">
+      <div className="flex items-center px-2 py-1 border-b border-ink/20 shrink-0">
         <span className="text-[10px] font-semibold text-ink">Quick stats</span>
-        {onOpenMap && (
-          <button
-            type="button"
-            onClick={onOpenMap}
-            className="text-[10px] font-medium text-ink/80 hover:text-ink hover:underline"
-          >
-            Map →
-          </button>
-        )}
       </div>
       <div className="flex-1 overflow-y-auto p-2 min-h-0">
         {loading ? (
@@ -93,17 +84,24 @@ export default function QuickStatsWidget({ profile, onOpenMap }) {
             {isFieldArch ? 'No approved expeditions yet. Apply from the Map.' : 'No sites under your oversight yet.'}
           </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {sites.map(site => (
-              <li key={site.id} className="flex items-center justify-between gap-2 text-xs">
-                <span className="font-medium text-ink truncate min-w-0" title={site.name}>{site.name}</span>
-                <span
-                  className={`shrink-0 text-[9px] font-black uppercase px-1.5 py-0.5 border border-ink/30 rounded ${
-                    site.status === 'Finished' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                  }`}
+              <li key={site.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenJournal?.(site.id)}
+                  className="w-full flex items-center justify-between gap-2 text-xs rounded px-1 py-0.5 -mx-1 hover:bg-ink/5 active:bg-ink/10 transition-colors text-left"
+                  title={`Open journal for ${site.name}`}
                 >
-                  {site.status || '—'}
-                </span>
+                  <span className="font-medium text-ink truncate min-w-0">{site.name}</span>
+                  <span
+                    className={`shrink-0 text-[9px] font-black uppercase px-1.5 py-0.5 border border-ink/30 rounded ${
+                      site.status === 'Finished' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
+                    {site.status || '—'}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>

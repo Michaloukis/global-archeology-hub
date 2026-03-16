@@ -487,7 +487,7 @@ function ResizableWidgetBox({ id, editMode, height, width: customWidthPx, minH, 
   )
 }
 
-const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, onOpenEduLab, onOpenCalendar, widgetPreferences, setWidgetPreferences, isStudent = false }) => {
+const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, onOpenEduLab, onOpenCalendar, onOpenJournal, widgetPreferences, setWidgetPreferences, isStudent = false }) => {
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [galleryDragId, setGalleryDragId] = useState(null)
   const [saveFeedback, setSaveFeedback] = useState(false)
@@ -769,7 +769,7 @@ const DashboardPage = ({ searchQuery, profile, onOpenMap, onOpenSocial, onOpenEd
                           noPadding={id === 'archbot'}
                         >
                           {id === 'minimap' && <MiniMapWidget profile={profile} onOpenMap={onOpenMap} />}
-                          {id === 'quickstats' && <QuickStatsWidget profile={profile} onOpenMap={onOpenMap} />}
+                          {id === 'quickstats' && <QuickStatsWidget profile={profile} onOpenMap={onOpenMap} onOpenJournal={onOpenJournal} />}
                           {id === 'site-progress' && <SiteProgressDashboardWidget profile={profile} />}
                           {id === 'recent-logs' && <RecentFieldLogsWidget profile={profile} />}
                           {id === 'archbot' && (
@@ -1178,6 +1178,7 @@ function App() {
                     onOpenSocial={(chatroomId) => { try { if (chatroomId) localStorage.setItem('global-arch-social-selected-chatroom', chatroomId); } catch (_) {} setView('social'); }}
                     onOpenEduLab={isStudent ? () => setView('education') : undefined}
                     onOpenCalendar={() => setView('calendar')}
+                    onOpenJournal={(siteId) => { setActiveSiteId(siteId); setJournalReturnView('home'); setView('journal'); }}
                     widgetPreferences={isStudent ? studentWidgetPreferences : widgetPreferences}
                     setWidgetPreferences={isStudent ? setStudentWidgetPreferences : setWidgetPreferences}
                     isStudent={isStudent}
