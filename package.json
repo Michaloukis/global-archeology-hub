@@ -17,14 +17,14 @@
     "leaflet": "^1.9.4",
     "pdfjs-dist": "^5.5.207",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react-dom": "^19.2.5",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.30.3",
     "three": "^0.160.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "dotenv": "^16.6.1",
