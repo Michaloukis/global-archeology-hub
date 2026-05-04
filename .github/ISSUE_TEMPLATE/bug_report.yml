@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a bug
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please **do not** include secrets (API keys, tokens) or sensitive real-world site coordinates.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see? What did you expect?
+      placeholder: Describe the behavior clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS / browser / device + any relevant versions
+      placeholder: Windows 11, Chrome 125, etc.
+    validations:
+      required: false
