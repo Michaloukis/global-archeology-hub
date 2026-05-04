@@ -88,16 +88,6 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
   };
   const [activeTool, setActiveTool] = useState(null); // 'map' | 'notepad' | 'compass' | 'ceramic' | null (from tools tab)
 
-  // #region agent log
-  const logData = (msg, data, hypothesisId) => {
-    fetch('http://127.0.0.1:7243/ingest/681b1f5c-17b9-4cf5-8463-2a620377b7c6',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({location:'ArchZone.jsx',message:msg,data,timestamp:Date.now(),sessionId:'debug-session',hypothesisId})
-    }).catch(()=>{});
-  };
-  // #endregion
-
   useEffect(() => {
     if (profile?.role === 'Director') {
       fetchRequests();
@@ -374,7 +364,6 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
       
       // Update local state
       setRequests(requests.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
-      logData('Request action taken', { requestId, newStatus }, 'C');
     } catch (error) {
       console.error('Error updating request:', error);
     }
@@ -451,7 +440,6 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
   const handleNotepadToggle = () => {
     const newState = !isNotepadOpen;
     setIsNotepadOpen(newState);
-    logData('Notepad toggle', { isOpen: newState }, 'A');
   };
 
   const handleCeramicCounterToggle = () => {
@@ -618,8 +606,6 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
     e.preventDefault();
     setLoading(true);
     setMessage('');
-    
-    logData('Attempting site creation', { siteName, role: profile?.role }, 'B');
 
     if (profile?.role !== 'Director') {
       setMessage('ERROR: UNAUTHORIZED. ONLY DIRECTORS CAN CREATE SITES.');
@@ -647,7 +633,6 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
 
       if (error) throw error;
 
-      logData('Site created successfully', { data }, 'B');
       setMessage('SUCCESS: NEW DIG SITE REGISTERED IN GLOBAL REGISTRY.');
       setSiteName('');
       setSiteLat('');
@@ -658,7 +643,6 @@ const ArchZone = ({ profile, onNavigateToMap, isDesktop = false, onOpenArchives,
       setSiteCeramicCount('');
       setTimeout(() => setIsSiteFormOpen(false), 2000);
     } catch (error) {
-      logData('Site creation error', { error: error.message }, 'B');
       setMessage(`ERROR: ${error.message.toUpperCase()}`);
     } finally {
       setLoading(false);

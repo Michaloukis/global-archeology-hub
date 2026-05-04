@@ -1,79 +1,68 @@
-# Gah Web App
+# Global Archaeology Hub
 
-A modern web application built with React, Vite, and Tailwind CSS.
+Role-based archaeology hub for **field documentation**, **mapping**, and **collaboration**, built for professionals, students, and enthusiasts.
 
-## Features
+[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![CodeQL](../../actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
 
-- ⚡ Fast development with Vite
-- ⚛️ React 18 with modern hooks
-- 🎨 Beautiful UI with Tailwind CSS
-- 📱 Responsive design
-- ✨ Interactive components (Counter, Task Manager)
+For the competition demo flow, see [`docs/DEMO-SCRIPT.md`](docs/DEMO-SCRIPT.md).
 
-## Getting Started
+## What’s in this repo
 
-### Environment
+- **Web app**: Vite + React (repo root)
+- **Mobile app**: Expo / React Native in [`mobile/`](mobile/)
+- **Backend**: Supabase (schema/migrations in [`supabase/`](supabase/))
 
-Copy `.env.example` to `.env` and set:
+## Tech stack
 
-- **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`** — required (from Supabase project settings). Without these, the app shows "Database connection lost."
-- **`VITE_GROQ_API_KEY`** — optional; used for the in-app AI Assistant (ArchBot). Get a key at [Groq Console](https://console.groq.com).
+- **Frontend**: React, Vite, Tailwind
+- **Maps**: Leaflet / React Leaflet
+- **3D**: Three.js / React Three Fiber
+- **Backend**: Supabase (Postgres + Auth + Storage + RLS)
+- **Optional AI**: Groq API (used by the in-app assistant)
 
-Do not commit `.env` or real keys.
+## Quickstart (web)
 
-For a **demo presentation**, see [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md) for pre-flight, step-by-step flow, and fallbacks.
-
-### Install Dependencies
+### 1) Install
 
 ```bash
-npm install
+npm ci
 ```
 
-### Development
+### 2) Configure environment
 
-Run the development server:
+Create a local `.env` from the template:
+
+```bash
+cp .env.example .env
+```
+
+Required:
+- **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`** (Supabase project settings)
+
+Optional:
+- **`VITE_GROQ_API_KEY`** (Groq Console: https://console.groq.com)
+
+Security note: **never commit** `.env` files or real keys.
+
+### 3) Run
 
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+App runs at `http://localhost:5173`.
 
-### Build
-
-Create a production build:
+### Build / preview
 
 ```bash
 npm run build
-```
-
-### Preview
-
-Preview the production build:
-
-```bash
 npm run preview
 ```
 
-## Mobile app (Android / iOS)
+## Quickstart (mobile)
 
-The **native app** lives in **`mobile/`** (Expo / React Native). Builds are run with **[Codemagic](https://codemagic.io)** using the root **`codemagic.yaml`**.
-
-- Add the repo in Codemagic and run the **Android (APK)** or **iOS (IPA)** workflow to get installable artifacts.
-- See **[mobile/README.md](mobile/README.md)** for running locally, SDK setup, and signing options.
-
-## Project Structure
-
-```
-├── src/
-│   ├── App.jsx          # Main application component
-│   ├── main.jsx         # Application entry point
-│   └── index.css        # Global styles with Tailwind
-├── index.html           # HTML template
-├── vite.config.js       # Vite configuration
-├── tailwind.config.js   # Tailwind CSS configuration
-└── package.json         # Project dependencies
-```
+See [`mobile/README.md`](mobile/README.md) (Expo). CI builds for the native app can be configured via [`codemagic.yaml`](codemagic.yaml).
 
 ## Supabase: Field records (images & 3D models)
 
@@ -121,13 +110,29 @@ For archeologists’ field records (Journal Terminal), the app uploads **images*
 Supported **image** types: JPEG, PNG, GIF, WebP.  
 Supported **3D model** types: GLB, GLTF, OBJ, FBX, STL, DAE, 3DS, PLY.
 
-## Customization
+## Admin scripts (server-side only)
 
-Feel free to customize this app to build your own features! The current implementation includes:
+This repo contains scripts that require the **Supabase service role key** (admin privileges).
 
-- Interactive counter component
-- Task manager with add/complete/delete functionality
-- Modern, responsive UI design
+Example: `scripts/seed-teams.mjs` reads:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-Happy coding! 🚀
+Do **not** expose these values in client apps and do **not** commit them.
+
+## Security & safety (project stance)
+
+- **Secrets hygiene**: keys live in local `.env` or CI secret stores; `.env` is ignored by git.
+- **Role-based visibility**: the app distinguishes public vs restricted content (e.g., “Exclusive Map” vs public sites).
+- **Supabase RLS**: data access is intended to be enforced with Row Level Security policies server-side.
+
+If you find a vulnerability, please follow [`SECURITY.md`](SECURITY.md).
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## License
+
+Apache-2.0. See [`LICENSE`](LICENSE).
 

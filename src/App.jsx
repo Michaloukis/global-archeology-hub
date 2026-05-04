@@ -26,16 +26,6 @@ import CalendarPage from './pages/CalendarPage.jsx'
 import RecentFieldLogsWidget from './components/RecentFieldLogsWidget.jsx'
 import { isArcheologist as isArcheologistRole } from './utils/roles'
 
-// #region agent log
-const logData = (msg, data, hypothesisId) => {
-  fetch('http://127.0.0.1:7243/ingest/681b1f5c-17b9-4cf5-8463-2a620377b7c6',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({location:'App.jsx',message:msg,data,timestamp:Date.now(),sessionId:'debug-session',hypothesisId})
-  }).catch(()=>{});
-};
-// #endregion
-
 const HomePage = ({ searchQuery }) => {
   const articles = [
     {

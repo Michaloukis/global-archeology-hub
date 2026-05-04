@@ -1,16 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 
-// #region agent log
-const logData = (msg, data, hypothesisId) => {
-  fetch('http://127.0.0.1:7243/ingest/681b1f5c-17b9-4cf5-8463-2a620377b7c6',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({location:'Auth.jsx',message:msg,data,timestamp:Date.now(),sessionId:'debug-session',hypothesisId})
-  }).catch(()=>{});
-};
-// #endregion
-
 export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
@@ -34,7 +24,6 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        logData('SignUp attempt', { email, fullName, username, role }, 'A');
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
@@ -47,15 +36,11 @@ export default function Auth() {
           }
         })
         if (authError) {
-          logData('SignUp error', { authError }, 'A');
           throw authError
         }
 
-        logData('SignUp success', { userId: authData?.user?.id, metadata: authData?.user?.user_metadata }, 'A');
-
         // BACKUP: Direct insert in case trigger fails
         if (authData?.user) {
-          logData('Backup insert start', { userId: authData.user.id, username }, 'B');
           const { error: insertError } = await supabase
             .from('profiles')
             .insert([
@@ -68,11 +53,9 @@ export default function Auth() {
               }
             ])
           if (insertError) {
-            logData('Backup insert error', { insertError }, 'B');
-            console.error('DEBUG: Backup insert failed:', insertError);
+            console.error('Backup insert failed:', insertError)
           } else {
-            logData('Backup insert success', {}, 'B');
-            console.log('DEBUG: Backup insert success');
+            console.log('Backup insert success')
           }
         }
         
