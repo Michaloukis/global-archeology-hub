@@ -2,6 +2,40 @@
 
 Role-based archaeology hub for **field documentation**, **mapping**, and **collaboration**, built for professionals, students, and enthusiasts.
 
+## Project goal
+
+**Give archaeology teams and learners one coherent digital workspace**—from discovery on a map to daily field notes, media, and team coordination—so heritage work is **documented consistently**, **shared with the right audience** (public vs. restricted), and **accessible** without chaining together half a dozen unrelated apps. The long-term aim is to support **digital preservation** and education: professionals operate efficiently in the field; students and enthusiasts learn and contribute within clear boundaries.
+
+## Purpose of the web app
+
+### Problems this addresses
+
+- **Fragmented tooling**: maps in one place, photos and 3D elsewhere, chat in another—nothing ties a site to its journal, team, and reporting workflow.
+- **Unequal access**: professionals need expedition workflows and approvals; students and the public need discovery and learning—not the same UI or data scope.
+- **Sensitivity of place**: some dig locations must stay **exclusive** to authorized roles; others can be **public** or **student-visible**. The app models that split instead of treating every pin as global.
+
+### What you get (specific capabilities)
+
+| Area | What it does |
+|------|----------------|
+| **Home dashboard** | Role-aware, configurable widgets: mini map, quick stats, site progress, recent field logs, **ArchBot**, calendar, global events, social activity, teams—and for students, courses and notepad-focused layouts. |
+| **Map** | Browse sites with filters aligned to visibility (**public**, student-facing, **exclusive** sites for Chiefs/Directors). Open a site to jump into its context. |
+| **Journal terminal** | Per-site **field records**: notes, findings, **photos**, and **3D models** (e.g. GLB/GLTF/OBJ and common formats) stored via Supabase Storage—one trail per excavation instead of scattered files. |
+| **Arch Zone** | Operations hub for **Directors** and **field archaeologists**: expedition **inbox** (approve/reject field requests), **register new dig sites** with coordinates and visibility, **archives** of recent journals, **professional tools** (field notepad, compass, ceramic-count sessions with optional GPS pins, **2D illustration**, **3D viewer/scanner flows**, report templates), plus shortcuts to **analytics** and **calendar**. |
+| **Edu Lab** | **Student** role: learning-oriented dashboard and Edu Lab entry—content and tools tuned for study, not full expedition control. |
+| **Teams & Social** | **Teams** with roles and invites; **Social Hub** with chatrooms tied to communities and sites—coordination without leaving the hub. |
+| **ArchBot (optional)** | AI assistant whose behavior is meant to align with **role** (e.g. strategic summaries vs. tutor-style help) when `VITE_GROQ_API_KEY` is set. |
+| **Calendar** | Events and optional links (e.g. “Add to Google” patterns); migrations support richer calendar sync where configured. |
+
+### Roles at a glance
+
+- **Director (“Chief”)**: exclusive map, site creation, expedition approvals, team leadership.
+- **Field archaeologist**: assigned expeditions, journals, Arch Zone tools.
+- **Student**: Edu Lab, student-safe map content, learning-focused dashboard.
+- **Public**: discovery and participation within what admins mark as public.
+
+Security and visibility are enforced in production by **Supabase Auth**, **Row Level Security**, and **site-level flags** (e.g. `is_public`, visibility tiers)—the UI reflects intent; always validate policies on the database.
+
 [![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
 [![CodeQL](../../actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
 
